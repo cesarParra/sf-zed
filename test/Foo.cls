@@ -5,7 +5,7 @@ public with sharing class Foo {
       return 0;
     }
 
-    List<SObject> myrecords = [];
+    List<SObject> myrecords = [SELECT Id FROM Account];
 
     return a + b;
   }

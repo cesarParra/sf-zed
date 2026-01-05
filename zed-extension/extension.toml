@@ -4,8 +4,14 @@ version = "0.0.1"
 schema_version = 1
 authors = ["cesarParra"]
 description = "Language support for Salesforce Apex (Tree-sitter)"
-repository = "https://github.com/cesarParra/apex-ts"
+repository = "https://github.com/aheber/tree-sitter-sfapex"
 
 [grammars.apex]
-repository = "https://github.com/cesarParra/apex-ts"
-rev = "cf05aa47e192179db5da5658823a093d572b335f"
+repository = "https://github.com/aheber/tree-sitter-sfapex"
+rev = "3597575a429766dd7ecce9f5bb97f6fec4419d5d"
+path = "apex"
+
+[grammars.soql]
+repository = "https://github.com/aheber/tree-sitter-sfapex"
+rev = "3597575a429766dd7ecce9f5bb97f6fec4419d5d"
+path = "soql"
