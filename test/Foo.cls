@@ -7,6 +7,13 @@ public with sharing class Foo {
 
     List<SObject> myrecords = [SELECT Id FROM Account];
 
+    // SOSL (inline) — should be parsed as a query_expression -> sosl_query_body
+    // and highlighted using the SOSL injected language.
+    List<List<SObject>> searchResults = [
+      FIND 'Acme*' IN NAME FIELDS
+      RETURNING Account(Id, Name), Contact(Id, Name)
+    ];
+
     return a + b;
   }
 }

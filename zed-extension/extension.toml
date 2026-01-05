@@ -15,3 +15,8 @@ path = "apex"
 repository = "https://github.com/aheber/tree-sitter-sfapex"
 rev = "3597575a429766dd7ecce9f5bb97f6fec4419d5d"
 path = "soql"
+
+[grammars.sosl]
+repository = "https://github.com/aheber/tree-sitter-sfapex"
+rev = "3597575a429766dd7ecce9f5bb97f6fec4419d5d"
+path = "sosl"
