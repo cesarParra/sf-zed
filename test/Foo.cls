@@ -4,7 +4,9 @@ public with sharing class Foo {
     if (a == null || b == null) {
       return 0;
     }
+
+    List<SObject> myrecords = [];
+
     return a + b;
-   //test
   }
 }
