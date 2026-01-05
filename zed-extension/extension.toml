@@ -1,0 +1,11 @@
+id = "apex"
+name = "Apex"
+version = "0.0.1"
+schema_version = 1
+authors = ["cesarParra"]
+description = "Language support for Salesforce Apex (Tree-sitter)"
+repository = "https://github.com/cesarParra/apex-ts"
+
+[grammars.apex]
+repository = "https://github.com/cesarParra/apex-ts"
+rev = "cf05aa47e192179db5da5658823a093d572b335f"

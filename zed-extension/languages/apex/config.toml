@@ -1,0 +1,12 @@
+name = "Apex"
+grammar = "apex"
+
+# Associate Salesforce Apex classes with this language
+path_suffixes = ["cls"]
+
+# Used by Toggle Comments
+line_comments = ["// "]
+
+# Sensible defaults
+tab_size = 2
+hard_tabs = false
