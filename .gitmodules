@@ -1,3 +1,0 @@
-[submodule "zed-extension/grammars/tree-sitter-sfapex"]
-	path = zed-extension/grammars/tree-sitter-sfapex
-	url = https://github.com/aheber/tree-sitter-sfapex
