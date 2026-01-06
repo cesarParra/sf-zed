@@ -17,3 +17,4 @@ public with sharing class Foo {
     return a + b;
   }
 }
+T

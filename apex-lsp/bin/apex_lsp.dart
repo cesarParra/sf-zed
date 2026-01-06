@@ -3,16 +3,33 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+/// LSP `MessageType` (used by `window/logMessage` and `window/showMessage`).
+///
+/// Spec values:
+/// - 1: Error
+/// - 2: Warning
+/// - 3: Info
+/// - 4: Log
+
+// TODO: Can we use enums instead?
+// TODO: We want to create proper types based on the Spec
+final class _MessageType {
+  static const int error = 1;
+  static const int warning = 2;
+  static const int info = 3;
+}
+
 /// Apex Language Server Protocol (LSP) server over stdio.
 Future<void> main(List<String> args) async {
   final server = _LspServer(input: stdin, output: stdout, logger: stderr);
 
-  // If something goes wrong at top-level, try to surface it on stderr and exit.
+  // If something goes wrong at top-level:
+  // - If the server is initialized, prefer LSP logging via `window/logMessage`.
+  // - Otherwise, fall back to stderr (there is no client connection yet).
   try {
     await server.run();
   } catch (e, st) {
-    stderr.writeln('[apex-lsp] Fatal error: $e');
-    stderr.writeln(st);
+    await server.logError('Fatal error: $e\n$st');
     exitCode = 1;
   }
 }
@@ -27,6 +44,9 @@ final class _LspServer {
         _reader = _LspMessageReader(input);
 
   final Stdout _output;
+
+  /// Fallback logger (stderr). Only used before `initialize` completes or if
+  /// we can't deliver an LSP `window/logMessage` notification.
   final IOSink _log;
 
   final _LspMessageReader _reader;
@@ -38,8 +58,91 @@ final class _LspServer {
   // Minimal in-memory document store so we can compute basic completions.
   final Map<String, String> _openDocuments = <String, String>{};
 
+  // TODO: Clean up this logging repetition. We are doing
+  // this for dev purposes since Zed doesn't seem to surface any logs
+
+  /// Sends an LSP `window/logMessage` notification.
+  ///
+  /// Additionally mirrors the message to stderr so it is visible when running
+  /// Zed with `--foreground` (Zed may not surface `window/logMessage`).
+  Future<void> logInfo(String message) =>
+      _logMessage(_MessageType.info, message);
+
+  /// Sends an LSP `window/logMessage` notification at warning severity.
+  ///
+  /// Additionally mirrors the message to stderr so it is visible when running
+  /// Zed with `--foreground` (Zed may not surface `window/logMessage`).
+  Future<void> logWarn(String message) =>
+      _logMessage(_MessageType.warning, message);
+
+  /// Sends an LSP `window/logMessage` notification at error severity.
+  ///
+  /// Additionally mirrors the message to stderr so it is visible when running
+  /// Zed with `--foreground` (Zed may not surface `window/logMessage`).
+  Future<void> logError(String message) =>
+      _logMessage(_MessageType.error, message);
+
+  /// Sends an LSP `window/showMessage` notification (user-visible).
+  ///
+  /// This is intentionally used only for *milestone* events.
+  Future<void> showInfo(String message) =>
+      _showMessage(_MessageType.info, message);
+
+  Future<void> _logMessage(int type, String message) async {
+    // LSP `window/logMessage` is a notification, so no response is expected.
+    //
+    // Spec: `LogMessageParams`:
+    // - type: MessageType (1=Error,2=Warning,3=Info,4=Log)
+    // - message: string
+    //
+    // Zed forwards stderr/stdout from the *process* to Zed.log / `zed --foreground`.
+    // Zed may or may not surface `window/logMessage` notifications in its UI/logs,
+    // so we mirror to stderr to make debugging visible.
+    _log.writeln('[apex-lsp] $message');
+
+    if (!_initialized) return;
+
+    try {
+      _writeMessage(<String, Object?>{
+        'jsonrpc': '2.0',
+        'method': 'window/logMessage',
+        'params': <String, Object?>{
+          'type': type,
+          'message': message,
+        },
+      });
+    } catch (e) {
+      _log.writeln('[apex-lsp] (logMessage failed: $e)');
+    }
+  }
+
+  Future<void> _showMessage(int type, String message) async {
+    // Spec: `window/showMessage` is a notification:
+    // method: 'window/showMessage'
+    // params: { type: MessageType, message: string }
+    //
+    // If the server hasn't been initialized yet, we can't rely on the client
+    // being ready, so fall back to stderr only.
+    _log.writeln('[apex-lsp] $message');
+
+    if (!_initialized) return;
+
+    try {
+      _writeMessage(<String, Object?>{
+        'jsonrpc': '2.0',
+        'method': 'window/showMessage',
+        'params': <String, Object?>{
+          'type': type,
+          'message': message,
+        },
+      });
+    } catch (e) {
+      _log.writeln('[apex-lsp] (showMessage failed: $e)');
+    }
+  }
+
   Future<void> run() async {
-    _log.writeln('[apex-lsp] Starting (stdio)');
+    await logInfo('Starting (stdio)');
 
     await for (final message in _reader.messages()) {
       if (_exiting) break;
@@ -51,11 +154,11 @@ final class _LspServer {
         await _handleNotification(message);
       } else {
         // Should never happen; keep the loop robust.
-        _log.writeln('[apex-lsp] Unknown message type: $message');
+        await logWarn('Unknown message type: $message');
       }
     }
 
-    _log.writeln('[apex-lsp] Stopped');
+    await logInfo('Stopped');
   }
 
   Future<void> _handleRequest(_JsonRpcRequest req) async {
@@ -97,7 +200,9 @@ final class _LspServer {
   Future<void> _handleNotification(_JsonRpcNotification note) async {
     switch (note.method) {
       case 'initialized':
-        // TODO: No-op for now, we can use to index in the future.
+        // Milestone: show a user-visible notification so we know the LSP wiring
+        // is working even if the client doesn't surface `window/logMessage`.
+        await showInfo('Apex LSP initialized');
         return;
 
       case 'textDocument/didOpen':
@@ -117,7 +222,11 @@ final class _LspServer {
         // otherwise -> exit 1.
         _exiting = true;
         exitCode = _shutdownRequested ? 0 : 1;
-        _log.writeln('[apex-lsp] exit received; shutdown=$_shutdownRequested');
+
+        // Milestone: show exit event as a user-visible message.
+        await showInfo('Apex LSP exiting (shutdown=$_shutdownRequested)');
+
+        await logInfo('exit received; shutdown=$_shutdownRequested');
         await _output.flush();
         exit(exitCode);
       default:
