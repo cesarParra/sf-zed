@@ -1,0 +1,22 @@
+{
+  "configVersion": 2,
+  "packages": [
+    {
+      "name": "lints",
+      "rootUri": "file:///Users/cesarparra/.pub-cache/hosted/pub.dev/lints-3.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "apex_lsp",
+      "rootUri": "../",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    }
+  ],
+  "generator": "pub",
+  "generatorVersion": "3.9.0",
+  "flutterRoot": "file:///Users/cesarparra/Development/flutter",
+  "flutterVersion": "3.35.1",
+  "pubCache": "file:///Users/cesarparra/.pub-cache"
+}

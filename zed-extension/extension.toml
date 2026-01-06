@@ -20,3 +20,10 @@ path = "soql"
 repository = "https://github.com/aheber/tree-sitter-sfapex"
 rev = "3597575a429766dd7ecce9f5bb97f6fec4419d5d"
 path = "sosl"
+
+[language_servers.apex-lsp]
+name = "Apex LSP (Dart)"
+languages = ["Apex"]
+
+[language_servers.apex-lsp.language_ids]
+"Apex" = "apex"

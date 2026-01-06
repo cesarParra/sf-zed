@@ -1,0 +1,21 @@
+{
+  "roots": [
+    "apex_lsp"
+  ],
+  "packages": [
+    {
+      "name": "apex_lsp",
+      "version": "0.0.1",
+      "dependencies": [],
+      "devDependencies": [
+        "lints"
+      ]
+    },
+    {
+      "name": "lints",
+      "version": "3.0.0",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

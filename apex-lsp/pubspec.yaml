@@ -1,0 +1,15 @@
+name: apex_lsp
+description: Bare-bones Apex Language Server Protocol (LSP) server over stdio.
+version: 0.0.1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  # No external dependencies for the hello-world LSP skeleton.
+
+dev_dependencies:
+  lints: ^3.0.0
+
+executables:
+  apex_lsp: apex_lsp
