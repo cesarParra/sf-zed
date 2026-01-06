@@ -3,21 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-/// Bare-bones Language Server Protocol (LSP) server over stdio.
-///
-/// - Reads JSON-RPC messages framed with `Content-Length: ...\r\n\r\n`.
-/// - Handles:
-///   - `initialize` request -> returns minimal server capabilities
-///   - `initialized` notification -> ignored
-///   - `shutdown` request -> responds with `null` and marks server as shutdown
-///   - `exit` notification -> exits (0 if shutdown was requested, else 1)
-///   - `textDocument/completion` request -> returns one item when prefix == "T"
-/// - Unknown requests -> JSON-RPC error -32601 (Method not found)
-/// - Unknown notifications -> ignored
-///
-/// Notes:
-/// - All protocol IO is via stdin/stdout. Logs should go to stderr.
-/// - This is intentionally minimal and not a complete LSP implementation.
+/// Apex Language Server Protocol (LSP) server over stdio.
 Future<void> main(List<String> args) async {
   final server = _LspServer(input: stdin, output: stdout, logger: stderr);
 
@@ -36,15 +22,10 @@ final class _LspServer {
     required Stdin input,
     required Stdout output,
     required IOSink logger,
-  })  : _input = input,
-        _output = output,
+  })  : _output = output,
         _log = logger,
         _reader = _LspMessageReader(input);
 
-  // Kept for symmetry with constructor parameters; not used directly since
-  // message consumption is handled by `_reader`.
-  // ignore: unused_field
-  final Stdin _input;
   final Stdout _output;
   final IOSink _log;
 
@@ -63,6 +44,7 @@ final class _LspServer {
     await for (final message in _reader.messages()) {
       if (_exiting) break;
 
+      // TODO: Use switch for this since we are working with a sealed class
       if (message is _JsonRpcRequest) {
         await _handleRequest(message);
       } else if (message is _JsonRpcNotification) {
@@ -77,8 +59,6 @@ final class _LspServer {
   }
 
   Future<void> _handleRequest(_JsonRpcRequest req) async {
-    // LSP lifecycle rule: most methods require initialize first.
-    // Keep this simple: allow initialize/shutdown even if not initialized.
     if (!_initialized &&
         req.method != 'initialize' &&
         req.method != 'shutdown') {
@@ -115,10 +95,9 @@ final class _LspServer {
   }
 
   Future<void> _handleNotification(_JsonRpcNotification note) async {
-    // LSP lifecycle notifications.
     switch (note.method) {
       case 'initialized':
-        // No-op for bare-bones server.
+        // TODO: No-op for now, we can use to index in the future.
         return;
 
       case 'textDocument/didOpen':
@@ -142,7 +121,7 @@ final class _LspServer {
         await _output.flush();
         exit(exitCode);
       default:
-        // For this skeleton, ignore all other notifications.
+        // TODO: For this skeleton, ignore all other notifications.
         return;
     }
   }
@@ -153,13 +132,13 @@ final class _LspServer {
     // Minimal InitializeResult with completion provider and full document sync.
     final result = <String, Object?>{
       'capabilities': <String, Object?>{
-        // We use full sync to keep the implementation tiny.
         'textDocumentSync': 1, // TextDocumentSyncKind.Full
         'completionProvider': <String, Object?>{
-          // Allow "T" to trigger completion without extra configuration.
+          // TODO: For testing purposes, allow "T" to trigger completion without extra configuration.
           'triggerCharacters': <String>['T'],
         },
       },
+      // TODO: Get from dynamic JSON or pubspec or something like that
       'serverInfo': <String, Object?>{'name': 'apex-lsp', 'version': '0.0.1'},
     };
 
@@ -258,7 +237,7 @@ final class _LspServer {
 
     final lineText = lines[line];
 
-    // position.character is UTF-16 based in LSP, but for this trivial test we
+    // TODO: position.character is UTF-16 based in LSP, but for this trivial test we
     // treat it as a simple code-unit offset.
     if (character <= 0 || character > lineText.length) return false;
 
@@ -316,7 +295,7 @@ final class _LspServer {
 
 /// Reads LSP-framed messages from stdin.
 ///
-/// This is minimal and assumes:
+/// Assumes:
 /// - UTF-8 JSON payload
 /// - Header includes Content-Length
 /// - Headers are ASCII and delimited by \r\n, with an empty line \r\n\r\n.
@@ -367,7 +346,7 @@ final class _LspMessageReader {
 
         final decoded = _tryDecodeJson(bodyText);
         if (decoded == null) {
-          // Ignore malformed JSON in this minimal implementation.
+          // TODO: Handle? Ignore malformed JSON in this minimal implementation.
           continue;
         }
 
@@ -393,7 +372,7 @@ final class _LspMessageReader {
   }
 
   static int? _parseContentLength(String headers) {
-    // Very small parser for Content-Length: <number>
+    // Small parser for Content-Length: <number>
     // Header fields are separated by \r\n.
     final lines = headers.split('\r\n');
     for (final line in lines) {
@@ -411,6 +390,8 @@ final class _LspMessageReader {
     return null;
   }
 
+  // TODO: Return proper error object rather than null. That will allow us to not have to be checking for `Object`
+  // types in the code above
   static Object? _tryDecodeJson(String text) {
     try {
       return jsonDecode(text);
@@ -444,7 +425,7 @@ final class _LspMessageReader {
       return _JsonRpcNotification(method: method, params: decoded['params']);
     }
 
-    // Responses are ignored by servers in this minimal implementation.
+    // TODO: Responses are ignored by servers in this minimal implementation.
     return null;
   }
 
