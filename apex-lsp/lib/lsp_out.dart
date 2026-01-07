@@ -45,7 +45,7 @@ class LspOut {
     _writeMessage(ErrorResponseMessage(id, errorObj));
   }
 
-  void _writeMessage(Message message) {
+  void _writeMessage(OutgoingMessage message) {
     final payload = jsonEncode(message.toJson());
     final bytes = utf8.encode(payload);
 

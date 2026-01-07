@@ -14,7 +14,7 @@ final class MessageReader {
 
   final Stdin _input;
 
-  Stream<Message> messages() async* {
+  Stream<IncomingMessage> messages() async* {
     // Buffer of bytes read so far.
     final buffer = BytesBuilder(copy: false);
 
@@ -110,7 +110,7 @@ final class MessageReader {
     }
   }
 
-  static Message? _parseJsonRpcMessage(Object decoded) {
+  static IncomingMessage? _parseJsonRpcMessage(Object decoded) {
     if (decoded is! Map) return null;
 
     final jsonrpc = decoded['jsonrpc'];

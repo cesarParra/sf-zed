@@ -9,6 +9,120 @@ enum MessageType {
   final int code;
 }
 
+// ----------- Incoming requests and notifications-----------------
+
+sealed class IncomingMessage {
+  final String jsonrpc = '2.0';
+
+  const IncomingMessage();
+
+  Map<String, Object?> toJson();
+}
+
+class RequestMessage extends IncomingMessage {
+  final Object id;
+  final String method;
+  // TODO: make this a proper object (sealed class?)
+  final Object? params;
+
+  const RequestMessage(this.id, this.method, this.params);
+
+  @override
+  Map<String, Object?> toJson() {
+    return {'jsonrpc': jsonrpc, 'id': id, 'method': method, 'params': params};
+  }
+}
+
+sealed class IncomingNotificationMessage extends IncomingMessage {
+  String get method;
+
+  const IncomingNotificationMessage();
+}
+
+/// Common base for notifications that include typed `params`.
+sealed class IncomingNotificationMessageWithParams<TParams>
+    extends IncomingNotificationMessage {
+  TParams get params;
+
+  const IncomingNotificationMessageWithParams();
+}
+
+class InitializedMessage extends IncomingNotificationMessage {
+  @override
+  String get method => 'initialized';
+
+  const InitializedMessage();
+
+  @override
+  Map<String, Object?> toJson() {
+    return {'jsonrpc': jsonrpc, 'method': method};
+  }
+}
+
+/// LSP: `exit` notification has no params.
+class ExitMessage extends IncomingNotificationMessage {
+  @override
+  String get method => 'exit';
+
+  const ExitMessage();
+
+  @override
+  Map<String, Object?> toJson() {
+    return {'jsonrpc': jsonrpc, 'method': method};
+  }
+}
+
+/// LSP: `textDocument/didOpen`
+class TextDocumentDidOpenMessage
+    extends IncomingNotificationMessageWithParams<DidOpenTextDocumentParams> {
+  @override
+  String get method => 'textDocument/didOpen';
+
+  @override
+  final DidOpenTextDocumentParams params;
+
+  const TextDocumentDidOpenMessage(this.params);
+
+  @override
+  Map<String, Object?> toJson() {
+    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
+  }
+}
+
+/// LSP: `textDocument/didChange`
+class TextDocumentDidChangeMessage
+    extends IncomingNotificationMessageWithParams<DidChangeTextDocumentParams> {
+  @override
+  String get method => 'textDocument/didChange';
+
+  @override
+  final DidChangeTextDocumentParams params;
+
+  const TextDocumentDidChangeMessage(this.params);
+
+  @override
+  Map<String, Object?> toJson() {
+    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
+  }
+}
+
+/// LSP: `textDocument/didClose`
+class TextDocumentDidCloseMessage
+    extends IncomingNotificationMessageWithParams<DidCloseTextDocumentParams> {
+  @override
+  String get method => 'textDocument/didClose';
+
+  @override
+  final DidCloseTextDocumentParams params;
+
+  const TextDocumentDidCloseMessage(this.params);
+
+  @override
+  Map<String, Object?> toJson() {
+    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
+  }
+}
+
 /// LSP `TextDocumentIdentifier`
 ///
 /// Spec shape: `{ uri: DocumentUri }`
@@ -151,29 +265,17 @@ final class DidCloseTextDocumentParams {
   }
 }
 
-sealed class Message {
+//  ---------- Outgoing requests and notifications -------------
+
+sealed class OutgoingMessage {
   final String jsonrpc = '2.0';
 
-  const Message();
+  const OutgoingMessage();
 
   Map<String, Object?> toJson();
 }
 
-class RequestMessage extends Message {
-  final Object id;
-  final String method;
-  // TODO: make this a proper object (sealed class?)
-  final Object? params;
-
-  const RequestMessage(this.id, this.method, this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'id': id, 'method': method, 'params': params};
-  }
-}
-
-sealed class ResponseMessage extends Message {
+sealed class ResponseMessage extends OutgoingMessage {
   final Object? id;
 
   const ResponseMessage(this.id);
@@ -213,97 +315,22 @@ class ErrorResponseMessage extends ResponseMessage {
   }
 }
 
-sealed class NotificationMessage extends Message {
+sealed class OutgoingNotificationMessage extends OutgoingMessage {
   String get method;
 
-  const NotificationMessage();
+  const OutgoingNotificationMessage();
 }
 
 /// Common base for notifications that include typed `params`.
-sealed class NotificationMessageWithParams<TParams>
-    extends NotificationMessage {
+sealed class OutgoingNotificationMessageWithParams<TParams>
+    extends OutgoingNotificationMessage {
   TParams get params;
 
-  const NotificationMessageWithParams();
+  const OutgoingNotificationMessageWithParams();
 }
 
-/// LSP: `exit` notification has no params.
-class ExitMessage extends NotificationMessage {
-  @override
-  String get method => 'exit';
-
-  const ExitMessage();
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method};
-  }
-}
-
-/// LSP: `textDocument/didOpen`
-class TextDocumentDidOpenMessage
-    extends NotificationMessageWithParams<DidOpenTextDocumentParams> {
-  @override
-  String get method => 'textDocument/didOpen';
-
-  @override
-  final DidOpenTextDocumentParams params;
-
-  const TextDocumentDidOpenMessage(this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
-}
-
-/// LSP: `textDocument/didChange`
-class TextDocumentDidChangeMessage
-    extends NotificationMessageWithParams<DidChangeTextDocumentParams> {
-  @override
-  String get method => 'textDocument/didChange';
-
-  @override
-  final DidChangeTextDocumentParams params;
-
-  const TextDocumentDidChangeMessage(this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
-}
-
-/// LSP: `textDocument/didClose`
-class TextDocumentDidCloseMessage
-    extends NotificationMessageWithParams<DidCloseTextDocumentParams> {
-  @override
-  String get method => 'textDocument/didClose';
-
-  @override
-  final DidCloseTextDocumentParams params;
-
-  const TextDocumentDidCloseMessage(this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
-}
-
-class InitializedMessage extends NotificationMessage {
-  @override
-  String get method => 'initialized';
-
-  const InitializedMessage();
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method};
-  }
-}
-
-class LogMessage extends NotificationMessage {
+// todo: this should be withparams
+class LogMessage extends OutgoingNotificationMessage {
   @override
   String get method => 'window/logMessage';
   final MessageParams params;
@@ -316,7 +343,8 @@ class LogMessage extends NotificationMessage {
   }
 }
 
-class ShowMessage extends NotificationMessage {
+// todo: this should be withparams
+class ShowMessage extends OutgoingNotificationMessage {
   @override
   String get method => 'window/showMessage';
   final MessageParams params;

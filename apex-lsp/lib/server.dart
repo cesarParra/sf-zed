@@ -29,13 +29,11 @@ final class Server {
     await for (final message in _reader.messages()) {
       if (_exiting) break;
 
-      // TODO: Use switch for this since we are working with a sealed class
-      if (message is RequestMessage) {
-        await _handleRequest(message);
-      } else if (message is NotificationMessage) {
-        await _handleNotification(message);
-      } else {
-        await logMessage(.warning, 'Unknown message type: $message');
+      switch (message) {
+        case RequestMessage():
+          await _handleRequest(message);
+        case IncomingNotificationMessage():
+          await _handleNotification(message);
       }
     }
   }
@@ -52,6 +50,7 @@ final class Server {
       return;
     }
 
+    // TODO: Use proper classes and pattern matching instead of strings
     switch (req.method) {
       case 'initialize':
         await _onInitialize(req);
@@ -77,12 +76,13 @@ final class Server {
     }
   }
 
-  Future<void> _handleNotification(NotificationMessage note) async {
+  Future<void> _handleNotification(IncomingNotificationMessage note) async {
     switch (note) {
       case InitializedMessage():
         await logMessage(MessageType.info, 'Apex LSP initialized');
 
       case TextDocumentDidOpenMessage(:final params):
+        _output.debug('Received TextDocumentDidOpenMessage');
         _onDidOpen(params);
 
       case TextDocumentDidChangeMessage(:final params):
@@ -103,9 +103,6 @@ final class Server {
         );
         await _output.flush();
         exit(exitCode);
-
-      default:
-      // TODO: For this skeleton, ignore all other notifications.
     }
   }
 
