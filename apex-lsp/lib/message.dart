@@ -1,17 +1,14 @@
-/// LSP `MessageType` (used by `window/logMessage` and `window/showMessage`).
-///
-/// Spec values:
-/// - 1: Error
-/// - 2: Warning
-/// - 3: Info
-/// - 4: Log
-///
-/// TODO: Can we use enums instead?
-/// TODO: We want to create proper types based on the Spec
-final class MessageType {
-  static const int error = 1;
-  static const int warning = 2;
-  static const int info = 3;
+enum MessageType {
+  error(code: 1),
+  warning(code: 2),
+  info(code: 3),
+  log(code: 4);
+
+  const MessageType({
+    required this.code,
+  });
+
+  final int code;
 }
 
 sealed class Message {

@@ -6,11 +6,9 @@ import 'message.dart';
 import 'message_reader.dart';
 
 final class Server {
-  Server({
-    required Stdin input,
-    required LspOut output,
-  })  : _output = output,
-        _reader = MessageReader(input);
+  Server({required Stdin input, required LspOut output})
+    : _output = output,
+      _reader = MessageReader(input);
 
   final LspOut _output;
   final MessageReader _reader;
@@ -22,32 +20,7 @@ final class Server {
   // Minimal in-memory document store so we can compute basic completions.
   final Map<String, String> _openDocuments = <String, String>{};
 
-  /// Sends an LSP `window/logMessage` notification.
-  ///
-  /// Additionally mirrors the message to stderr so it is visible when running
-  /// Zed with `--foreground` (Zed may not surface `window/logMessage`).
-  Future<void> logInfo(String message) =>
-      _logMessage(MessageType.info, message);
-
-  /// Sends an LSP `window/logMessage` notification at warning severity.
-  ///
-  /// Additionally mirrors the message to stderr so it is visible when running
-  /// Zed with `--foreground` (Zed may not surface `window/logMessage`).
-  Future<void> logWarn(String message) =>
-      _logMessage(MessageType.warning, message);
-
-  /// Sends an LSP `window/logMessage` notification at error severity.
-  ///
-  /// Additionally mirrors the message to stderr so it is visible when running
-  /// Zed with `--foreground` (Zed may not surface `window/logMessage`).
-  Future<void> logError(String message) =>
-      _logMessage(MessageType.error, message);
-
-  /// Sends an LSP `window/showMessage` notification (user-visible).
-  Future<void> showInfo(String message) =>
-      _output.showMessage(MessageType.info, message);
-
-  Future<void> _logMessage(int type, String message) async {
+  Future<void> logMessage(MessageType type, String message) async {
     if (!_initialized) return;
     await _output.logMessage(type, message);
   }
@@ -62,8 +35,11 @@ final class Server {
       } else if (message is NotificationMessage) {
         await _handleNotification(message);
       } else {
-        // Should never happen; keep the loop robust.
-        await logWarn('Unknown message type: $message');
+        // TODO: Use Dart dot shorthands whenever logging messages
+        await logMessage(
+          .warning,
+          'Unknown message type: $message',
+        );
       }
     }
   }
@@ -108,16 +84,14 @@ final class Server {
   Future<void> _handleNotification(NotificationMessage note) async {
     switch (note.method) {
       case 'initialized':
-        await showInfo('Apex LSP initialized');
+        await logMessage(MessageType.info, 'Apex LSP initialized');
         return;
 
       case 'textDocument/didOpen':
-        _output.debug('did open received');
         _onDidOpen(note.params);
         return;
 
       case 'textDocument/didChange':
-        _output.debug('did change received');
         _onDidChange(note.params);
         return;
 
@@ -131,9 +105,10 @@ final class Server {
         _exiting = true;
         exitCode = _shutdownRequested ? 0 : 1;
 
-        await showInfo('Apex LSP exiting (shutdown=$_shutdownRequested)');
-
-        await logInfo('exit received; shutdown=$_shutdownRequested');
+        await logMessage(
+          MessageType.info,
+          'Apex LSP exiting (shutdown=$_shutdownRequested)',
+        );
         await _output.flush();
         exit(exitCode);
       default:

@@ -19,7 +19,7 @@ Future<void> main(List<String> args) async {
   try {
     await server.run();
   } catch (e, st) {
-    await server.logError('Fatal error: $e\n$st');
+    await server.logMessage(.error, 'Fatal error: $e\n$st');
     exitCode = 1;
   }
 }

@@ -14,7 +14,7 @@ class LspOut {
 
   void add(List<int> data) => _output.add(data);
 
-  Future<void> logMessage(int type, String message) async {
+  Future<void> logMessage(MessageType type, String message) async {
     // LSP `window/logMessage` is a notification, so no response is expected.
     //
     // Spec: `LogMessageParams`:
@@ -22,10 +22,11 @@ class LspOut {
     // - message: string
     _writeMessage(
       NotificationMessage(
-        // TODO: Maybe we can use enums instead of strings for this?
+        // TODO: these should be proper types, since it is easy to make a mistake when building the params
+        // or typing out the message string name
         'window/logMessage',
         <String, Object?>{
-          'type': type,
+          'type': type.code,
           'message': message,
         },
       ),
@@ -34,7 +35,7 @@ class LspOut {
 
   void debug(String message) {
     // TODO: Avoid using hardcoded numbers
-    logMessage(4, '[apex-lsp] $message');
+    logMessage(.log, '[apex-lsp] $message');
   }
 
   Future<void> showMessage(int type, String message) async {
@@ -56,7 +57,7 @@ class LspOut {
       );
     } catch (e) {
       // TODO: Avoid using hardcoded numbers
-      await logMessage(1, 'showMessage failed: $e');
+      await logMessage(.error, 'showMessage failed: $e');
     }
   }
 
