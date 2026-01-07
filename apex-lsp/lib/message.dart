@@ -4,9 +4,7 @@ enum MessageType {
   info(code: 3),
   log(code: 4);
 
-  const MessageType({
-    required this.code,
-  });
+  const MessageType({required this.code});
 
   final int code;
 }
@@ -25,20 +23,11 @@ class RequestMessage extends Message {
   // TODO: make this a proper object (sealed class?)
   final Object? params;
 
-  const RequestMessage(
-    this.id,
-    this.method,
-    this.params,
-  );
+  const RequestMessage(this.id, this.method, this.params);
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'jsonrpc': jsonrpc,
-      'id': id,
-      'method': method,
-      'params': params,
-    };
+    return {'jsonrpc': jsonrpc, 'id': id, 'method': method, 'params': params};
   }
 }
 
@@ -51,18 +40,11 @@ sealed class ResponseMessage extends Message {
 class SuccessResponseMessage extends ResponseMessage {
   final Object? result;
 
-  const SuccessResponseMessage(
-    super.id,
-    this.result,
-  );
+  const SuccessResponseMessage(super.id, this.result);
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'jsonrpc': jsonrpc,
-      'id': id,
-      'result': result,
-    };
+    return {'jsonrpc': jsonrpc, 'id': id, 'result': result};
   }
 }
 
@@ -71,18 +53,10 @@ class ResponseError {
   final String message;
   final Object? data;
 
-  const ResponseError(
-    this.code,
-    this.message,
-    this.data,
-  );
+  const ResponseError(this.code, this.message, this.data);
 
   Map<String, Object?> toJson() {
-    return {
-      'code': code,
-      'message': message,
-      'data': data,
-    };
+    return {'code': code, 'message': message, 'data': data};
   }
 }
 
@@ -93,26 +67,43 @@ class ErrorResponseMessage extends ResponseMessage {
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'jsonrpc': jsonrpc,
-      'id': id,
-      'error': error.toJson(),
-    };
+    return {'jsonrpc': jsonrpc, 'id': id, 'error': error.toJson()};
   }
 }
 
-class NotificationMessage extends Message {
-  final String method;
-  final Object? params;
+// Notifications
 
-  const NotificationMessage(this.method, this.params);
+class LogMessage extends Message {
+  final String method = 'window/logMessage';
+  final MessageParams params;
+
+  const LogMessage(this.params);
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'jsonrpc': jsonrpc,
-      'method': method,
-      'params': params,
-    };
+    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
+  }
+}
+
+class ShowMessage extends Message {
+  final String method = 'window/showMessage';
+  final MessageParams params;
+
+  const ShowMessage(this.params);
+
+  @override
+  Map<String, Object?> toJson() {
+    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
+  }
+}
+
+class MessageParams {
+  final MessageType type;
+  final String message;
+
+  const MessageParams({required this.type, required this.message});
+
+  Map<String, Object> toJson() {
+    return {'type': type.code, 'message': message};
   }
 }

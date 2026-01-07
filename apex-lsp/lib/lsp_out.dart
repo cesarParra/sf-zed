@@ -4,9 +4,7 @@ import 'dart:convert';
 import 'message.dart';
 
 class LspOut {
-  LspOut({
-    required Stdout output,
-  }) : _output = output;
+  LspOut({required Stdout output}) : _output = output;
 
   final Stdout _output;
 
@@ -15,48 +13,17 @@ class LspOut {
   void add(List<int> data) => _output.add(data);
 
   Future<void> logMessage(MessageType type, String message) async {
-    // LSP `window/logMessage` is a notification, so no response is expected.
-    //
-    // Spec: `LogMessageParams`:
-    // - type: MessageType (1=Error,2=Warning,3=Info,4=Log)
-    // - message: string
-    _writeMessage(
-      NotificationMessage(
-        // TODO: these should be proper types, since it is easy to make a mistake when building the params
-        // or typing out the message string name
-        'window/logMessage',
-        <String, Object?>{
-          'type': type.code,
-          'message': message,
-        },
-      ),
-    );
+    _writeMessage(LogMessage(MessageParams(type: type, message: message)));
   }
 
   void debug(String message) {
-    // TODO: Avoid using hardcoded numbers
     logMessage(.log, '[apex-lsp] $message');
   }
 
-  Future<void> showMessage(int type, String message) async {
-    // Spec: `window/showMessage` is a notification:
-    // method: 'window/showMessage'
-    // params: { type: MessageType, message: string }
-    //
-    // If the server hasn't been initialized yet, we can't rely on the client
-    // being ready, so fall back to stderr.
+  Future<void> showMessage(MessageType type, String message) async {
     try {
-      _writeMessage(
-        NotificationMessage(
-          'window/showMessage',
-          <String, Object?>{
-            'type': type,
-            'message': message,
-          },
-        ),
-      );
+      _writeMessage(ShowMessage(MessageParams(type: type, message: message)));
     } catch (e) {
-      // TODO: Avoid using hardcoded numbers
       await logMessage(.error, 'showMessage failed: $e');
     }
   }
