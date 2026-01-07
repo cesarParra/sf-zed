@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:apex_lsp/lsp_out.dart';
 import 'package:apex_lsp/server.dart';
 
 /// Apex Language Server Protocol (LSP) server over stdio.
 Future<void> main(List<String> args) async {
-  final server = Server(input: stdin, output: stdout, logger: stderr);
+  final server = Server(
+    input: stdin,
+    output: LspOut(output: stdout),
+    logger: stderr,
+  );
 
   // If something goes wrong at top-level:
   // - If the server is initialized, prefer LSP logging via `window/logMessage`.

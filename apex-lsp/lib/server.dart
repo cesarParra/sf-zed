@@ -2,28 +2,21 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'lsp_out.dart';
 import 'message.dart';
 import 'message_reader.dart';
 
 final class Server {
   Server({
     required Stdin input,
-    required Stdout output,
+    required LspOut output,
     required IOSink logger,
   })  : _output = output,
         _log = logger,
         _reader = MessageReader(input);
 
-  final Stdout _output;
-
-  // TODO: there is actually its own log in zed, we need to "open language server log"
-
-  // TODO: We want to clean logging up as much as possible. But we still probably want the "show Message one for"
-  // indexing and things like that.
-  /// Fallback logger (stderr). Only used before `initialize` completes or if
-  /// we can't deliver an LSP `window/logMessage` notification.
+  final LspOut _output;
   final IOSink _log;
-
   final MessageReader _reader;
 
   bool _initialized = false;
@@ -32,9 +25,6 @@ final class Server {
 
   // Minimal in-memory document store so we can compute basic completions.
   final Map<String, String> _openDocuments = <String, String>{};
-
-  // TODO: Clean up this logging repetition. We are doing
-  // this for dev purposes since Zed doesn't seem to surface any logs
 
   /// Sends an LSP `window/logMessage` notification.
   ///
@@ -58,8 +48,6 @@ final class Server {
       _logMessage(MessageType.error, message);
 
   /// Sends an LSP `window/showMessage` notification (user-visible).
-  ///
-  /// This is intentionally used only for *milestone* events.
   Future<void> showInfo(String message) =>
       _showMessage(MessageType.info, message);
 
