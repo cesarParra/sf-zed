@@ -210,6 +210,7 @@ final class _LspServer {
         return;
 
       case 'textDocument/didOpen':
+        _onDidOpen(note.params);
         return;
 
       case 'textDocument/didChange':
