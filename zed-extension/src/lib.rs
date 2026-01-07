@@ -14,24 +14,19 @@ impl Extension for ApexExtension {
         language_server_id: &LanguageServerId,
         _worktree: &Worktree,
     ) -> Result<Command> {
-        // This must match the `[language_servers.<id>]` table name in `extension.toml`.
-        //
-        // Avoid returning an error for unknown IDs because an Err can propagate in a way
-        // that destabilizes the WASM extension host channel.
         if language_server_id.as_ref() != "apex-lsp" {
             eprintln!(
                 "[apex-extension] Unknown language server id requested: {}",
                 language_server_id
             );
-
-            // Return a benign no-op command that exits successfully.
-            // This keeps the extension host stable even if Zed probes other IDs.
             return Ok(Command::new("/usr/bin/env").args(["true"]));
         }
 
-        // Use `/usr/bin/env` so PATH resolution happens in the user's environment,
-        // instead of Zed trying to resolve `dart` relative to the extension bundle.
-        Ok(Command::new("/usr/bin/env").args(["dart", "run", "../apex-lsp/bin/apex_lsp.dart"]))
+        // TODO: For local dev only. Once we release this as a proper binary this will
+        // be the real path to the lsp executable
+        let script = "/Users/cesarparra/IdeaProjects/sf-zed/apex-lsp/bin/apex_lsp.dart";
+
+        Ok(Command::new("/usr/bin/env").args(["dart", "run", script]))
     }
 }
 
