@@ -8,8 +8,9 @@ import 'package:apex_lsp/server.dart';
 Future<void> main(List<String> args) async {
   final server = Server(
     input: stdin,
-    output: LspOut(output: stdout),
-    logger: stderr,
+    output: LspOut(
+      output: stdout,
+    ),
   );
 
   // If something goes wrong at top-level:

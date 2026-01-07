@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'lsp_out.dart';
@@ -10,13 +9,10 @@ final class Server {
   Server({
     required Stdin input,
     required LspOut output,
-    required IOSink logger,
   })  : _output = output,
-        _log = logger,
         _reader = MessageReader(input);
 
   final LspOut _output;
-  final IOSink _log;
   final MessageReader _reader;
 
   bool _initialized = false;
@@ -49,63 +45,14 @@ final class Server {
 
   /// Sends an LSP `window/showMessage` notification (user-visible).
   Future<void> showInfo(String message) =>
-      _showMessage(MessageType.info, message);
+      _output.showMessage(MessageType.info, message);
 
   Future<void> _logMessage(int type, String message) async {
-    // LSP `window/logMessage` is a notification, so no response is expected.
-    //
-    // Spec: `LogMessageParams`:
-    // - type: MessageType (1=Error,2=Warning,3=Info,4=Log)
-    // - message: string
-    _log.writeln('[apex-lsp] $message');
-
     if (!_initialized) return;
-
-    try {
-      _writeMessage(
-        NotificationMessage(
-          // TODO: Maybe we can use enums instead of strings for this?
-          'window/logMessage',
-          <String, Object?>{
-            'type': type,
-            'message': message,
-          },
-        ),
-      );
-    } catch (e) {
-      _log.writeln('[apex-lsp] (logMessage failed: $e)');
-    }
-  }
-
-  Future<void> _showMessage(int type, String message) async {
-    // Spec: `window/showMessage` is a notification:
-    // method: 'window/showMessage'
-    // params: { type: MessageType, message: string }
-    //
-    // If the server hasn't been initialized yet, we can't rely on the client
-    // being ready, so fall back to stderr.
-    _log.writeln('[apex-lsp] $message');
-
-    if (!_initialized) return;
-
-    try {
-      _writeMessage(
-        NotificationMessage(
-          'window/showMessage',
-          <String, Object?>{
-            'type': type,
-            'message': message,
-          },
-        ),
-      );
-    } catch (e) {
-      _log.writeln('[apex-lsp] (showMessage failed: $e)');
-    }
+    await _output.logMessage(type, message);
   }
 
   Future<void> run() async {
-    await logInfo('Starting (stdio)');
-
     await for (final message in _reader.messages()) {
       if (_exiting) break;
 
@@ -119,15 +66,13 @@ final class Server {
         await logWarn('Unknown message type: $message');
       }
     }
-
-    await logInfo('Stopped');
   }
 
   Future<void> _handleRequest(RequestMessage req) async {
     if (!_initialized &&
         req.method != 'initialize' &&
         req.method != 'shutdown') {
-      await _sendError(
+      await _output.sendError(
         id: req.id,
         code: -32002, // ServerNotInitialized (LSP)
         message: 'Server not initialized',
@@ -142,15 +87,16 @@ final class Server {
 
       case 'shutdown':
         _shutdownRequested = true;
-        await _sendResponse(id: req.id, result: null);
+        await _output.sendResponse(id: req.id, result: null);
         return;
 
       case 'textDocument/completion':
+        _output.debug('completion received');
         await _onCompletion(req);
         return;
 
       default:
-        await _sendError(
+        await _output.sendError(
           id: req.id,
           code: -32601, // Method not found (JSON-RPC)
           message: 'Method not found: ${req.method}',
@@ -162,16 +108,16 @@ final class Server {
   Future<void> _handleNotification(NotificationMessage note) async {
     switch (note.method) {
       case 'initialized':
-        // Milestone: show a user-visible notification so we know the LSP wiring
-        // is working even if the client doesn't surface `window/logMessage`.
         await showInfo('Apex LSP initialized');
         return;
 
       case 'textDocument/didOpen':
+        _output.debug('did open received');
         _onDidOpen(note.params);
         return;
 
       case 'textDocument/didChange':
+        _output.debug('did change received');
         _onDidChange(note.params);
         return;
 
@@ -185,7 +131,6 @@ final class Server {
         _exiting = true;
         exitCode = _shutdownRequested ? 0 : 1;
 
-        // Milestone: show exit event as a user-visible message.
         await showInfo('Apex LSP exiting (shutdown=$_shutdownRequested)');
 
         await logInfo('exit received; shutdown=$_shutdownRequested');
@@ -213,7 +158,7 @@ final class Server {
       'serverInfo': <String, Object?>{'name': 'apex-lsp', 'version': '0.0.1'},
     };
 
-    await _sendResponse(id: req.id, result: result);
+    await _output.sendResponse(id: req.id, result: result);
   }
 
   void _onDidOpen(Object? params) {
@@ -264,7 +209,7 @@ final class Server {
     // before the cursor is "T".
     final shouldSuggest = _shouldSuggestWorkingCompletion(req.params);
     if (!shouldSuggest) {
-      await _sendResponse(
+      await _output.sendResponse(
         id: req.id,
         result: <String, Object?>{'isIncomplete': false, 'items': []},
       );
@@ -283,7 +228,7 @@ final class Server {
       'items': <Object?>[item],
     };
 
-    await _sendResponse(id: req.id, result: result);
+    await _output.sendResponse(id: req.id, result: result);
   }
 
   bool _shouldSuggestWorkingCompletion(Object? params) {
@@ -314,38 +259,5 @@ final class Server {
 
     final prevChar = lineText.substring(character - 1, character);
     return prevChar == 'T';
-  }
-
-  Future<void> _sendResponse({
-    required Object id,
-    required Object? result,
-  }) async {
-    _writeMessage(SuccessResponseMessage(id, result));
-  }
-
-  Future<void> _sendError({
-    required Object id,
-    required int code,
-    required String message,
-    Object? data,
-  }) async {
-    final errorObj = ResponseError(code, message, data);
-    _writeMessage(ErrorResponseMessage(id, errorObj));
-  }
-
-  void _writeMessage(Message message) {
-    final payload = jsonEncode(message.toJson());
-    final bytes = utf8.encode(payload);
-
-    // LSP framing:
-    // Content-Length: <bytes>\r\n
-    // \r\n
-    // <json>
-    final header = 'Content-Length: ${bytes.length}\r\n\r\n';
-
-    // stdout is a byte sink; use add for correctness.
-    _output.add(utf8.encode(header));
-    _output.add(bytes);
-    // Do not add extra newlines; protocol framing must be exact.
   }
 }
