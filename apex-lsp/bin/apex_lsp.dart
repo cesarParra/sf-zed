@@ -45,6 +45,10 @@ final class _LspServer {
 
   final Stdout _output;
 
+  // TODO: there is actually its own log in zed, we need to "open language server log"
+
+  // TODO: We want to clean logging up as much as possible. But we still probably want the "show Message one for"
+  // indexing and things like that.
   /// Fallback logger (stderr). Only used before `initialize` completes or if
   /// we can't deliver an LSP `window/logMessage` notification.
   final IOSink _log;
@@ -206,7 +210,6 @@ final class _LspServer {
         return;
 
       case 'textDocument/didOpen':
-        _onDidOpen(note.params);
         return;
 
       case 'textDocument/didChange':
