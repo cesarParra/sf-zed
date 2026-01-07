@@ -1,12 +1,3 @@
-; Zed outline query for Apex (tree-sitter-apex)
-; Minimal rules: surface top-level declarations and method signatures.
-;
-; Captures:
-; - @item: the whole node that becomes an outline entry
-; - @name: the display name for the outline entry
-; Optional:
-; - @context / @context.extra: qualifiers (modifiers, type, etc.)
-
 ; ------------------------
 ; Types
 ; ------------------------

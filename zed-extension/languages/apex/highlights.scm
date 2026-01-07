@@ -286,7 +286,7 @@
   (identifier) @property)
 
 ;------------------------------------------------------------------------------
-; SOQL-ish query constructs (from grammar nodes)
+; SOQL-ish query constructs
 ;------------------------------------------------------------------------------
 
 (dml_type) @function

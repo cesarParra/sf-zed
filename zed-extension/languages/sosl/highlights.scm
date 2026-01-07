@@ -1,13 +1,3 @@
-;; SOSL highlights for Zed (Tree-sitter)
-;;
-;; This query is aligned to the upstream grammar query shipped in:
-;; `grammars/apex/sosl/queries/highlights.scm`
-;;
-;; Notes:
-;; - Zed will refuse to load this language if any referenced node/token type
-;;   doesn't exist in the SOSL grammar. Keep this file aligned to upstream.
-;; - Map upstream captures to Zed theme captures (avoid non-standard captures).
-
 ;------------------------------------------------------------------------------
 ; Core clauses / literals
 ;------------------------------------------------------------------------------

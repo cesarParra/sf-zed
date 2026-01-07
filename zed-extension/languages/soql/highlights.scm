@@ -1,16 +1,3 @@
-;; SOQL highlights for Zed (Tree-sitter)
-;;
-;; Aligned with the upstream SOQL highlights query shipped in the grammar repo:
-;; `grammars/apex/soql/queries/highlights.scm`
-;;
-;; Notes:
-;; - Zed will refuse to load the language if any node/token type referenced here
-;;   does not exist in the SOQL grammar. So keep this file tightly aligned with
-;;   the grammar’s REAL node/token names.
-;; - Zed themes understand a fixed set of capture names; avoid non-standard ones.
-;;   (The upstream query contains TextMate/VSC-ish captures like
-;;   @variable.readonly.defaultLibrary; we map those to standard Zed captures.)
-
 ;------------------------------------------------------------------------------
 ; Identifiers / fields / labels
 ;------------------------------------------------------------------------------
@@ -98,11 +85,11 @@
 
 (string_literal) @string
 
-; Dates/times: no dedicated capture in Zed, treat them as constants.
+; Dates/times
 (date) @constant
 (date_time) @constant
 
-; TRUE/FALSE/NULL are keywords-ish constants in SOQL.
+; TRUE/FALSE/NULL are keyword constants in SOQL.
 [
   "TRUE"
   "FALSE"
@@ -155,7 +142,7 @@
 ] @keyword
 
 ;------------------------------------------------------------------------------
-; Enum-like keyword sets (mapped to @type / @constant for Zed)
+; Enum-like keyword sets
 ;------------------------------------------------------------------------------
 
 ; Using Scope

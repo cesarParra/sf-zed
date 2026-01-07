@@ -1,12 +1,6 @@
 name = "SOQL"
 grammar = "soql"
-
-# Associate standalone SOQL files with this language
 path_suffixes = ["soql"]
-
-# Used by Toggle Comments (SOQL supports SQL-style line comments)
 line_comments = ["-- "]
-
-# Sensible defaults
-tab_size = 2
+tab_size = 4
 hard_tabs = false

@@ -3,8 +3,8 @@ name = "Apex"
 version = "0.0.1"
 schema_version = 1
 authors = ["cesarParra"]
-description = "Language support for Salesforce Apex (Tree-sitter)"
-repository = "https://github.com/aheber/tree-sitter-sfapex"
+description = "Language support for Salesforce Apex"
+repository = "https://github.com/cesarParra/sf-zed"
 
 [grammars.apex]
 repository = "https://github.com/aheber/tree-sitter-sfapex"
@@ -22,7 +22,7 @@ rev = "3597575a429766dd7ecce9f5bb97f6fec4419d5d"
 path = "sosl"
 
 [language_servers.apex-lsp]
-name = "Apex LSP (Dart)"
+name = "Apex LSP"
 languages = ["Apex"]
 
 [language_servers.apex-lsp.language_ids]

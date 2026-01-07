@@ -1,12 +1,6 @@
 name = "SOSL"
 grammar = "sosl"
-
-# Associate standalone SOSL files with this language
 path_suffixes = ["sosl"]
-
-# Used by Toggle Comments (SOSL supports SQL-style line comments)
 line_comments = ["-- "]
-
-# Sensible defaults
-tab_size = 2
+tab_size = 4
 hard_tabs = false
