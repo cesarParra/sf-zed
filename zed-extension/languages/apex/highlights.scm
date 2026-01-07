@@ -1,14 +1,4 @@
 ;; Apex (Salesforce) highlights for Zed
-;;
-;; Goals:
-;; - Improve coverage (esp. variables) using the grammar’s reference highlight ideas.
-;; - Keep captures Zed-theme compatible (avoid non-standard semantic tokens).
-;; - Avoid query errors: only use node/token types that exist in the Apex grammar.
-;;
-;; Notes:
-;; - Zed supports captures like @keyword, @type, @function, @variable, @property, etc.
-;; - This file intentionally uses conservative, structural patterns for identifiers,
-;;   so variable declarations and common usages light up reliably.
 
 ;------------------------------------------------------------------------------
 ; Comments
@@ -133,7 +123,6 @@
   "trigger"
   "when"
   "while"
-
   "public"
   "private"
   "protected"
@@ -148,7 +137,7 @@
   "testMethod"
 ] @keyword
 
-; Sharing modifiers are distinct token types in this grammar.
+; Sharing modifiers
 [
   (with_sharing)
   (without_sharing)
@@ -159,7 +148,6 @@
 ; Types
 ;------------------------------------------------------------------------------
 
-; Named types declared in-file
 (class_declaration
   name: (identifier) @type)
 
@@ -169,7 +157,6 @@
 (enum_declaration
   name: (identifier) @type)
 
-; Superclass / implements references
 (class_declaration
   (superclass) @type)
 
@@ -217,7 +204,7 @@
 (super) @function
 
 ;------------------------------------------------------------------------------
-; Variables (this is the main area to improve)
+; Variables
 ;------------------------------------------------------------------------------
 
 ; Parameters
