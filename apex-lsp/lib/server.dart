@@ -35,11 +35,7 @@ final class Server {
       } else if (message is NotificationMessage) {
         await _handleNotification(message);
       } else {
-        // TODO: Use Dart dot shorthands whenever logging messages
-        await logMessage(
-          .warning,
-          'Unknown message type: $message',
-        );
+        await logMessage(.warning, 'Unknown message type: $message');
       }
     }
   }
@@ -82,24 +78,20 @@ final class Server {
   }
 
   Future<void> _handleNotification(NotificationMessage note) async {
-    switch (note.method) {
-      case 'initialized':
+    switch (note) {
+      case InitializedMessage():
         await logMessage(MessageType.info, 'Apex LSP initialized');
-        return;
 
-      case 'textDocument/didOpen':
-        _onDidOpen(note.params);
-        return;
+      case TextDocumentDidOpenMessage(:final params):
+        _onDidOpen(params);
 
-      case 'textDocument/didChange':
-        _onDidChange(note.params);
-        return;
+      case TextDocumentDidChangeMessage(:final params):
+        _onDidChange(params);
 
-      case 'textDocument/didClose':
-        _onDidClose(note.params);
-        return;
+      case TextDocumentDidCloseMessage(:final params):
+        _onDidClose(params);
 
-      case 'exit':
+      case ExitMessage():
         // Spec: If exit is received and shutdown has been requested -> exit 0,
         // otherwise -> exit 1.
         _exiting = true;
@@ -111,9 +103,9 @@ final class Server {
         );
         await _output.flush();
         exit(exitCode);
+
       default:
-        // TODO: For this skeleton, ignore all other notifications.
-        return;
+      // TODO: For this skeleton, ignore all other notifications.
     }
   }
 
@@ -136,47 +128,19 @@ final class Server {
     await _output.sendResponse(id: req.id, result: result);
   }
 
-  void _onDidOpen(Object? params) {
-    if (params is! Map) return;
-    final textDocument = params['textDocument'];
-    if (textDocument is! Map) return;
-
-    final uri = textDocument['uri'];
-    final text = textDocument['text'];
-    if (uri is String && text is String) {
-      _openDocuments[uri] = text;
-    }
+  void _onDidOpen(DidOpenTextDocumentParams params) {
+    _openDocuments[params.textDocument.uri] = params.textDocument.text;
   }
 
-  void _onDidChange(Object? params) {
-    if (params is! Map) return;
-    final textDocument = params['textDocument'];
-    final contentChanges = params['contentChanges'];
-
-    if (textDocument is! Map || contentChanges is! List) return;
-    final uri = textDocument['uri'];
-    if (uri is! String) return;
-
+  void _onDidChange(DidChangeTextDocumentParams params) {
     // Full sync: contentChanges[0].text is the whole document.
-    if (contentChanges.isEmpty) return;
-    final first = contentChanges.first;
-    if (first is! Map) return;
-
-    final text = first['text'];
-    if (text is String) {
-      _openDocuments[uri] = text;
-    }
+    if (params.contentChanges.isEmpty) return;
+    final text = params.contentChanges.first.text;
+    _openDocuments[params.textDocument.uri] = text;
   }
 
-  void _onDidClose(Object? params) {
-    if (params is! Map) return;
-    final textDocument = params['textDocument'];
-    if (textDocument is! Map) return;
-
-    final uri = textDocument['uri'];
-    if (uri is String) {
-      _openDocuments.remove(uri);
-    }
+  void _onDidClose(DidCloseTextDocumentParams params) {
+    _openDocuments.remove(params.textDocument.uri);
   }
 
   Future<void> _onCompletion(RequestMessage req) async {

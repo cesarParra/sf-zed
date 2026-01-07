@@ -126,16 +126,35 @@ final class MessageReader {
     // - Requests have "method" + "id"
     // - Notifications have "method" and no "id"
     if (hasMethod && hasId && id != null) {
-      return RequestMessage(
-        id as Object,
-        method,
-        decoded['params'],
-      );
+      return RequestMessage(id as Object, method, decoded['params']);
     } else if (hasMethod && (!hasId || id == null)) {
-      return NotificationMessage(
-        method,
-        decoded['params'],
-      );
+      final rawParams = decoded['params'];
+
+      return switch (method) {
+        'initialized' => InitializedMessage(),
+        'exit' => ExitMessage(),
+
+        'textDocument/didOpen' => switch (DidOpenTextDocumentParams.tryFromJson(
+          rawParams,
+        )) {
+          final params? => TextDocumentDidOpenMessage(params),
+          _ => null,
+        },
+
+        'textDocument/didChange' =>
+          switch (DidChangeTextDocumentParams.tryFromJson(rawParams)) {
+            final params? => TextDocumentDidChangeMessage(params),
+            _ => null,
+          },
+
+        'textDocument/didClose' =>
+          switch (DidCloseTextDocumentParams.tryFromJson(rawParams)) {
+            final params? => TextDocumentDidCloseMessage(params),
+            _ => null,
+          },
+
+        _ => null,
+      };
     }
 
     // TODO: Responses are ignored by servers in this minimal implementation,
