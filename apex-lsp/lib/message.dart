@@ -1,3 +1,7 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'message.g.dart';
+
 enum MessageType {
   error(code: 1),
   warning(code: 2),
@@ -9,6 +13,11 @@ enum MessageType {
   final int code;
 }
 
+int messageTypeToJson(MessageType type) => type.code;
+
+MessageType messageTypeFromJson(int code) =>
+    MessageType.values.firstWhere((t) => t.code == code);
+
 // ----------- Incoming requests and notifications-----------------
 // The LSP protocol defines 2 types of incoming messages: requests and notifications.
 
@@ -16,6 +25,7 @@ sealed class IncomingMessage {
   const IncomingMessage();
 }
 
+@JsonSerializable(createFactory: false)
 class RequestMessage extends IncomingMessage {
   final Object id;
   final String method;
@@ -23,6 +33,8 @@ class RequestMessage extends IncomingMessage {
   final Object? params;
 
   const RequestMessage(this.id, this.method, this.params);
+
+  Map<String, Object?> toJson() => _$RequestMessageToJson(this);
 }
 
 /// Common base for notifications.
@@ -65,32 +77,29 @@ class TextDocumentDidOpenMessage
   const TextDocumentDidOpenMessage(this.params);
 }
 
+@JsonSerializable()
 final class DidOpenTextDocumentParams {
   final TextDocumentItem textDocument;
 
   const DidOpenTextDocumentParams({required this.textDocument});
 
-  static DidOpenTextDocumentParams? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final textDocument = TextDocumentItem.tryFromJson(json['textDocument']);
-    if (textDocument == null) return null;
-    return DidOpenTextDocumentParams(textDocument: textDocument);
-  }
+  factory DidOpenTextDocumentParams.fromJson(Map<String, Object?> json) =>
+      _$DidOpenTextDocumentParamsFromJson(json);
+
+  Map<String, Object?> toJson() => _$DidOpenTextDocumentParamsToJson(this);
 }
 
+@JsonSerializable()
 final class TextDocumentItem {
   final String uri;
   final String text;
 
   const TextDocumentItem({required this.uri, required this.text});
 
-  static TextDocumentItem? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final uri = json['uri'];
-    final text = json['text'];
-    if (uri is! String || text is! String) return null;
-    return TextDocumentItem(uri: uri, text: text);
-  }
+  factory TextDocumentItem.fromJson(Map<String, Object?> json) =>
+      _$TextDocumentItemFromJson(json);
+
+  Map<String, Object?> toJson() => _$TextDocumentItemToJson(this);
 }
 
 class TextDocumentDidChangeMessage
@@ -115,47 +124,43 @@ class TextDocumentDidCloseMessage
   const TextDocumentDidCloseMessage(this.params);
 }
 
+@JsonSerializable()
 final class DidCloseTextDocumentParams {
   final TextDocumentIdentifier textDocument;
 
   const DidCloseTextDocumentParams({required this.textDocument});
 
-  static DidCloseTextDocumentParams? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final textDocument = TextDocumentIdentifier.tryFromJson(
-      json['textDocument'],
-    );
-    if (textDocument == null) return null;
-    return DidCloseTextDocumentParams(textDocument: textDocument);
-  }
+  factory DidCloseTextDocumentParams.fromJson(Map<String, Object?> json) =>
+      _$DidCloseTextDocumentParamsFromJson(json);
+
+  Map<String, Object?> toJson() => _$DidCloseTextDocumentParamsToJson(this);
 }
 
+@JsonSerializable()
 final class TextDocumentIdentifier {
   final String uri;
 
   const TextDocumentIdentifier({required this.uri});
 
-  static TextDocumentIdentifier? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final uri = json['uri'];
-    if (uri is! String) return null;
-    return TextDocumentIdentifier(uri: uri);
-  }
+  factory TextDocumentIdentifier.fromJson(Map<String, Object?> json) =>
+      _$TextDocumentIdentifierFromJson(json);
+
+  Map<String, Object?> toJson() => _$TextDocumentIdentifierToJson(this);
 }
 
+@JsonSerializable()
 final class TextDocumentContentChangeEvent {
   final String text;
 
   const TextDocumentContentChangeEvent({required this.text});
 
-  static TextDocumentContentChangeEvent? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final text = json['text'];
-    if (text is! String) return null;
-    return TextDocumentContentChangeEvent(text: text);
-  }
+  factory TextDocumentContentChangeEvent.fromJson(Map<String, Object?> json) =>
+      _$TextDocumentContentChangeEventFromJson(json);
+
+  Map<String, Object?> toJson() => _$TextDocumentContentChangeEventToJson(this);
 }
 
+@JsonSerializable()
 final class DidChangeTextDocumentParams {
   final TextDocumentIdentifier textDocument;
   final List<TextDocumentContentChangeEvent> contentChanges;
@@ -165,29 +170,10 @@ final class DidChangeTextDocumentParams {
     required this.contentChanges,
   });
 
-  static DidChangeTextDocumentParams? tryFromJson(Object? json) {
-    if (json is! Map) return null;
+  factory DidChangeTextDocumentParams.fromJson(Map<String, Object?> json) =>
+      _$DidChangeTextDocumentParamsFromJson(json);
 
-    final textDocument = TextDocumentIdentifier.tryFromJson(
-      json['textDocument'],
-    );
-    if (textDocument == null) return null;
-
-    final rawChanges = json['contentChanges'];
-    if (rawChanges is! List) return null;
-
-    final contentChanges = <TextDocumentContentChangeEvent>[];
-    for (final raw in rawChanges) {
-      final change = TextDocumentContentChangeEvent.tryFromJson(raw);
-      if (change == null) return null;
-      contentChanges.add(change);
-    }
-
-    return DidChangeTextDocumentParams(
-      textDocument: textDocument,
-      contentChanges: contentChanges,
-    );
-  }
+  Map<String, Object?> toJson() => _$DidChangeTextDocumentParamsToJson(this);
 }
 
 //  ---------- Outgoing requests and notifications -------------
@@ -206,17 +192,17 @@ sealed class ResponseMessage extends OutgoingMessage {
   const ResponseMessage(this.id);
 }
 
+@JsonSerializable(createFactory: false)
 class SuccessResponseMessage extends ResponseMessage {
   final Object? result;
 
   const SuccessResponseMessage(super.id, this.result);
 
   @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'id': id, 'result': result};
-  }
+  Map<String, Object?> toJson() => _$SuccessResponseMessageToJson(this);
 }
 
+@JsonSerializable(createFactory: false)
 class ResponseError {
   final int code;
   final String message;
@@ -224,20 +210,17 @@ class ResponseError {
 
   const ResponseError(this.code, this.message, this.data);
 
-  Map<String, Object?> toJson() {
-    return {'code': code, 'message': message, 'data': data};
-  }
+  Map<String, Object?> toJson() => _$ResponseErrorToJson(this);
 }
 
+@JsonSerializable(createFactory: false)
 class ErrorResponseMessage extends ResponseMessage {
   final ResponseError error;
 
   const ErrorResponseMessage(super.id, this.error);
 
   @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'id': id, 'error': error.toJson()};
-  }
+  Map<String, Object?> toJson() => _$ErrorResponseMessageToJson(this);
 }
 
 sealed class OutgoingNotificationMessage extends OutgoingMessage {
@@ -255,6 +238,7 @@ sealed class OutgoingNotificationMessageWithParams<TParams>
 }
 
 // todo: this should be withparams
+@JsonSerializable(createFactory: false)
 class LogMessage extends OutgoingNotificationMessage {
   @override
   String get method => 'window/logMessage';
@@ -263,12 +247,11 @@ class LogMessage extends OutgoingNotificationMessage {
   const LogMessage(this.params);
 
   @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
+  Map<String, Object?> toJson() => _$LogMessageToJson(this);
 }
 
 // todo: this should be withparams
+@JsonSerializable(createFactory: false)
 class ShowMessage extends OutgoingNotificationMessage {
   @override
   String get method => 'window/showMessage';
@@ -277,18 +260,16 @@ class ShowMessage extends OutgoingNotificationMessage {
   const ShowMessage(this.params);
 
   @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
+  Map<String, Object?> toJson() => _$ShowMessageToJson(this);
 }
 
+@JsonSerializable(createFactory: false)
 class MessageParams {
+  @JsonKey(fromJson: messageTypeFromJson, toJson: messageTypeToJson)
   final MessageType type;
   final String message;
 
   const MessageParams({required this.type, required this.message});
 
-  Map<String, Object> toJson() {
-    return {'type': type.code, 'message': message};
-  }
+  Map<String, Object?> toJson() => _$MessageParamsToJson(this);
 }

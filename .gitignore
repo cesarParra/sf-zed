@@ -5,6 +5,9 @@ build/
 # If you're building an application, you may want to check-in your pubspec.lock
 pubspec.lock
 
+# Generated files from json_serializable / source_gen
+*.g.dart
+
 # Files and directories related to the Zed extension
 zed-extension/target
 zed-extension/extension.wasm
