@@ -39,11 +39,51 @@ sealed class RequestMessageWithParams<TParams> extends RequestMessage {
 }
 
 final class InitializeRequest
-    extends RequestMessageWithParams<Map<String, Object?>> {
+    extends RequestMessageWithParams<InitializedParams> {
   @override
   String get method => 'initialize';
 
   const InitializeRequest(super.id, super.params);
+
+  @override
+  String toString() {
+    return 'InitializeRequest{id: $id, params: $params}';
+  }
+}
+
+@JsonSerializable()
+final class WorkspaceFolder {
+  final String uri;
+  final String name;
+
+  const WorkspaceFolder(this.uri, this.name);
+
+  factory WorkspaceFolder.fromJson(Map<String, dynamic> json) =>
+      _$WorkspaceFolderFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WorkspaceFolderToJson(this);
+
+  @override
+  String toString() {
+    return 'WorkspaceFolder{uri: $uri, name: $name}';
+  }
+}
+
+@JsonSerializable()
+final class InitializedParams {
+  final List<WorkspaceFolder>? workspaceFolders;
+
+  const InitializedParams(this.workspaceFolders);
+
+  factory InitializedParams.fromJson(Map<String, dynamic> json) =>
+      _$InitializedParamsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$InitializedParamsToJson(this);
+
+  @override
+  String toString() {
+    return 'InitializedParams{workspaceFolders: $workspaceFolders}';
+  }
 }
 
 /// Common base for notifications.

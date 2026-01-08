@@ -112,6 +112,8 @@ final class Server {
   Future<void> _onInitialize(InitializeRequest req) async {
     _initialized = true;
 
+    _output.debug('Received ${req.params.toJson()}');
+
     // Minimal InitializeResult with completion provider and full document sync.
     final result = <String, Object?>{
       'capabilities': <String, Object?>{
