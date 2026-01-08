@@ -10,6 +10,7 @@ enum MessageType {
 }
 
 // ----------- Incoming requests and notifications-----------------
+// The LSP protocol defines 2 types of incoming messages: requests and notifications.
 
 sealed class IncomingMessage {
   const IncomingMessage();
@@ -24,6 +25,7 @@ class RequestMessage extends IncomingMessage {
   const RequestMessage(this.id, this.method, this.params);
 }
 
+/// Common base for notifications.
 sealed class IncomingNotificationMessage extends IncomingMessage {
   String get method;
 
@@ -45,7 +47,6 @@ class InitializedMessage extends IncomingNotificationMessage {
   const InitializedMessage();
 }
 
-/// LSP: `exit` notification has no params.
 class ExitMessage extends IncomingNotificationMessage {
   @override
   String get method => 'exit';
@@ -53,7 +54,6 @@ class ExitMessage extends IncomingNotificationMessage {
   const ExitMessage();
 }
 
-/// LSP: `textDocument/didOpen`
 class TextDocumentDidOpenMessage
     extends IncomingNotificationMessageWithParams<DidOpenTextDocumentParams> {
   @override
@@ -65,7 +65,34 @@ class TextDocumentDidOpenMessage
   const TextDocumentDidOpenMessage(this.params);
 }
 
-/// LSP: `textDocument/didChange`
+final class DidOpenTextDocumentParams {
+  final TextDocumentItem textDocument;
+
+  const DidOpenTextDocumentParams({required this.textDocument});
+
+  static DidOpenTextDocumentParams? tryFromJson(Object? json) {
+    if (json is! Map) return null;
+    final textDocument = TextDocumentItem.tryFromJson(json['textDocument']);
+    if (textDocument == null) return null;
+    return DidOpenTextDocumentParams(textDocument: textDocument);
+  }
+}
+
+final class TextDocumentItem {
+  final String uri;
+  final String text;
+
+  const TextDocumentItem({required this.uri, required this.text});
+
+  static TextDocumentItem? tryFromJson(Object? json) {
+    if (json is! Map) return null;
+    final uri = json['uri'];
+    final text = json['text'];
+    if (uri is! String || text is! String) return null;
+    return TextDocumentItem(uri: uri, text: text);
+  }
+}
+
 class TextDocumentDidChangeMessage
     extends IncomingNotificationMessageWithParams<DidChangeTextDocumentParams> {
   @override
@@ -77,7 +104,6 @@ class TextDocumentDidChangeMessage
   const TextDocumentDidChangeMessage(this.params);
 }
 
-/// LSP: `textDocument/didClose`
 class TextDocumentDidCloseMessage
     extends IncomingNotificationMessageWithParams<DidCloseTextDocumentParams> {
   @override
@@ -89,15 +115,25 @@ class TextDocumentDidCloseMessage
   const TextDocumentDidCloseMessage(this.params);
 }
 
-/// LSP `TextDocumentIdentifier`
-///
-/// Spec shape: `{ uri: DocumentUri }`
+final class DidCloseTextDocumentParams {
+  final TextDocumentIdentifier textDocument;
+
+  const DidCloseTextDocumentParams({required this.textDocument});
+
+  static DidCloseTextDocumentParams? tryFromJson(Object? json) {
+    if (json is! Map) return null;
+    final textDocument = TextDocumentIdentifier.tryFromJson(
+      json['textDocument'],
+    );
+    if (textDocument == null) return null;
+    return DidCloseTextDocumentParams(textDocument: textDocument);
+  }
+}
+
 final class TextDocumentIdentifier {
   final String uri;
 
   const TextDocumentIdentifier({required this.uri});
-
-  Map<String, Object?> toJson() => {'uri': uri};
 
   static TextDocumentIdentifier? tryFromJson(Object? json) {
     if (json is! Map) return null;
@@ -107,38 +143,10 @@ final class TextDocumentIdentifier {
   }
 }
 
-/// LSP `TextDocumentItem`
-///
-/// Spec shape: `{ uri, languageId, version, text }`
-///
-/// Note: This server only needs `uri` and `text` today.
-final class TextDocumentItem {
-  final String uri;
-  final String text;
-
-  const TextDocumentItem({required this.uri, required this.text});
-
-  Map<String, Object?> toJson() => {'uri': uri, 'text': text};
-
-  static TextDocumentItem? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final uri = json['uri'];
-    final text = json['text'];
-    if (uri is! String || text is! String) return null;
-    return TextDocumentItem(uri: uri, text: text);
-  }
-}
-
-/// LSP `TextDocumentContentChangeEvent`
-///
-/// For full sync, the shape is `{ text: string }`.
-/// (Incremental changes include `range` / `rangeLength`.)
 final class TextDocumentContentChangeEvent {
   final String text;
 
   const TextDocumentContentChangeEvent({required this.text});
-
-  Map<String, Object?> toJson() => {'text': text};
 
   static TextDocumentContentChangeEvent? tryFromJson(Object? json) {
     if (json is! Map) return null;
@@ -148,30 +156,6 @@ final class TextDocumentContentChangeEvent {
   }
 }
 
-/// LSP `DidOpenTextDocumentParams`
-///
-/// Spec shape: `{ textDocument: TextDocumentItem }`
-final class DidOpenTextDocumentParams {
-  final TextDocumentItem textDocument;
-
-  const DidOpenTextDocumentParams({required this.textDocument});
-
-  Map<String, Object?> toJson() => {'textDocument': textDocument.toJson()};
-
-  static DidOpenTextDocumentParams? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final textDocument = TextDocumentItem.tryFromJson(json['textDocument']);
-    if (textDocument == null) return null;
-    return DidOpenTextDocumentParams(textDocument: textDocument);
-  }
-}
-
-/// LSP `DidChangeTextDocumentParams`
-///
-/// Spec shape:
-/// `{ textDocument: VersionedTextDocumentIdentifier, contentChanges: TextDocumentContentChangeEvent[] }`
-///
-/// Note: This server only needs `textDocument.uri` and `contentChanges[].text`.
 final class DidChangeTextDocumentParams {
   final TextDocumentIdentifier textDocument;
   final List<TextDocumentContentChangeEvent> contentChanges;
@@ -180,11 +164,6 @@ final class DidChangeTextDocumentParams {
     required this.textDocument,
     required this.contentChanges,
   });
-
-  Map<String, Object?> toJson() => {
-    'textDocument': textDocument.toJson(),
-    'contentChanges': contentChanges.map((c) => c.toJson()).toList(),
-  };
 
   static DidChangeTextDocumentParams? tryFromJson(Object? json) {
     if (json is! Map) return null;
@@ -208,26 +187,6 @@ final class DidChangeTextDocumentParams {
       textDocument: textDocument,
       contentChanges: contentChanges,
     );
-  }
-}
-
-/// LSP `DidCloseTextDocumentParams`
-///
-/// Spec shape: `{ textDocument: TextDocumentIdentifier }`
-final class DidCloseTextDocumentParams {
-  final TextDocumentIdentifier textDocument;
-
-  const DidCloseTextDocumentParams({required this.textDocument});
-
-  Map<String, Object?> toJson() => {'textDocument': textDocument.toJson()};
-
-  static DidCloseTextDocumentParams? tryFromJson(Object? json) {
-    if (json is! Map) return null;
-    final textDocument = TextDocumentIdentifier.tryFromJson(
-      json['textDocument'],
-    );
-    if (textDocument == null) return null;
-    return DidCloseTextDocumentParams(textDocument: textDocument);
   }
 }
 
