@@ -86,9 +86,11 @@ final class Server {
         _onDidOpen(params);
 
       case TextDocumentDidChangeMessage(:final params):
+        _output.debug('Received TextDocumentDidChangeMessage');
         _onDidChange(params);
 
       case TextDocumentDidCloseMessage(:final params):
+        _output.debug('Received TextDocumentDidCloseMessage');
         _onDidClose(params);
 
       case ExitMessage():

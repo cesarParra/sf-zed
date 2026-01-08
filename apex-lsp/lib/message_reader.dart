@@ -135,29 +135,22 @@ final class MessageReader {
         'exit' => ExitMessage(),
 
         'textDocument/didOpen' => switch (rawParams) {
-          final Map<Object?, Object?> paramsJson => TextDocumentDidOpenMessage(
-            DidOpenTextDocumentParams.fromJson(
-              paramsJson.cast<String, Object?>(),
-            ),
+          final Map<String, Object?> paramsJson => TextDocumentDidOpenMessage(
+            DidOpenTextDocumentParams.fromJson(paramsJson),
           ),
           _ => null,
         },
 
         'textDocument/didChange' => switch (rawParams) {
-          final Map<Object?, Object?> paramsJson =>
-            TextDocumentDidChangeMessage(
-              DidChangeTextDocumentParams.fromJson(
-                paramsJson.cast<String, Object?>(),
-              ),
-            ),
+          final Map<String, Object?> paramsJson => TextDocumentDidChangeMessage(
+            DidChangeTextDocumentParams.fromJson(paramsJson),
+          ),
           _ => null,
         },
 
         'textDocument/didClose' => switch (rawParams) {
-          final Map<Object?, Object?> paramsJson => TextDocumentDidCloseMessage(
-            DidCloseTextDocumentParams.fromJson(
-              paramsJson.cast<String, Object?>(),
-            ),
+          final Map<String, Object?> paramsJson => TextDocumentDidCloseMessage(
+            DidCloseTextDocumentParams.fromJson(paramsJson),
           ),
           _ => null,
         },
