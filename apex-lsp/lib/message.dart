@@ -86,6 +86,13 @@ final class InitializedParams {
   }
 }
 
+final class ShutdownRequest extends RequestMessage {
+  @override
+  String get method => 'shutdown';
+
+  const ShutdownRequest(super.id);
+}
+
 /// Common base for notifications.
 sealed class IncomingNotificationMessage extends IncomingMessage {
   String get method;

@@ -53,26 +53,16 @@ final class Server {
     switch (req) {
       case InitializeRequest():
         await _onInitialize(req);
+      case ShutdownRequest():
+        _shutdownRequested = true;
+        await _output.sendResponse(id: req.id, result: null);
     }
 
     // TODO: Use proper classes and pattern matching instead of strings
     // switch (req.method) {
-    //   case 'shutdown':
-    //     _shutdownRequested = true;
-    //     await _output.sendResponse(id: req.id, result: null);
-    //     return;
-
     //   case 'textDocument/completion':
     //     _output.debug('completion received');
     //     await _onCompletion(req);
-    //     return;
-
-    //   default:
-    //     await _output.sendError(
-    //       id: req.id,
-    //       code: -32601, // Method not found (JSON-RPC)
-    //       message: 'Method not found: ${req.method}',
-    //     );
     //     return;
     // }
   }
@@ -111,8 +101,6 @@ final class Server {
 
   Future<void> _onInitialize(InitializeRequest req) async {
     _initialized = true;
-
-    _output.debug('Received ${req.params.toJson()}');
 
     // Minimal InitializeResult with completion provider and full document sync.
     final result = <String, Object?>{

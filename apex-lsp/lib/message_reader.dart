@@ -126,12 +126,14 @@ final class MessageReader {
     // - Requests have "method" + "id"
     // - Notifications have "method" and no "id"
     if (hasMethod && hasId && id != null) {
+      Object idAsObject = id as Object;
       final rawParams = decoded['params'];
       return switch (method) {
         'initialize' => InitializeRequest(
-          id as Object,
+          idAsObject,
           InitializedParams.fromJson(rawParams as Map<String, dynamic>),
         ),
+        'shutdown' => ShutdownRequest(idAsObject),
         _ => null,
       };
     } else if (hasMethod && (!hasId || id == null)) {
