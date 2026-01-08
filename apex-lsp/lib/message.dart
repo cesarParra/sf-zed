@@ -25,16 +25,25 @@ sealed class IncomingMessage {
   const IncomingMessage();
 }
 
-@JsonSerializable(createFactory: false)
-class RequestMessage extends IncomingMessage {
+sealed class RequestMessage extends IncomingMessage {
   final Object id;
-  final String method;
-  // TODO: make this a proper object (sealed class?)
-  final Object? params;
+  String get method;
 
-  const RequestMessage(this.id, this.method, this.params);
+  const RequestMessage(this.id);
+}
 
-  Map<String, Object?> toJson() => _$RequestMessageToJson(this);
+sealed class RequestMessageWithParams<TParams> extends RequestMessage {
+  final TParams params;
+
+  const RequestMessageWithParams(super.id, this.params);
+}
+
+final class InitializeRequest
+    extends RequestMessageWithParams<Map<String, Object?>> {
+  @override
+  String get method => 'initialize';
+
+  const InitializeRequest(super.id, super.params);
 }
 
 /// Common base for notifications.

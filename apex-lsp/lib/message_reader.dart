@@ -126,7 +126,13 @@ final class MessageReader {
     // - Requests have "method" + "id"
     // - Notifications have "method" and no "id"
     if (hasMethod && hasId && id != null) {
-      return RequestMessage(id as Object, method, decoded['params']);
+      return switch (method) {
+        'initialize' => InitializeRequest(
+          id as Object,
+          decoded['params'] as Map<String, Object?>,
+        ),
+        _ => null,
+      };
     } else if (hasMethod && (!hasId || id == null)) {
       final rawParams = decoded['params'];
 
