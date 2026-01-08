@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'init/initialization.dart';
+import 'init/sfdx_workspace_locator.dart';
 import 'lsp_out.dart';
 import 'message.dart';
 import 'message_reader.dart';
@@ -19,6 +21,18 @@ final class Server {
 
   // Minimal in-memory document store so we can compute basic completions.
   final Map<String, String> _openDocuments = <String, String>{};
+
+  // Workspace roots discovered during initialize.
+  List<Uri> _workspaceRootUris = const <Uri>[];
+
+  // Source-of-truth index scope: all package directories across workspace roots.
+  List<Uri> _packageDirectoryUris = const <Uri>[];
+
+  // Token used to report work-done progress for indexing.
+  ProgressToken? _indexingProgressToken;
+
+  final SfdxWorkspaceLocator _sfdxWorkspaceLocator =
+      const SfdxWorkspaceLocator();
 
   Future<void> logMessage(MessageType type, String message) async {
     if (!_initialized) return;
@@ -58,19 +72,14 @@ final class Server {
         await _output.sendResponse(id: req.id, result: null);
     }
 
-    // TODO: Use proper classes and pattern matching instead of strings
-    // switch (req.method) {
-    //   case 'textDocument/completion':
-    //     _output.debug('completion received');
-    //     await _onCompletion(req);
-    //     return;
-    // }
+    // TODO: Implement completion once indexing is in place.
   }
 
   Future<void> _handleNotification(IncomingNotificationMessage note) async {
     switch (note) {
       case InitializedMessage():
         await logMessage(MessageType.info, 'Apex LSP initialized');
+        await _beginIndexingProgress();
 
       case TextDocumentDidOpenMessage(:final params):
         _output.debug('Received TextDocumentDidOpenMessage');
@@ -102,7 +111,27 @@ final class Server {
   Future<void> _onInitialize(InitializeRequest req) async {
     _initialized = true;
 
-    // Minimal InitializeResult with completion provider and full document sync.
+    // Gather workspace roots. If none are provided, indexing scope
+    // will remain empty for now.
+    _workspaceRootUris = Initialization.extractWorkspaceRoots(req);
+
+    // Load SFDX project configs (if present) and compute package directory roots.
+    _packageDirectoryUris = await _sfdxWorkspaceLocator
+        .packageDirectoryScopeForWorkspaces(_workspaceRootUris);
+
+    if (_packageDirectoryUris.isNotEmpty) {
+      await logMessage(
+        MessageType.info,
+        'SFDX package directories: ${_packageDirectoryUris.join(', ')}',
+      );
+    } else {
+      await logMessage(MessageType.info, 'No SFDX package directories found');
+    }
+
+    // Minimal InitializeResult with full document sync.
+    //
+    // TODO: Wire up workDoneProgress capability negotiation and proper
+    // InitializeResult classes.
     final result = <String, Object?>{
       'capabilities': <String, Object?>{
         'textDocumentSync': 1, // TextDocumentSyncKind.Full
@@ -127,6 +156,16 @@ final class Server {
 
   void _onDidClose(DidCloseTextDocumentParams params) {
     _openDocuments.remove(params.textDocument.uri);
+  }
+
+  Future<void> _beginIndexingProgress() async {
+    // For now, only send a generic message that indexing will happen.
+    //
+    // TODO: We intentionally don't stream progress reports yet; we'll do that once the
+    // indexer is implemented and we can measure progress.
+    _indexingProgressToken ??= await Initialization.beginIndexingProgress(
+      _output,
+    );
   }
 
   // Future<void> _onCompletion(RequestMessage req) async {

@@ -329,3 +329,131 @@ class MessageParams {
 
   Map<String, Object?> toJson() => _$MessageParamsToJson(this);
 }
+
+/// A progress token as defined by LSP:
+/// `ProgressToken = integer | string`
+///
+/// We intentionally do not use `json_serializable` here since the JSON shape is
+/// not an object, but a tagged union of primitives.
+final class ProgressToken {
+  final Object value;
+
+  const ProgressToken._(this.value);
+
+  const ProgressToken.integer(int value) : this._(value);
+  const ProgressToken.string(String value) : this._(value);
+
+  factory ProgressToken.fromJson(Object? json) => switch (json) {
+    final int v => ProgressToken.integer(v),
+    final String v => ProgressToken.string(v),
+    _ => throw ArgumentError.value(
+      json,
+      'json',
+      'ProgressToken must be an int or a string',
+    ),
+  };
+
+  Object toJson() => value;
+
+  @override
+  String toString() => 'ProgressToken($value)';
+}
+
+@JsonSerializable(createFactory: false)
+final class WorkDoneProgressCreateParams {
+  final ProgressToken token;
+
+  const WorkDoneProgressCreateParams({required this.token});
+
+  Map<String, Object?> toJson() => _$WorkDoneProgressCreateParamsToJson(this);
+}
+
+@JsonSerializable(createFactory: false)
+final class WorkDoneProgressCreateRequest extends OutgoingMessage {
+  final Object id;
+
+  final String method = 'window/workDoneProgress/create';
+
+  final WorkDoneProgressCreateParams params;
+
+  const WorkDoneProgressCreateRequest({required this.id, required this.params});
+
+  @override
+  Map<String, Object?> toJson() => _$WorkDoneProgressCreateRequestToJson(this);
+}
+
+@JsonSerializable(createFactory: false)
+final class WorkDoneProgressParams {
+  final ProgressToken token;
+  final WorkDoneProgressValue value;
+
+  const WorkDoneProgressParams({required this.token, required this.value});
+
+  Map<String, Object?> toJson() => _$WorkDoneProgressParamsToJson(this);
+}
+
+sealed class WorkDoneProgressValue {
+  const WorkDoneProgressValue();
+
+  Map<String, Object?> toJson();
+}
+
+@JsonSerializable(createFactory: false)
+final class WorkDoneProgressBegin extends WorkDoneProgressValue {
+  final String kind = 'begin';
+  final String title;
+  final bool? cancellable;
+  final String? message;
+  final int? percentage;
+
+  const WorkDoneProgressBegin({
+    required this.title,
+    this.cancellable,
+    this.message,
+    this.percentage,
+  });
+
+  @override
+  Map<String, Object?> toJson() => _$WorkDoneProgressBeginToJson(this);
+}
+
+@JsonSerializable(createFactory: false)
+final class WorkDoneProgressReport extends WorkDoneProgressValue {
+  final String kind = 'report';
+  final bool? cancellable;
+  final String? message;
+  final int? percentage;
+
+  const WorkDoneProgressReport({
+    this.cancellable,
+    this.message,
+    this.percentage,
+  });
+
+  @override
+  Map<String, Object?> toJson() => _$WorkDoneProgressReportToJson(this);
+}
+
+@JsonSerializable(createFactory: false)
+final class WorkDoneProgressEnd extends WorkDoneProgressValue {
+  final String kind = 'end';
+  final String? message;
+
+  const WorkDoneProgressEnd({this.message});
+
+  @override
+  Map<String, Object?> toJson() => _$WorkDoneProgressEndToJson(this);
+}
+
+@JsonSerializable(createFactory: false)
+final class WorkDoneProgressNotification extends OutgoingNotificationMessage {
+  @override
+  String get method => r'$/progress';
+
+  final WorkDoneProgressParams params;
+
+  const WorkDoneProgressNotification(this.params);
+
+  @override
+  Map<String, Object?> toJson() => _$WorkDoneProgressNotificationToJson(this);
+}

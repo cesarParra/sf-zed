@@ -46,6 +46,27 @@ class LspOut {
     _writeMessage(ErrorResponseMessage(id, errorObj));
   }
 
+  /// LSP `window/workDoneProgress/create` request.
+  ///
+  /// This asks the client to create a progress UI slot associated with [token].
+  Future<void> workDoneProgressCreate({required ProgressToken token}) async {
+    const requestId = 'workDoneProgressCreate';
+    final params = WorkDoneProgressCreateParams(token: token);
+    _writeMessage(WorkDoneProgressCreateRequest(id: requestId, params: params));
+  }
+
+  /// LSP `$/progress` notification for work-done progress.
+  Future<void> progress({
+    required ProgressToken token,
+    required WorkDoneProgressValue value,
+  }) async {
+    _writeMessage(
+      WorkDoneProgressNotification(
+        WorkDoneProgressParams(token: token, value: value),
+      ),
+    );
+  }
+
   void _writeMessage(OutgoingMessage message) {
     final payload = jsonEncode(message.toJson());
     final bytes = utf8.encode(payload);
