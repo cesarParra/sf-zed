@@ -8,14 +8,9 @@ import 'package:apex_lsp/server.dart';
 Future<void> main(List<String> args) async {
   final server = Server(
     input: stdin,
-    output: LspOut(
-      output: stdout,
-    ),
+    output: LspOut(output: stdout),
   );
 
-  // If something goes wrong at top-level:
-  // - If the server is initialized, prefer LSP logging via `window/logMessage`.
-  // - Otherwise, fall back to stderr (there is no client connection yet).
   try {
     await server.run();
   } catch (e, st) {

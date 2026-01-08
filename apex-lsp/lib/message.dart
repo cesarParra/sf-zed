@@ -12,11 +12,7 @@ enum MessageType {
 // ----------- Incoming requests and notifications-----------------
 
 sealed class IncomingMessage {
-  final String jsonrpc = '2.0';
-
   const IncomingMessage();
-
-  Map<String, Object?> toJson();
 }
 
 class RequestMessage extends IncomingMessage {
@@ -26,11 +22,6 @@ class RequestMessage extends IncomingMessage {
   final Object? params;
 
   const RequestMessage(this.id, this.method, this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'id': id, 'method': method, 'params': params};
-  }
 }
 
 sealed class IncomingNotificationMessage extends IncomingMessage {
@@ -52,11 +43,6 @@ class InitializedMessage extends IncomingNotificationMessage {
   String get method => 'initialized';
 
   const InitializedMessage();
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method};
-  }
 }
 
 /// LSP: `exit` notification has no params.
@@ -65,11 +51,6 @@ class ExitMessage extends IncomingNotificationMessage {
   String get method => 'exit';
 
   const ExitMessage();
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method};
-  }
 }
 
 /// LSP: `textDocument/didOpen`
@@ -82,11 +63,6 @@ class TextDocumentDidOpenMessage
   final DidOpenTextDocumentParams params;
 
   const TextDocumentDidOpenMessage(this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
 }
 
 /// LSP: `textDocument/didChange`
@@ -99,11 +75,6 @@ class TextDocumentDidChangeMessage
   final DidChangeTextDocumentParams params;
 
   const TextDocumentDidChangeMessage(this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
 }
 
 /// LSP: `textDocument/didClose`
@@ -116,11 +87,6 @@ class TextDocumentDidCloseMessage
   final DidCloseTextDocumentParams params;
 
   const TextDocumentDidCloseMessage(this.params);
-
-  @override
-  Map<String, Object?> toJson() {
-    return {'jsonrpc': jsonrpc, 'method': method, 'params': params.toJson()};
-  }
 }
 
 /// LSP `TextDocumentIdentifier`

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'message.dart';
 
+/// Handles responding to messages through stdout.
 class LspOut {
   LspOut({required Stdout output}) : _output = output;
 
