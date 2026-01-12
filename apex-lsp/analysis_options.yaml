@@ -8,6 +8,7 @@ analyzer:
 
 linter:
   rules:
+    - curly_braces_in_flow_control_structures
     - always_declare_return_types
     - prefer_single_quotes
     - require_trailing_commas

@@ -38,6 +38,72 @@ sealed class RequestMessageWithParams<TParams> extends RequestMessage {
   const RequestMessageWithParams(super.id, this.params);
 }
 
+@JsonSerializable()
+final class Position {
+  final int line;
+  final int character;
+
+  const Position({required this.line, required this.character});
+
+  factory Position.fromJson(Map<String, Object?> json) =>
+      _$PositionFromJson(json);
+
+  Map<String, Object?> toJson() => _$PositionToJson(this);
+}
+
+@JsonSerializable()
+final class TextDocumentIdentifierWithUri {
+  final String uri;
+
+  const TextDocumentIdentifierWithUri({required this.uri});
+
+  factory TextDocumentIdentifierWithUri.fromJson(Map<String, Object?> json) =>
+      _$TextDocumentIdentifierWithUriFromJson(json);
+
+  Map<String, Object?> toJson() => _$TextDocumentIdentifierWithUriToJson(this);
+}
+
+@JsonSerializable()
+final class CompletionParams {
+  final TextDocumentIdentifierWithUri textDocument;
+  final Position position;
+
+  const CompletionParams({required this.textDocument, required this.position});
+
+  factory CompletionParams.fromJson(Map<String, Object?> json) =>
+      _$CompletionParamsFromJson(json);
+
+  Map<String, Object?> toJson() => _$CompletionParamsToJson(this);
+}
+
+final class CompletionRequest
+    extends RequestMessageWithParams<CompletionParams> {
+  @override
+  String get method => 'textDocument/completion';
+
+  const CompletionRequest(super.id, super.params);
+}
+
+@JsonSerializable(createFactory: false)
+final class CompletionItem {
+  final String label;
+  final String? insertText;
+
+  const CompletionItem({required this.label, this.insertText});
+
+  Map<String, Object?> toJson() => _$CompletionItemToJson(this);
+}
+
+@JsonSerializable(createFactory: false)
+final class CompletionList {
+  final bool isIncomplete;
+  final List<CompletionItem> items;
+
+  const CompletionList({required this.isIncomplete, required this.items});
+
+  Map<String, Object?> toJson() => _$CompletionListToJson(this);
+}
+
 final class InitializeRequest
     extends RequestMessageWithParams<InitializedParams> {
   @override

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../sfdx_project.dart';
+import '../utils/path_utils.dart';
 
 /// Discovers Salesforce DX workspace metadata from a workspace root.
 final class SfdxWorkspaceLocator {
@@ -41,16 +42,24 @@ final class SfdxWorkspaceLocator {
   Future<List<Uri>> packageDirectoryScope(Uri workspaceRoot) async {
     final project = await loadProject(workspaceRoot);
     final dirs = project?.packageDirectories;
-    if (dirs == null || dirs.isEmpty) return const <Uri>[];
+    if (dirs == null || dirs.isEmpty) {
+      return const <Uri>[];
+    }
+
+    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
 
     final scope = <Uri>[];
     for (final dir in dirs) {
       final relative = dir.path.trim();
-      if (relative.isEmpty) continue;
+      if (relative.isEmpty) {
+        continue;
+      }
 
-      // Ensure we treat it as a directory by appending a trailing slash before resolve.
-      // SFDX paths are relative (posix-like) from the workspace root.
-      scope.add(workspaceRoot.resolve('$relative/'));
+      final resolvedPath = PathUtils.join(rootPath, relative);
+      final resolvedDir = Directory(resolvedPath);
+
+      // Ensure the URI represents a directory.
+      scope.add(Uri.directory(resolvedDir.path));
     }
 
     return scope;

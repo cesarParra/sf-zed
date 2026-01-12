@@ -134,6 +134,13 @@ final class MessageReader {
           InitializedParams.fromJson(rawParams as Map<String, dynamic>),
         ),
         'shutdown' => ShutdownRequest(idAsObject),
+        'textDocument/completion' => switch (rawParams) {
+          final Map<String, Object?> paramsJson => CompletionRequest(
+            idAsObject,
+            CompletionParams.fromJson(paramsJson),
+          ),
+          _ => null,
+        },
         _ => null,
       };
     } else if (hasMethod && (!hasId || id == null)) {

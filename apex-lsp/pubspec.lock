@@ -17,6 +17,23 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.0.0"
+  antlr4:
+    dependency: transitive
+    description:
+      name: antlr4
+      sha256: b633030156dc482562bfbf7dd1552abab91dab41bc68b199ac9153afa0fcd666
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.9.3"
+  apex_reflection:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "8c8d9c109a14f698601e3a353a2ff3f4a31a3177"
+      url: "https://github.com/cesarParra/apex-reflection.git"
+    source: git
+    version: "1.0.0"
   args:
     dependency: transitive
     description:
@@ -213,10 +230,10 @@ packages:
     dependency: "direct dev"
     description:
       name: lints
-      sha256: "976c774dd944a42e83e2467f4cc670daef7eed6295b10b36ae8c85bcbf828235"
+      sha256: a5e2b223cb7c9c8efdc663ef484fdd95bb243bff242ef5b13e26883547fce9a0
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.0"
+    version: "6.0.0"
   logging:
     dependency: transitive
     description:
