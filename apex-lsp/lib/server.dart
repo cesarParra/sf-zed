@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:get_it/get_it.dart';
+
 import 'indexing/indexer.dart';
 import 'init/initialization.dart';
 import 'init/sfdx_workspace_locator.dart';
@@ -9,13 +11,28 @@ import 'lsp_out.dart';
 import 'message.dart';
 import 'message_reader.dart';
 
+typedef ExitFn = Never Function(int exitCode);
+
 final class Server {
-  Server({required Stdin input, required LspOut output})
-    : _output = output,
-      _reader = MessageReader(input);
+  factory Server({required Stdin input, required LspOut output}) =>
+      Server._(input: input, output: output, locator: GetIt.I);
+
+  Server._({
+    required Stdin input,
+    required LspOut output,
+    required GetIt locator,
+  }) : _output = output,
+       _reader = MessageReader(input),
+       _sfdxWorkspaceLocator = locator<SfdxWorkspaceLocator>(),
+       _indexer = locator<ApexIndexer>(),
+       _exitFn = locator<ExitFn>();
 
   final LspOut _output;
   final MessageReader _reader;
+
+  final SfdxWorkspaceLocator _sfdxWorkspaceLocator;
+  final ApexIndexer _indexer;
+  final ExitFn _exitFn;
 
   bool _initialized = false;
   bool _shutdownRequested = false;
@@ -32,11 +49,6 @@ final class Server {
 
   // Token used to report work-done progress for indexing.
   ProgressToken? _indexingProgressToken;
-
-  final SfdxWorkspaceLocator _sfdxWorkspaceLocator =
-      const SfdxWorkspaceLocator();
-
-  final ApexIndexer _indexer = const ApexIndexer();
 
   Future<void>? _indexingTask;
 
@@ -117,7 +129,7 @@ final class Server {
           'Apex LSP exiting (shutdown=$_shutdownRequested)',
         );
         await _output.flush();
-        exit(exitCode);
+        _exitFn(exitCode);
     }
   }
 
