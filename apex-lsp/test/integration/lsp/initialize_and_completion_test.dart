@@ -26,8 +26,6 @@ void main() {
     late InMemoryByteSink sink;
     late Server server;
 
-    late GetIt serviceLocator;
-
     setUp(() async {
       // Create a temporary workspace.
       workspaceDir = await Directory.systemTemp.createTemp('apex-lsp-it-');
@@ -52,35 +50,27 @@ void main() {
       );
       await fooClass.writeAsString(await fooClassFixture.readAsString());
 
-      // Prepare a fresh service locator (avoid leaking global GetIt state).
-      serviceLocator = GetIt.asNewInstance();
-
-      // TODO: Register an Indexer with a "quiet" LSP out so that we don't get a bunch of messages
-      // in the terminal when running tests
-
       // Inject an ExitFn that throws instead of terminating the process.
-      serviceLocator.registerFactory<ExitFn>(
+      locator.registerFactory<ExitFn>(
         () =>
             (code) => throw _ExitCalled(code),
       );
 
-      // Ensure production (non-overridden) dependencies are initialized.
-      initializeDependencies(getIt: serviceLocator);
-
       input = InMemoryLspInput(sync: true);
       sink = InMemoryByteSink();
 
-      server = Server.withLocator(
-        input: input.stream,
-        output: LspOut(output: sink),
-        locator: serviceLocator,
-      );
+      locator.registerSingleton<LspOut>(LspOut(output: sink));
+
+      // Ensure production (non-overridden) dependencies are initialized.
+      initializeDependencies();
+
+      server = Server(input: input.stream);
     });
 
     tearDown(() async {
       await input.close();
       await workspaceDir.delete(recursive: true);
-      await serviceLocator.reset(dispose: true);
+      await locator.reset(dispose: true);
     });
 
     test(

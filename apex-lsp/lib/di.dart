@@ -9,28 +9,24 @@ import 'server.dart';
 
 final locator = GetIt.I;
 
-void initializeDependencies({GetIt? getIt}) {
-  final serviceLocator = getIt ?? locator;
-
-  if (!serviceLocator.isRegistered<LspOut>()) {
-    serviceLocator.registerSingleton<LspOut>(
-      LspOut(output: StdoutByteSink(stdout)),
-    );
+void initializeDependencies() {
+  if (!locator.isRegistered<LspOut>()) {
+    locator.registerSingleton<LspOut>(LspOut(output: StdoutByteSink(stdout)));
   }
 
-  if (!serviceLocator.isRegistered<SfdxWorkspaceLocator>()) {
-    serviceLocator.registerSingleton<SfdxWorkspaceLocator>(
+  if (!locator.isRegistered<SfdxWorkspaceLocator>()) {
+    locator.registerSingleton<SfdxWorkspaceLocator>(
       const SfdxWorkspaceLocator(),
     );
   }
 
-  if (!serviceLocator.isRegistered<ApexIndexer>()) {
-    serviceLocator.registerFactory<ApexIndexer>(
-      () => ApexIndexer(logger: serviceLocator<LspOut>()),
+  if (!locator.isRegistered<ApexIndexer>()) {
+    locator.registerFactory<ApexIndexer>(
+      () => ApexIndexer(logger: locator<LspOut>()),
     );
   }
 
-  if (!serviceLocator.isRegistered<ExitFn>()) {
-    serviceLocator.registerFactory<ExitFn>(() => exit);
+  if (!locator.isRegistered<ExitFn>()) {
+    locator.registerFactory<ExitFn>(() => exit);
   }
 }

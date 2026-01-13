@@ -14,24 +14,15 @@ import 'message_reader.dart';
 typedef ExitFn = Never Function(int exitCode);
 
 final class Server {
-  factory Server({required Stream<List<int>> input, required LspOut output}) =>
-      Server._(input: input, output: output, locator: GetIt.I);
+  factory Server({required Stream<List<int>> input}) =>
+      Server._(input: input, locator: GetIt.I);
 
-  factory Server.withLocator({
-    required Stream<List<int>> input,
-    required LspOut output,
-    required GetIt locator,
-  }) => Server._(input: input, output: output, locator: locator);
-
-  Server._({
-    required Stream<List<int>> input,
-    required LspOut output,
-    required GetIt locator,
-  }) : _output = output,
-       _reader = MessageReader(input),
-       _sfdxWorkspaceLocator = locator<SfdxWorkspaceLocator>(),
-       _indexer = locator<ApexIndexer>(),
-       _exitFn = locator<ExitFn>();
+  Server._({required Stream<List<int>> input, required GetIt locator})
+    : _output = locator<LspOut>(),
+      _reader = MessageReader(input),
+      _sfdxWorkspaceLocator = locator<SfdxWorkspaceLocator>(),
+      _indexer = locator<ApexIndexer>(),
+      _exitFn = locator<ExitFn>();
 
   final LspOut _output;
   final MessageReader _reader;
