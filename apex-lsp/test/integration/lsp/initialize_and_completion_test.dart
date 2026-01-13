@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/lsp_out.dart';
 import 'package:apex_lsp/server.dart';
-import 'package:get_it/get_it.dart';
 import 'package:test/test.dart';
 
 import '../../support/lsp_test_harness.dart';
@@ -72,6 +71,46 @@ void main() {
       await workspaceDir.delete(recursive: true);
       await locator.reset(dispose: true);
     });
+
+    test(
+      'fails with error response when request sent before initialize',
+      () async {
+        final serverTask = server.run();
+
+        // Send a request before `initialize`. The server should respond with an
+        // LSP ServerNotInitialized error.
+        input.addFrame(
+          jsonRpcRequest(
+            id: 1,
+            method: 'textDocument/completion',
+            params: <String, Object?>{
+              'textDocument': <String, Object?>{
+                'uri': 'file:///does/not/matter',
+              },
+              'position': <String, Object?>{'line': 0, 'character': 0},
+            },
+          ),
+        );
+
+        final errorResponse = await _waitForResponse(
+          sink: sink,
+          id: 1,
+          timeout: const Duration(seconds: 2),
+        );
+
+        expect(errorResponse['jsonrpc'], equals('2.0'));
+        expect(errorResponse['id'], equals(1));
+        expect(errorResponse['error'], isA<Map<String, Object?>>());
+
+        final error = errorResponse['error'] as Map<String, Object?>;
+        expect(error['code'], equals(-32002));
+        expect(error['message'], equals('Server not initialized'));
+
+        await input.close();
+        await serverTask.timeout(const Duration(seconds: 2));
+      },
+      timeout: const Timeout(Duration(seconds: 5)),
+    );
 
     test(
       'client can initialize, server indexes workspace, and completion includes indexed class name',
