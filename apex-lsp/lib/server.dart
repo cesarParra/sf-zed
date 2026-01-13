@@ -17,6 +17,12 @@ final class Server {
   factory Server({required Stream<List<int>> input, required LspOut output}) =>
       Server._(input: input, output: output, locator: GetIt.I);
 
+  factory Server.withLocator({
+    required Stream<List<int>> input,
+    required LspOut output,
+    required GetIt locator,
+  }) => Server._(input: input, output: output, locator: locator);
+
   Server._({
     required Stream<List<int>> input,
     required LspOut output,

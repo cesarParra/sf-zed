@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:apex_lsp/lsp_out.dart';
 import 'package:get_it/get_it.dart';
 
 import 'indexing/indexer.dart';
@@ -11,6 +12,12 @@ final locator = GetIt.I;
 void initializeDependencies({GetIt? getIt}) {
   final serviceLocator = getIt ?? locator;
 
+  if (!serviceLocator.isRegistered<LspOut>()) {
+    serviceLocator.registerSingleton<LspOut>(
+      LspOut(output: StdoutByteSink(stdout)),
+    );
+  }
+
   if (!serviceLocator.isRegistered<SfdxWorkspaceLocator>()) {
     serviceLocator.registerSingleton<SfdxWorkspaceLocator>(
       const SfdxWorkspaceLocator(),
@@ -18,7 +25,9 @@ void initializeDependencies({GetIt? getIt}) {
   }
 
   if (!serviceLocator.isRegistered<ApexIndexer>()) {
-    serviceLocator.registerSingleton<ApexIndexer>(const ApexIndexer());
+    serviceLocator.registerFactory<ApexIndexer>(
+      () => ApexIndexer(logger: serviceLocator<LspOut>()),
+    );
   }
 
   if (!serviceLocator.isRegistered<ExitFn>()) {

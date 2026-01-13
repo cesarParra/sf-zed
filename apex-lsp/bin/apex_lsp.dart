@@ -10,10 +10,7 @@ Future<void> main(List<String> args) async {
   // Initialize dependency injection before constructing the server.
   initializeDependencies();
 
-  final server = Server(
-    input: stdin,
-    output: LspOut(output: StdoutByteSink(stdout)),
-  );
+  final server = Server(input: stdin, output: locator<LspOut>());
 
   try {
     await server.run();

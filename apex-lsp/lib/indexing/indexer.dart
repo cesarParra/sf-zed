@@ -4,14 +4,17 @@ import 'dart:io';
 
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
+import '../lsp_out.dart';
 import '../utils/path_utils.dart';
 
 /// Indexes Apex `.cls` files under a set of package directories and writes JSON
 /// metadata files into a hidden `.sf-zed` folder at each workspace root.
 final class ApexIndexer {
-  const ApexIndexer();
+  const ApexIndexer({required LspOut logger}) : _logger = logger;
 
   static const String indexFolderName = '.sf-zed';
+
+  final LspOut _logger;
 
   /// Builds the index for a single workspace.
   ///
@@ -169,9 +172,7 @@ final class ApexIndexer {
     return absolutePath;
   }
 
-  void _log(String message) {
-    // Minimal, always-on logging for debugging indexing behavior.
-    // (We don't have access to the server’s LSP logger from here.)
-    stderr.writeln('[apex-lsp][indexer] $message');
+  void _log(String message) async {
+    _logger.debug('[indexer] $message');
   }
 }
