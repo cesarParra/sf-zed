@@ -33,17 +33,12 @@ void main() {
       workspaceDir = await Directory.systemTemp.createTemp('apex-lsp-it-');
       workspaceUri = Uri.directory(workspaceDir.path);
 
-      // Minimal SFDX project config.
+      // Minimal SFDX project config (loaded from fixtures).
       final sfdxProject = File('${workspaceDir.path}/sfdx-project.json');
-      await sfdxProject.writeAsString('''
-{
-  "name": "apex-lsp-it",
-  "packageDirectories": [
-    { "path": "force-app", "default": true }
-  ],
-  "sourceApiVersion": "65.0"
-}
-''');
+      final sfdxProjectFixture = File(
+        'test/fixtures/initialize_and_completion/sfdx-project.json',
+      );
+      await sfdxProject.writeAsString(await sfdxProjectFixture.readAsString());
 
       // Create an Apex class under the typical SFDX path.
       final classesDir = Directory(
@@ -52,11 +47,10 @@ void main() {
       await classesDir.create(recursive: true);
 
       final fooClass = File('${classesDir.path}/Foo.cls');
-      await fooClass.writeAsString('''
-public class Foo {
-  public static void hello() {}
-}
-''');
+      final fooClassFixture = File(
+        'test/fixtures/initialize_and_completion/Foo.cls',
+      );
+      await fooClass.writeAsString(await fooClassFixture.readAsString());
 
       // Prepare a fresh service locator (avoid leaking global GetIt state).
       serviceLocator = GetIt.asNewInstance();
