@@ -12,7 +12,7 @@ final class SfdxWorkspaceLocator {
 
   /// Returns the absolute URI to `sfdx-project.json` for [workspaceRoot], if it exists.
   Future<Uri?> findSfdxProjectFile(Uri workspaceRoot) async {
-    final rootPath = workspaceRoot.toFilePath(windows: false);
+    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
     final file = File('$rootPath/$sfdxProjectFileName');
     if (!await file.exists()) return null;
     return workspaceRoot.resolve(sfdxProjectFileName);
@@ -22,7 +22,7 @@ final class SfdxWorkspaceLocator {
   ///
   /// Returns `null` if the file is missing or cannot be parsed.
   Future<SfdxProject?> loadProject(Uri workspaceRoot) async {
-    final rootPath = workspaceRoot.toFilePath(windows: false);
+    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
     final file = File('$rootPath/$sfdxProjectFileName');
     if (!await file.exists()) return null;
 

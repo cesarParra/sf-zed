@@ -224,10 +224,10 @@ final class Server {
       // all workspace roots. For indexing, we do a best-effort association:
       // index each workspace using the package directories that are under it.
       for (final root in _workspaceRootUris) {
-        final rootPath = root.toFilePath(windows: false);
+        final rootPath = root.toFilePath(windows: Platform.isWindows);
 
         final packageDirsForRoot = _packageDirectoryUris.where((pkgUri) {
-          final pkgPath = pkgUri.toFilePath(windows: false);
+          final pkgPath = pkgUri.toFilePath(windows: Platform.isWindows);
           return pkgPath.startsWith(rootPath);
         }).toList();
 
@@ -266,7 +266,7 @@ final class Server {
   }
 
   Future<int> _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) async {
-    final rootPath = workspaceRoot.toFilePath(windows: false);
+    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
     final indexDir = Directory('$rootPath/.sf-zed');
     if (!await indexDir.exists()) return 0;
 
