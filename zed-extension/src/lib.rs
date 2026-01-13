@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use zed_extension_api::{
     self as zed, process::Command, Extension, LanguageServerId, Result, Worktree,
 };
@@ -22,9 +24,13 @@ impl Extension for ApexExtension {
             return Ok(Command::new("/usr/bin/env").args(["true"]));
         }
 
-        // TODO: For local dev only. Once we release this as a proper binary this will
-        // be the real path to the lsp executable
-        let script = "/Users/cesarparra/IdeaProjects/sf-zed/apex-lsp/bin/apex_lsp.dart";
+        let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("apex-lsp")
+            .join("bin")
+            .join("apex_lsp.dart");
+
+        let script = script.to_str().ok_or("Apex LSP path is not valid UTF-8")?;
 
         Ok(Command::new("/usr/bin/env").args(["dart", "run", script]))
     }
