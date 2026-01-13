@@ -12,7 +12,7 @@ Future<void> main(List<String> args) async {
 
   final server = Server(
     input: stdin,
-    output: LspOut(output: stdout),
+    output: LspOut(output: StdoutByteSink(stdout)),
   );
 
   try {

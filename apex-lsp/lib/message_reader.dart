@@ -1,18 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 import 'message.dart';
 
-/// Reads LSP-framed messages from stdin.
+/// Reads LSP-framed messages from a byte stream.
 ///
 /// Assumes:
 /// - UTF-8 JSON payload
 /// - Header includes Content-Length
 /// - Headers are ASCII and delimited by \r\n, with an empty line \r\n\r\n.
 final class MessageReader {
-  MessageReader(this._input);
+  MessageReader(Stream<List<int>> input) : _input = input;
 
-  final Stdin _input;
+  final Stream<List<int>> _input;
 
   Stream<IncomingMessage> messages() async* {
     // Buffer of bytes read so far.

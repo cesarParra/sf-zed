@@ -14,11 +14,11 @@ import 'message_reader.dart';
 typedef ExitFn = Never Function(int exitCode);
 
 final class Server {
-  factory Server({required Stdin input, required LspOut output}) =>
+  factory Server({required Stream<List<int>> input, required LspOut output}) =>
       Server._(input: input, output: output, locator: GetIt.I);
 
   Server._({
-    required Stdin input,
+    required Stream<List<int>> input,
     required LspOut output,
     required GetIt locator,
   }) : _output = output,

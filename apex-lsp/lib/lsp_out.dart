@@ -1,15 +1,35 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 import 'message.dart';
 
-/// Handles responding to messages through stdout.
+/// Allows for testing without binding to `Stdout`.
+abstract interface class LspByteSink {
+  void add(List<int> data);
+
+  Future<void> flush();
+}
+
+/// Adapter for production usage.
+final class StdoutByteSink implements LspByteSink {
+  StdoutByteSink(this._stdout);
+
+  final Stdout _stdout;
+
+  @override
+  void add(List<int> data) => _stdout.add(data);
+
+  @override
+  Future<void> flush() => _stdout.flush();
+}
+
+/// Handles responding to messages through an [LspByteSink].
 class LspOut {
-  LspOut({required Stdout output}) : _output = output;
+  LspOut({required LspByteSink output}) : _output = output;
 
-  final Stdout _output;
+  final LspByteSink _output;
 
-  Future<dynamic> flush() => _output.flush();
+  Future<void> flush() => _output.flush();
 
   void add(List<int> data) => _output.add(data);
 
@@ -77,7 +97,7 @@ class LspOut {
     // <json>
     final header = 'Content-Length: ${bytes.length}\r\n\r\n';
 
-    // stdout is a byte sink; use add for correctness.
+    // Write header + json to the configured sink.
     _output.add(utf8.encode(header));
     _output.add(bytes);
     // Do not add extra newlines; protocol framing must be exact.
