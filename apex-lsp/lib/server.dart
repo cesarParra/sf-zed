@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:apex_lsp/documents/open_documents.dart';
 import 'package:get_it/get_it.dart';
 
 import 'indexing/indexer.dart';
@@ -22,7 +23,8 @@ final class Server {
       _reader = MessageReader(input),
       _sfdxWorkspaceLocator = locator<SfdxWorkspaceLocator>(),
       _indexer = locator<ApexIndexer>(),
-      _exitFn = locator<ExitFn>();
+      _exitFn = locator<ExitFn>(),
+      _openDocuments = OpenDocuments();
 
   final LspOut _output;
   final MessageReader _reader;
@@ -31,12 +33,11 @@ final class Server {
   final ApexIndexer _indexer;
   final ExitFn _exitFn;
 
+  final OpenDocuments _openDocuments;
+
   bool _initialized = false;
   bool _shutdownRequested = false;
   bool _exiting = false;
-
-  // Minimal in-memory document store so we can compute basic completions.
-  final Map<String, String> _openDocuments = <String, String>{};
 
   // Workspace roots discovered during initialize.
   List<Uri> _workspaceRootUris = const <Uri>[];
@@ -104,16 +105,11 @@ final class Server {
         _indexingTask ??= _indexInBackground();
 
       case TextDocumentDidOpenMessage(:final params):
-        _output.debug('Received TextDocumentDidOpenMessage');
-        _onDidOpen(params);
-
+        _openDocuments.didOpen(params);
       case TextDocumentDidChangeMessage(:final params):
-        _output.debug('Received TextDocumentDidChangeMessage');
-        _onDidChange(params);
-
+        _openDocuments.didChange(params);
       case TextDocumentDidCloseMessage(:final params):
-        _output.debug('Received TextDocumentDidCloseMessage');
-        _onDidClose(params);
+        _openDocuments.didClose(params);
 
       case ExitMessage():
         // Spec: If exit is received and shutdown has been requested -> exit 0,
@@ -166,21 +162,6 @@ final class Server {
     };
 
     await _output.sendResponse(id: req.id, result: result);
-  }
-
-  void _onDidOpen(DidOpenTextDocumentParams params) {
-    _openDocuments[params.textDocument.uri] = params.textDocument.text;
-  }
-
-  void _onDidChange(DidChangeTextDocumentParams params) {
-    // Full sync: contentChanges[0].text is the whole document.
-    if (params.contentChanges.isEmpty) return;
-    final text = params.contentChanges.first.text;
-    _openDocuments[params.textDocument.uri] = text;
-  }
-
-  void _onDidClose(DidCloseTextDocumentParams params) {
-    _openDocuments.remove(params.textDocument.uri);
   }
 
   Future<void> _beginIndexingProgress() async {
@@ -352,7 +333,7 @@ final class Server {
     required int line,
     required int character,
   }) {
-    final text = _openDocuments[uri];
+    final text = _openDocuments.get(uri);
     if (text == null) return '';
 
     final lines = text.split('\n');
