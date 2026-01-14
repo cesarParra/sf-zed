@@ -146,17 +146,41 @@ final class Server {
       return;
     }
 
-    final matches =
-        _apexIndexer.indexedClassNames
-            .where(
-              (name) => name.toLowerCase().startsWith(prefix.toLowerCase()),
-            )
-            .take(25)
-            .toList()
-          ..sort((a, b) => a.compareTo(b));
+    final lowerPrefix = prefix.toLowerCase();
 
-    final items = matches
-        .map((name) => CompletionItem(label: name, insertText: name))
+    // Score candidates so that "better" matches come first:
+    // 1) Prefer closer spelling using a simple edit-distance measure.
+    // 2) Then prefer shorter names (helps short class names surface).
+    // 3) Finally, fall back to alphabetical order.
+    //
+    // TODO: We currently only match startsWith(prefix). We want to eventually
+    // do fuzzy matching
+    final candidates =
+        _apexIndexer.indexedClassNames
+            .where((name) => name.toLowerCase().startsWith(lowerPrefix))
+            .map(
+              (name) => (
+                name: name,
+                // Smaller is better.
+                length: name.length,
+                // Smaller is better.
+                distance: _levenshteinDistance(lowerPrefix, name.toLowerCase()),
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final byDistance = a.distance.compareTo(b.distance);
+            if (byDistance != 0) return byDistance;
+
+            final byLength = a.length.compareTo(b.length);
+            if (byLength != 0) return byLength;
+
+            return a.name.compareTo(b.name);
+          });
+
+    final items = candidates
+        .take(25)
+        .map((c) => CompletionItem(label: c.name, insertText: c.name))
         .toList();
 
     await _output.sendResponse(
@@ -196,10 +220,45 @@ final class Server {
 
     return lineText.substring(start, clamped);
   }
-  //   // treat it as a simple code-unit offset.
-  //   if (character <= 0 || character > lineText.length) return false;
 
-  //   final prevChar = lineText.substring(character - 1, character);
-  //   return prevChar == 'T';
-  // }
+  int _levenshteinDistance(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+
+    // Ensure we use less memory by keeping the shorter string as "b".
+    if (a.length < b.length) {
+      final tmp = a;
+      a = b;
+      b = tmp;
+    }
+
+    final previous = List<int>.generate(b.length + 1, (i) => i);
+    final current = List<int>.filled(b.length + 1, 0);
+
+    for (var i = 1; i <= a.length; i++) {
+      current[0] = i;
+      final aChar = a.codeUnitAt(i - 1);
+
+      for (var j = 1; j <= b.length; j++) {
+        final cost = aChar == b.codeUnitAt(j - 1) ? 0 : 1;
+
+        final deletion = previous[j] + 1;
+        final insertion = current[j - 1] + 1;
+        final substitution = previous[j - 1] + cost;
+
+        var best = deletion;
+        if (insertion < best) best = insertion;
+        if (substitution < best) best = substitution;
+
+        current[j] = best;
+      }
+
+      for (var j = 0; j < current.length; j++) {
+        previous[j] = current[j];
+      }
+    }
+
+    return previous[b.length];
+  }
 }
