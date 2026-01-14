@@ -4,8 +4,7 @@ import 'package:apex_lsp/lsp_out.dart';
 import 'package:get_it/get_it.dart';
 
 import 'indexing/indexer.dart';
-import 'init/sfdx_workspace_locator.dart';
-import 'message.dart';
+import 'indexing/sfdx_workspace_locator.dart';
 import 'server.dart';
 
 final locator = GetIt.I;
@@ -22,10 +21,10 @@ void initializeDependencies() {
   }
 
   if (!locator.isRegistered<ApexIndexer>()) {
-    locator.registerFactoryParam<ApexIndexer, ProgressToken?, void>(
-      (progressToken, _) => ApexIndexer(
+    locator.registerSingleton<ApexIndexer>(
+      ApexIndexer(
         logger: locator<LspOut>(),
-        progressToken: progressToken is ProgressToken ? progressToken : null,
+        sfdxWorkspaceLocator: locator<SfdxWorkspaceLocator>(),
       ),
     );
   }
