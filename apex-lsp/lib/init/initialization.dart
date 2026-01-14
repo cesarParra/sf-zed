@@ -18,7 +18,7 @@ final class Initialization {
     return uris;
   }
 
-  /// Sends a generic "Indexing Apex files" work-done progress begin message.
+  /// Sends a work-done progress begin message for indexing.
   ///
   /// Returns the progress token used for subsequent progress reports/ending.
   static Future<ProgressToken> beginIndexingProgress(LspOut out) async {

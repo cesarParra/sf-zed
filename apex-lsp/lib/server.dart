@@ -22,7 +22,6 @@ final class Server {
     : _output = locator<LspOut>(),
       _reader = MessageReader(input),
       _sfdxWorkspaceLocator = locator<SfdxWorkspaceLocator>(),
-      _indexer = locator<ApexIndexer>(),
       _exitFn = locator<ExitFn>(),
       _openDocuments = OpenDocuments();
 
@@ -30,7 +29,6 @@ final class Server {
   final MessageReader _reader;
 
   final SfdxWorkspaceLocator _sfdxWorkspaceLocator;
-  final ApexIndexer _indexer;
   final ExitFn _exitFn;
 
   final OpenDocuments _openDocuments;
@@ -165,10 +163,6 @@ final class Server {
   }
 
   Future<void> _beginIndexingProgress() async {
-    // For now, only send a generic message that indexing will happen.
-    //
-    // TODO: We intentionally don't stream progress reports yet; we'll do that once the
-    // indexer is implemented and we can measure progress.
     _indexingProgressToken ??= await Initialization.beginIndexingProgress(
       _output,
     );
@@ -225,7 +219,9 @@ final class Server {
           );
         }
 
-        await _indexer.indexWorkspace(
+        final indexer = GetIt.I<ApexIndexer>(param1: _indexingProgressToken);
+
+        await indexer.indexWorkspace(
           workspaceRoot: root,
           packageDirectoryUris: packageDirsForRoot,
         );

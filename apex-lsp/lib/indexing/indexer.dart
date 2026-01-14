@@ -2,19 +2,26 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
 import '../lsp_out.dart';
+import '../message.dart';
 import '../utils/path_utils.dart';
 
 /// Indexes Apex `.cls` files under a set of package directories and writes JSON
 /// metadata files into a hidden `.sf-zed` folder at each workspace root.
 final class ApexIndexer {
-  const ApexIndexer({required LspOut logger}) : _logger = logger;
+  const ApexIndexer({
+    required LspOut logger,
+    required ProgressToken? progressToken,
+  }) : _logger = logger,
+       _indexingProgressToken = progressToken;
 
   static const String indexFolderName = '.sf-zed';
 
   final LspOut _logger;
+  final ProgressToken? _indexingProgressToken;
 
   /// Builds the index for a single workspace.
   ///
@@ -60,18 +67,43 @@ final class ApexIndexer {
       }
     }
 
+    // Compute total files up-front so we can report accurate progress as we go.
+    final totalFiles = await _countApexFilesToIndex(packageDirectoryUris);
+    _log('Total Apex files to index: $totalFiles');
+
+    var processedFiles = 0;
+    var lastReportedPercent = -1;
+
     for (final pkgDirUri in packageDirectoryUris) {
-      await _indexPackageDirectory(pkgDirUri, workspaceRoot, indexDir);
+      final result = await _indexPackageDirectory(
+        pkgDirUri,
+        workspaceRoot,
+        indexDir,
+        totalFiles: totalFiles,
+        processedFiles: processedFiles,
+        lastReportedPercent: lastReportedPercent,
+      );
+
+      processedFiles = result.processedFiles;
+      lastReportedPercent = result.lastReportedPercent;
+    }
+
+    // Ensure we end on 100% if there was anything to do.
+    if (totalFiles > 0 && lastReportedPercent < 100) {
+      await _reportProgress(percentage: 100);
     }
 
     _log('Index output dir: ${indexDir.path}');
   }
 
-  Future<void> _indexPackageDirectory(
+  Future<_IndexProgressState> _indexPackageDirectory(
     Uri pkgDirUri,
     Uri workspaceRoot,
-    Directory indexDir,
-  ) async {
+    Directory indexDir, {
+    required int totalFiles,
+    required int processedFiles,
+    required int lastReportedPercent,
+  }) async {
     final pkgDirPath = _toFilePath(pkgDirUri);
     final pkgDir = Directory(pkgDirPath);
 
@@ -79,7 +111,10 @@ final class ApexIndexer {
     _log('Scanning packageDir=$pkgDirUri path=$pkgDirPath exists=$exists');
 
     if (!exists) {
-      return;
+      return _IndexProgressState(
+        processedFiles: processedFiles,
+        lastReportedPercent: lastReportedPercent,
+      );
     }
 
     await for (final entity in pkgDir.list(
@@ -94,15 +129,39 @@ final class ApexIndexer {
         continue;
       }
 
-      await _indexSingleFile(
+      final result = await _indexSingleFile(
         workspaceRoot: workspaceRoot,
         indexDir: indexDir,
         apexFile: entity,
       );
+
+      switch (result) {
+        case Success(:final value):
+          processedFiles++;
+
+          if (totalFiles > 0) {
+            final percent = ((processedFiles * 100) / totalFiles).floor();
+            // Notify every 1% increase (1, 2, 3, ...), based on total file count.
+            if (percent >= 1 &&
+                percent <= 100 &&
+                percent > lastReportedPercent) {
+              lastReportedPercent = percent;
+              await _reportProgress(percentage: percent, fileName: value);
+            }
+          }
+        case Failure():
+          // Ignoring indexing issues for now.
+          break;
+      }
     }
+
+    return _IndexProgressState(
+      processedFiles: processedFiles,
+      lastReportedPercent: lastReportedPercent,
+    );
   }
 
-  Future<bool> _indexSingleFile({
+  Future<Result<String>> _indexSingleFile({
     required Uri workspaceRoot,
     required Directory indexDir,
     required File apexFile,
@@ -115,7 +174,7 @@ final class ApexIndexer {
         _log(
           'Error reflecting ${apexFile.path}: ${reflectionResponse.error!.message}',
         );
-        return false;
+        return Failure(reflectionResponse.error!.message);
       }
 
       final className = reflectionResponse.typeMirror!.name;
@@ -144,10 +203,10 @@ final class ApexIndexer {
       );
 
       _log('Wrote index file: $outPath');
-      return true;
+      return Success(reflectionResponse.typeMirror!.name);
     } catch (e) {
       _log('Failed to index ${apexFile.path}: $e');
-      return false;
+      return Failure('Failed to index ${apexFile.path}: $e');
     }
   }
 
@@ -172,7 +231,61 @@ final class ApexIndexer {
     return absolutePath;
   }
 
+  Future<int> _countApexFilesToIndex(List<Uri> packageDirectoryUris) async {
+    var total = 0;
+
+    for (final pkgDirUri in packageDirectoryUris) {
+      final pkgDirPath = _toFilePath(pkgDirUri);
+      final pkgDir = Directory(pkgDirPath);
+
+      if (!await pkgDir.exists()) {
+        continue;
+      }
+
+      await for (final entity in pkgDir.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        if (entity is! File) continue;
+        if (!entity.path.toLowerCase().endsWith('.cls')) continue;
+        total++;
+      }
+    }
+
+    return total;
+  }
+
+  Future<void> _reportProgress({
+    required int percentage,
+    String? fileName,
+  }) async {
+    final token = _indexingProgressToken;
+    if (token == null) {
+      _log('Indexing Apex files ($percentage%).');
+      return;
+    }
+
+    await _logger.progress(
+      token: token,
+      value: WorkDoneProgressReport(
+        percentage: percentage,
+        message: fileName,
+        cancellable: false,
+      ),
+    );
+  }
+
   void _log(String message) async {
     _logger.debug('[indexer] $message');
   }
+}
+
+final class _IndexProgressState {
+  final int processedFiles;
+  final int lastReportedPercent;
+
+  const _IndexProgressState({
+    required this.processedFiles,
+    required this.lastReportedPercent,
+  });
 }
