@@ -55,7 +55,7 @@ final class ApexIndexer {
   /// Sends a work-done progress begin message for indexing.
   ///
   /// Prepares the progress token used for subsequent progress reports/ending.
-  Future<void> beginIndexingProgress() async {
+  Future<void> begingIndexing() async {
     final token = ProgressToken.string(
       'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
     );
@@ -71,9 +71,11 @@ final class ApexIndexer {
     );
 
     _progressToken = token;
+
+    await _indexInBackground();
   }
 
-  Future<void> indexInBackground() async {
+  Future<void> _indexInBackground() async {
     if (_workspaceRootUris.isEmpty) {
       await _endIndexingProgress(message: 'Indexing complete (no workspaces)');
       return;
@@ -107,14 +109,10 @@ final class ApexIndexer {
           );
         }
 
-        await indexWorkspace(
+        await _indexWorkspace(
           workspaceRoot: root,
           packageDirectoryUris: packageDirsForRoot,
         );
-
-        // Load class names from the generated `.sf-zed` JSON index.
-        final loaded = await _loadIndexedClassNamesForWorkspace(root);
-        _logger.debug('Loaded $loaded indexed class names for $root');
       }
 
       await _endIndexingProgress(message: 'Indexing complete');
@@ -125,53 +123,11 @@ final class ApexIndexer {
     }
   }
 
-  Future<int> _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) async {
-    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
-    final indexDir = Directory('$rootPath/.sf-zed');
-    if (!await indexDir.exists()) return 0;
-
-    var loaded = 0;
-
-    await for (final entity in indexDir.list(
-      recursive: false,
-      followLinks: false,
-    )) {
-      if (entity is! File) continue;
-      if (!entity.path.toLowerCase().endsWith('.json')) continue;
-
-      try {
-        final content = await entity.readAsString();
-        final decoded = jsonDecode(content);
-        if (decoded is! Map) continue;
-
-        final source = decoded['source'];
-        if (source is! Map) continue;
-
-        final relativePath = source['relativePath'];
-        if (relativePath is! String) continue;
-
-        final fileName = relativePath.split(Platform.pathSeparator).last;
-        if (!fileName.toLowerCase().endsWith('.cls')) continue;
-
-        final className = fileName.substring(0, fileName.length - 4);
-        if (className.isEmpty) continue;
-
-        if (indexedClassNames.add(className)) {
-          loaded++;
-        }
-      } catch (_) {
-        // Ignore malformed index entries for now.
-      }
-    }
-
-    return loaded;
-  }
-
   /// Builds the index for a single workspace.
   ///
   /// [workspaceRoot] should be a `file://` URI.
   /// [packageDirectoryUris] are absolute directory URIs.
-  Future<void> indexWorkspace({
+  Future<void> _indexWorkspace({
     required Uri workspaceRoot,
     required List<Uri> packageDirectoryUris,
   }) async {
@@ -285,7 +241,7 @@ final class ApexIndexer {
 
           if (totalFiles > 0) {
             final percent = ((processedFiles * 100) / totalFiles).floor();
-            // Notify every 1% increase (1, 2, 3, ...), based on total file count.
+            // Notify every 1% increase based on total file count.
             if (percent >= 1 &&
                 percent <= 100 &&
                 percent > lastReportedPercent) {
