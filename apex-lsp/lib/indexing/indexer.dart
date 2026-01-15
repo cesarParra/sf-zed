@@ -158,6 +158,9 @@ final class ApexIndexer {
         final className = fileName.substring(0, fileName.length - 4);
         if (className.isEmpty) continue;
 
+        // TODO: Everything is currently in memory, but at some point
+        // we will want to actually load on completion request
+        // to be more performant (or at least keep less things in memory)
         if (indexedClassNames.add(className)) {
           loaded++;
         }
