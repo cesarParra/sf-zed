@@ -113,6 +113,10 @@ final class ApexIndexer {
           workspaceRoot: root,
           packageDirectoryUris: packageDirsForRoot,
         );
+
+        // Load class names from the generated `.sf-zed` JSON index.
+        final loaded = await _loadIndexedClassNamesForWorkspace(root);
+        _logger.debug('Loaded $loaded indexed class names for $root');
       }
 
       await _endIndexingProgress(message: 'Indexing complete');
@@ -121,6 +125,48 @@ final class ApexIndexer {
       await _endIndexingProgress(message: 'Indexing failed');
       await _logger.logMessage(MessageType.error, 'Indexing failed: $e');
     }
+  }
+
+  Future<int> _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) async {
+    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
+    final indexDir = Directory('$rootPath/.sf-zed');
+    if (!await indexDir.exists()) return 0;
+
+    var loaded = 0;
+
+    await for (final entity in indexDir.list(
+      recursive: false,
+      followLinks: false,
+    )) {
+      if (entity is! File) continue;
+      if (!entity.path.toLowerCase().endsWith('.json')) continue;
+
+      try {
+        final content = await entity.readAsString();
+        final decoded = jsonDecode(content);
+        if (decoded is! Map) continue;
+
+        final source = decoded['source'];
+        if (source is! Map) continue;
+
+        final relativePath = source['relativePath'];
+        if (relativePath is! String) continue;
+
+        final fileName = relativePath.split(Platform.pathSeparator).last;
+        if (!fileName.toLowerCase().endsWith('.cls')) continue;
+
+        final className = fileName.substring(0, fileName.length - 4);
+        if (className.isEmpty) continue;
+
+        if (indexedClassNames.add(className)) {
+          loaded++;
+        }
+      } catch (_) {
+        // Ignore malformed index entries for now.
+      }
+    }
+
+    return loaded;
   }
 
   /// Builds the index for a single workspace.
