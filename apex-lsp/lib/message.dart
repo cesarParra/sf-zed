@@ -449,6 +449,19 @@ final class WorkDoneProgressCreateRequest extends OutgoingMessage {
 }
 
 @JsonSerializable(createFactory: false)
+final class WorkDoneProgressNotification extends OutgoingNotificationMessage {
+  @override
+  String get method => r'$/progress';
+
+  final WorkDoneProgressParams params;
+
+  const WorkDoneProgressNotification(this.params);
+
+  @override
+  Map<String, Object?> toJson() => _$WorkDoneProgressNotificationToJson(this);
+}
+
+@JsonSerializable(createFactory: false)
 final class WorkDoneProgressParams {
   final ProgressToken token;
   final WorkDoneProgressValue value;
@@ -509,17 +522,4 @@ final class WorkDoneProgressEnd extends WorkDoneProgressValue {
 
   @override
   Map<String, Object?> toJson() => _$WorkDoneProgressEndToJson(this);
-}
-
-@JsonSerializable(createFactory: false)
-final class WorkDoneProgressNotification extends OutgoingNotificationMessage {
-  @override
-  String get method => r'$/progress';
-
-  final WorkDoneProgressParams params;
-
-  const WorkDoneProgressNotification(this.params);
-
-  @override
-  Map<String, Object?> toJson() => _$WorkDoneProgressNotificationToJson(this);
 }

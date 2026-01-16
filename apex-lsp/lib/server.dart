@@ -87,8 +87,9 @@ final class Server {
         switch (note) {
           case InitializedMessage():
             await logMessage(MessageType.info, 'Apex LSP initialized');
-            await _apexIndexer.index(params);
-          // await _apexIndexer.begingIndexing();
+            await for (final value in _apexIndexer.index(params)) {
+              // TODO
+            }
 
           case TextDocumentDidOpenMessage(:final params):
             _openDocuments.didOpen(params);

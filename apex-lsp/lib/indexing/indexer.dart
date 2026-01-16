@@ -27,16 +27,13 @@ final class ApexIndexer {
   // Workspace roots discovered during initialize.
   List<Uri> _workspaceRootUris = <Uri>[];
 
-  // Source-of-truth index scope: all package directories across workspace roots.
-  List<Uri> _packageDirectoryUris = <Uri>[];
-
   ProgressToken? _progressToken;
 
   // Minimal in-memory completion index derived from `.sf-zed/*.json`.
   // Top-level for now: just known class names.
   final Set<String> indexedClassNames = <String>{};
 
-  Future<void> index(InitializedParams params) async {
+  Stream<WorkDoneProgressParams> index(InitializedParams params) async* {
     final folders = params.workspaceFolders;
     if (folders == null || folders.isEmpty) return;
 
@@ -48,22 +45,24 @@ final class ApexIndexer {
     _workspaceRootUris = uris;
 
     // Load SFDX project configs (if present) and compute package directory roots.
-    _packageDirectoryUris = await _sfdxWorkspaceLocator
+    final packageDirectoryUris = await _sfdxWorkspaceLocator
         .packageDirectoryScopeForWorkspaces(_workspaceRootUris);
 
-    await _begingIndexing();
+    await _begingIndexing(packageDirectoryUris: packageDirectoryUris);
   }
 
   /// Sends a work-done progress begin message for indexing.
   ///
   /// Prepares the progress token used for subsequent progress reports/ending.
-  Future<void> _begingIndexing() async {
+  Future<void> _begingIndexing({
+    required List<Uri> packageDirectoryUris,
+  }) async {
     final token = ProgressToken.string(
       'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
     );
 
     await _logger.workDoneProgressCreate(token: token);
-    await _logger.progress(
+    _logger.progress(
       token: token,
       value: const WorkDoneProgressBegin(
         title: 'Indexing Apex files',
@@ -74,10 +73,12 @@ final class ApexIndexer {
 
     _progressToken = token;
 
-    await _indexInBackground();
+    await _indexInBackground(packageDirectoryUris: packageDirectoryUris);
   }
 
-  Future<void> _indexInBackground() async {
+  Future<void> _indexInBackground({
+    required List<Uri> packageDirectoryUris,
+  }) async {
     if (_workspaceRootUris.isEmpty) {
       await _endIndexingProgress(message: 'Indexing complete (no workspaces)');
       return;
@@ -86,7 +87,7 @@ final class ApexIndexer {
     try {
       _logger.debug(
         'Indexing starting. Workspaces=${_workspaceRootUris.length}, '
-        'packageDirs(total)=${_packageDirectoryUris.length}',
+        'packageDirs(total)=${packageDirectoryUris.length}',
       );
 
       // The current design keeps `_packageDirectoryUris` as a combined scope across
@@ -95,7 +96,7 @@ final class ApexIndexer {
       for (final root in _workspaceRootUris) {
         final rootPath = root.toFilePath(windows: Platform.isWindows);
 
-        final packageDirsForRoot = _packageDirectoryUris.where((pkgUri) {
+        final packageDirsForRoot = packageDirectoryUris.where((pkgUri) {
           final pkgPath = pkgUri.toFilePath(windows: Platform.isWindows);
           return pkgPath.startsWith(rootPath);
         }).toList();
@@ -364,7 +365,7 @@ final class ApexIndexer {
   Future<void> _endIndexingProgress({required String message}) async {
     if (_progressToken == null) return;
 
-    await _logger.progress(
+    _logger.progress(
       token: _progressToken!,
       value: WorkDoneProgressEnd(message: message),
     );
@@ -424,7 +425,7 @@ final class ApexIndexer {
   }) async {
     if (_progressToken == null) return;
 
-    await _logger.progress(
+    _logger.progress(
       token: _progressToken!,
       value: WorkDoneProgressReport(
         percentage: percentage,
