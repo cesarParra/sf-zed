@@ -36,8 +36,8 @@ final class ApexIndexer {
   // Top-level for now: just known class names.
   final Set<String> indexedClassNames = <String>{};
 
-  Future<void> prepare(InitializeRequest req) async {
-    final folders = req.params.workspaceFolders;
+  Future<void> index(InitializedParams params) async {
+    final folders = params.workspaceFolders;
     if (folders == null || folders.isEmpty) return;
 
     final uris = <Uri>[];
@@ -50,12 +50,14 @@ final class ApexIndexer {
     // Load SFDX project configs (if present) and compute package directory roots.
     _packageDirectoryUris = await _sfdxWorkspaceLocator
         .packageDirectoryScopeForWorkspaces(_workspaceRootUris);
+
+    await _begingIndexing();
   }
 
   /// Sends a work-done progress begin message for indexing.
   ///
   /// Prepares the progress token used for subsequent progress reports/ending.
-  Future<void> begingIndexing() async {
+  Future<void> _begingIndexing() async {
     final token = ProgressToken.string(
       'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
     );
