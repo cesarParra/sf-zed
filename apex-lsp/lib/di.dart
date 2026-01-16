@@ -22,10 +22,7 @@ void initializeDependencies() {
 
   if (!locator.isRegistered<ApexIndexer>()) {
     locator.registerSingleton<ApexIndexer>(
-      ApexIndexer(
-        logger: locator<LspOut>(),
-        sfdxWorkspaceLocator: locator<SfdxWorkspaceLocator>(),
-      ),
+      ApexIndexer(sfdxWorkspaceLocator: locator<SfdxWorkspaceLocator>()),
     );
   }
 

@@ -6,23 +6,18 @@ import 'package:apex_lsp/indexing/sfdx_workspace_locator.dart';
 import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
-import '../lsp_out.dart';
 import '../message.dart';
 import '../utils/path_utils.dart';
 
 /// Indexes Apex `.cls` files under a set of package directories and writes JSON
 /// metadata files into a hidden `.sf-zed` folder at each workspace root.
 final class ApexIndexer {
-  ApexIndexer({
-    required LspOut logger,
-    required SfdxWorkspaceLocator sfdxWorkspaceLocator,
-  }) : _logger = logger,
-       _sfdxWorkspaceLocator = sfdxWorkspaceLocator;
+  ApexIndexer({required SfdxWorkspaceLocator sfdxWorkspaceLocator})
+    : _sfdxWorkspaceLocator = sfdxWorkspaceLocator;
 
   static const String indexFolderName = '.sf-zed';
 
   final SfdxWorkspaceLocator _sfdxWorkspaceLocator;
-  final LspOut _logger;
 
   // Workspace roots discovered during initialize.
   List<Uri> _workspaceRootUris = <Uri>[];
@@ -45,25 +40,9 @@ final class ApexIndexer {
     // Load SFDX project configs (if present) and compute package directory roots.
     final packageDirectoryUris = await _sfdxWorkspaceLocator
         .packageDirectoryScopeForWorkspaces(_workspaceRootUris);
-
-    await for (final value in _begingIndexing(
+    final token = _generateProgressToken(
       packageDirectoryUris: packageDirectoryUris,
-    )) {
-      yield value;
-    }
-  }
-
-  /// Sends a work-done progress begin message for indexing.
-  ///
-  /// Prepares the progress token used for subsequent progress reports/ending.
-  Stream<WorkDoneProgressParams> _begingIndexing({
-    required List<Uri> packageDirectoryUris,
-  }) async* {
-    final token = ProgressToken.string(
-      'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
     );
-
-    await _logger.workDoneProgressCreate(token: token);
     yield WorkDoneProgressParams(
       token: token,
       value: const WorkDoneProgressBegin(
@@ -72,31 +51,37 @@ final class ApexIndexer {
         cancellable: false,
       ),
     );
-
-    await _indexInBackground(
+    await for (final value in _indexInBackground(
       packageDirectoryUris: packageDirectoryUris,
       token: token,
+    )) {
+      yield value;
+    }
+  }
+
+  ProgressToken _generateProgressToken({
+    required List<Uri> packageDirectoryUris,
+  }) {
+    return ProgressToken.string(
+      'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
     );
   }
 
-  Future<void> _indexInBackground({
+  Stream<WorkDoneProgressParams> _indexInBackground({
     required List<Uri> packageDirectoryUris,
     required ProgressToken token,
-  }) async {
+  }) async* {
     if (_workspaceRootUris.isEmpty) {
-      await _endIndexingProgress(
-        message: 'Indexing complete (no workspaces)',
+      yield WorkDoneProgressParams(
         token: token,
+        value: WorkDoneProgressEnd(
+          message: 'Indexing complete (no workspaces)',
+        ),
       );
       return;
     }
 
     try {
-      _logger.debug(
-        'Indexing starting. Workspaces=${_workspaceRootUris.length}, '
-        'packageDirs(total)=${packageDirectoryUris.length}',
-      );
-
       // The current design keeps `_packageDirectoryUris` as a combined scope across
       // all workspace roots. For indexing, we do a best-effort association:
       // index each workspace using the package directories that are under it.
@@ -108,42 +93,34 @@ final class ApexIndexer {
           return pkgPath.startsWith(rootPath);
         }).toList();
 
-        _logger.debug(
-          'Indexing workspace root=$root (rootPath=$rootPath), '
-          'packageDirs(forRoot)=${packageDirsForRoot.length}',
-        );
-
-        if (packageDirsForRoot.isNotEmpty) {
-          _logger.debug(
-            'Package dirs for $root: ${packageDirsForRoot.join(', ')}',
-          );
-        }
-
-        await _indexWorkspace(
+        await for (final value in _indexWorkspace(
           workspaceRoot: root,
           packageDirectoryUris: packageDirsForRoot,
           token: token,
-        );
+        )) {
+          yield value;
+        }
 
         // Load class names from the generated `.sf-zed` JSON index.
-        final loaded = await _loadIndexedClassNamesForWorkspace(root);
-        _logger.debug('Loaded $loaded indexed class names for $root');
+        await _loadIndexedClassNamesForWorkspace(root);
       }
 
-      await _endIndexingProgress(message: 'Indexing complete', token: token);
-      _logger.debug('Indexing complete');
+      yield WorkDoneProgressParams(
+        token: token,
+        value: WorkDoneProgressEnd(message: 'Indexing complete'),
+      );
     } catch (e) {
-      await _endIndexingProgress(message: 'Indexing failed', token: token);
-      await _logger.logMessage(MessageType.error, 'Indexing failed: $e');
+      yield WorkDoneProgressParams(
+        token: token,
+        value: WorkDoneProgressEnd(message: 'Indexing failed'),
+      );
     }
   }
 
-  Future<int> _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) async {
+  Future<void> _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) async {
     final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
     final indexDir = Directory('$rootPath/.sf-zed');
-    if (!await indexDir.exists()) return 0;
-
-    var loaded = 0;
+    if (!await indexDir.exists()) return;
 
     await for (final entity in indexDir.list(
       recursive: false,
@@ -172,71 +149,44 @@ final class ApexIndexer {
         // TODO: Everything is currently in memory, but at some point
         // we will want to actually load on completion request
         // to be more performant (or at least keep less things in memory)
-        if (indexedClassNames.add(className)) {
-          loaded++;
-        }
+        indexedClassNames.add(className);
       } catch (_) {
         // Ignore malformed index entries for now.
       }
     }
-
-    return loaded;
   }
 
   /// Builds the index for a single workspace.
   ///
   /// [workspaceRoot] should be a `file://` URI.
   /// [packageDirectoryUris] are absolute directory URIs.
-  Future<void> _indexWorkspace({
+  Stream<WorkDoneProgressParams> _indexWorkspace({
     required Uri workspaceRoot,
     required List<Uri> packageDirectoryUris,
     required ProgressToken token,
-  }) async {
-    _log('Indexing workspaceRoot=$workspaceRoot');
-
+  }) async* {
     final workspaceRootPath = _toFilePath(workspaceRoot);
-    _log('workspaceRootPath=$workspaceRootPath');
-
     final workspaceRootDir = Directory(workspaceRootPath);
-    _log(
-      'workspaceRootDir.exists=${await workspaceRootDir.exists()} path=${workspaceRootDir.path}',
-    );
 
     // Ensure `.sf-zed` is created under the actual on-disk workspace directory.
     final indexDirPath = PathUtils.join(workspaceRootDir.path, indexFolderName);
     final indexDir = Directory(indexDirPath);
 
-    _log('indexDirPath=$indexDirPath');
-
     // At the moment, we always recreate the index from scratch.
     if (await indexDir.exists()) {
-      _log('Deleting existing index dir: ${indexDir.path}');
       await indexDir.delete(recursive: true);
     }
 
     await indexDir.create(recursive: true);
-    _log(
-      'Created index dir: ${indexDir.path} (exists=${await indexDir.exists()})',
-    );
-
-    if (packageDirectoryUris.isEmpty) {
-      _log('No package directories provided for indexing; nothing to do.');
-    } else {
-      _log('Package directories to scan:');
-      for (final uri in packageDirectoryUris) {
-        _log('  - $uri -> ${_toFilePath(uri)}');
-      }
-    }
 
     // Compute total files up-front so we can report accurate progress as we go.
     final totalFiles = await _countApexFilesToIndex(packageDirectoryUris);
-    _log('Total Apex files to index: $totalFiles');
 
     var processedFiles = 0;
     var lastReportedPercent = -1;
 
     for (final pkgDirUri in packageDirectoryUris) {
-      final result = await _indexPackageDirectory(
+      await for (final value in _indexPackageDirectory(
         pkgDirUri,
         workspaceRoot,
         indexDir,
@@ -244,21 +194,21 @@ final class ApexIndexer {
         processedFiles: processedFiles,
         lastReportedPercent: lastReportedPercent,
         token: token,
-      );
-
-      processedFiles = result.processedFiles;
-      lastReportedPercent = result.lastReportedPercent;
+      )) {
+        yield value;
+      }
     }
 
     // Ensure we end on 100% if there was anything to do.
     if (totalFiles > 0 && lastReportedPercent < 100) {
-      await _reportProgress(percentage: 100, token: token);
+      yield WorkDoneProgressParams(
+        token: token,
+        value: WorkDoneProgressReport(percentage: 100),
+      );
     }
-
-    _log('Index output dir: ${indexDir.path}');
   }
 
-  Future<_IndexProgressState> _indexPackageDirectory(
+  Stream<WorkDoneProgressParams> _indexPackageDirectory(
     Uri pkgDirUri,
     Uri workspaceRoot,
     Directory indexDir, {
@@ -266,18 +216,14 @@ final class ApexIndexer {
     required int processedFiles,
     required int lastReportedPercent,
     required ProgressToken token,
-  }) async {
+  }) async* {
     final pkgDirPath = _toFilePath(pkgDirUri);
     final pkgDir = Directory(pkgDirPath);
 
     final exists = await pkgDir.exists();
-    _log('Scanning packageDir=$pkgDirUri path=$pkgDirPath exists=$exists');
 
     if (!exists) {
-      return _IndexProgressState(
-        processedFiles: processedFiles,
-        lastReportedPercent: lastReportedPercent,
-      );
+      return;
     }
 
     await for (final entity in pkgDir.list(
@@ -309,10 +255,13 @@ final class ApexIndexer {
                 percent <= 100 &&
                 percent > lastReportedPercent) {
               lastReportedPercent = percent;
-              await _reportProgress(
-                percentage: percent,
-                fileName: value,
+              yield WorkDoneProgressParams(
                 token: token,
+                value: WorkDoneProgressReport(
+                  percentage: percent,
+                  message: value,
+                  cancellable: false,
+                ),
               );
             }
           }
@@ -321,11 +270,6 @@ final class ApexIndexer {
           break;
       }
     }
-
-    return _IndexProgressState(
-      processedFiles: processedFiles,
-      lastReportedPercent: lastReportedPercent,
-    );
   }
 
   Future<Result<String>> _indexSingleFile({
@@ -338,9 +282,6 @@ final class ApexIndexer {
       final reflectionResponse = apex_reflection.Reflection.reflect(source);
 
       if (reflectionResponse.error != null) {
-        _log(
-          'Error reflecting ${apexFile.path}: ${reflectionResponse.error!.message}',
-        );
         return Failure(reflectionResponse.error!.message);
       }
 
@@ -369,22 +310,10 @@ final class ApexIndexer {
         const JsonEncoder.withIndent('  ').convert(payload),
       );
 
-      _log('Wrote index file: $outPath');
       return Success(reflectionResponse.typeMirror!.name);
     } catch (e) {
-      _log('Failed to index ${apexFile.path}: $e');
       return Failure('Failed to index ${apexFile.path}: $e');
     }
-  }
-
-  Future<void> _endIndexingProgress({
-    required String message,
-    required ProgressToken token,
-  }) async {
-    _logger.progress(
-      token: token,
-      value: WorkDoneProgressEnd(message: message),
-    );
   }
 
   static String _toFilePath(Uri uri) {
@@ -431,33 +360,4 @@ final class ApexIndexer {
 
     return total;
   }
-
-  Future<void> _reportProgress({
-    required int percentage,
-    String? fileName,
-    required ProgressToken token,
-  }) async {
-    _logger.progress(
-      token: token,
-      value: WorkDoneProgressReport(
-        percentage: percentage,
-        message: fileName,
-        cancellable: false,
-      ),
-    );
-  }
-
-  void _log(String message) async {
-    _logger.debug('[indexer] $message');
-  }
-}
-
-final class _IndexProgressState {
-  final int processedFiles;
-  final int lastReportedPercent;
-
-  const _IndexProgressState({
-    required this.processedFiles,
-    required this.lastReportedPercent,
-  });
 }
