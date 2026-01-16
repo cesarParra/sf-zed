@@ -51,12 +51,11 @@ final class ApexIndexer {
         cancellable: false,
       ),
     );
-    await for (final value in _indexInBackground(
+
+    yield* _indexInBackground(
       packageDirectoryUris: packageDirectoryUris,
       token: token,
-    )) {
-      yield value;
-    }
+    );
   }
 
   ProgressToken _generateProgressToken({
@@ -93,13 +92,11 @@ final class ApexIndexer {
           return pkgPath.startsWith(rootPath);
         }).toList();
 
-        await for (final value in _indexWorkspace(
+        yield* _indexWorkspace(
           workspaceRoot: root,
           packageDirectoryUris: packageDirsForRoot,
           token: token,
-        )) {
-          yield value;
-        }
+        );
 
         // Load class names from the generated `.sf-zed` JSON index.
         await _loadIndexedClassNamesForWorkspace(root);
@@ -186,7 +183,7 @@ final class ApexIndexer {
     var lastReportedPercent = -1;
 
     for (final pkgDirUri in packageDirectoryUris) {
-      await for (final value in _indexPackageDirectory(
+      yield* _indexPackageDirectory(
         pkgDirUri,
         workspaceRoot,
         indexDir,
@@ -194,9 +191,7 @@ final class ApexIndexer {
         processedFiles: processedFiles,
         lastReportedPercent: lastReportedPercent,
         token: token,
-      )) {
-        yield value;
-      }
+      );
     }
 
     // Ensure we end on 100% if there was anything to do.
