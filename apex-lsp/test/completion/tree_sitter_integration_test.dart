@@ -8,15 +8,15 @@ import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 
 void main() {
   final libPath = Platform.environment['TS_SFAPEX_LIB'];
-  final shouldRun = libPath != null && libPath.isNotEmpty;
+  //final shouldRun = libPath != null && libPath.isNotEmpty;
 
   group('TreeSitterCompletionService integration', () {
-    if (!shouldRun) {
-      test('skipped (set TS_SFAPEX_LIB to run)', () {
-        expect(true, isTrue);
-      });
-      return;
-    }
+    // if (!shouldRun) {
+    //   test('skipped (set TS_SFAPEX_LIB to run)', () {
+    //     expect(true, isTrue);
+    //   });
+    //   return;
+    // }
 
     late TreeSitterCompletionService service;
 

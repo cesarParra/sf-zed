@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:apex_lsp/indexing/sfdx_workspace_locator.dart';
+import 'package:apex_lsp/indexing/workspace_index.dart';
 import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
@@ -24,7 +25,17 @@ final class ApexIndexer {
 
   // Minimal in-memory completion index derived from `.sf-zed/*.json`.
   // Top-level for now: just known class names.
-  final Set<String> indexedClassNames = <String>{};
+  final Set<String> _indexedClassNames = <String>{};
+  bool _indexedClassNamesLoaded = false;
+
+  Set<String> get indexedClassNames {
+    _ensureIndexedClassNamesLoaded();
+    return _indexedClassNames;
+  }
+
+  final Map<String, WorkspaceClassInfo> _workspaceClassByNameCache =
+      <String, WorkspaceClassInfo>{};
+  final Set<String> _workspaceClassNotFound = <String>{};
 
   Stream<WorkDoneProgressParams> index(InitializedParams params) async* {
     final folders = params.workspaceFolders;
@@ -36,6 +47,7 @@ final class ApexIndexer {
       if (uri != null) uris.add(uri);
     }
     _workspaceRootUris = uris;
+    _resetCachesForReindex();
 
     // Load SFDX project configs (if present) and compute package directory roots.
     final packageDirectoryUris = await _sfdxWorkspaceLocator
@@ -98,8 +110,7 @@ final class ApexIndexer {
           token: token,
         );
 
-        // Load class names from the generated `.sf-zed` JSON index.
-        await _loadIndexedClassNamesForWorkspace(root);
+        // Class names are loaded lazily on demand.
       }
 
       yield WorkDoneProgressParams(
@@ -114,12 +125,34 @@ final class ApexIndexer {
     }
   }
 
-  Future<void> _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) async {
+  void _resetCachesForReindex() {
+    _indexedClassNamesLoaded = false;
+    _indexedClassNames.clear();
+    _workspaceClassByNameCache.clear();
+    _workspaceClassNotFound.clear();
+  }
+
+  void _ensureIndexedClassNamesLoaded() {
+    if (_indexedClassNamesLoaded) return;
+
+    if (_workspaceRootUris.isEmpty) {
+      _indexedClassNamesLoaded = true;
+      return;
+    }
+
+    for (final root in _workspaceRootUris) {
+      _loadIndexedClassNamesForWorkspace(root);
+    }
+
+    _indexedClassNamesLoaded = true;
+  }
+
+  void _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) {
     final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
     final indexDir = Directory('$rootPath/.sf-zed');
-    if (!await indexDir.exists()) return;
+    if (!indexDir.existsSync()) return;
 
-    await for (final entity in indexDir.list(
+    for (final entity in indexDir.listSync(
       recursive: false,
       followLinks: false,
     )) {
@@ -127,28 +160,103 @@ final class ApexIndexer {
       if (!entity.path.toLowerCase().endsWith('.json')) continue;
 
       try {
-        final content = await entity.readAsString();
-        final decoded = jsonDecode(content);
-        if (decoded is! Map) continue;
+        final fileName = entity.path.split(Platform.pathSeparator).last;
+        if (!fileName.toLowerCase().endsWith('.json')) continue;
 
-        final source = decoded['source'];
-        if (source is! Map) continue;
-
-        final relativePath = source['relativePath'];
-        if (relativePath is! String) continue;
-
-        final fileName = relativePath.split(Platform.pathSeparator).last;
-        if (!fileName.toLowerCase().endsWith('.cls')) continue;
-
-        final className = fileName.substring(0, fileName.length - 4);
+        final className = fileName.substring(0, fileName.length - 5);
         if (className.isEmpty) continue;
 
-        // TODO: Everything is currently in memory, but at some point
-        // we will want to actually load on completion request
-        // to be more performant (or at least keep less things in memory)
-        indexedClassNames.add(className);
+        _indexedClassNames.add(className);
       } catch (_) {
         // Ignore malformed index entries for now.
+      }
+    }
+  }
+
+  Future<WorkspaceClassInfo?> loadWorkspaceClassInfo(String className) async {
+    if (className.isEmpty) return null;
+
+    final cached = _workspaceClassByNameCache[className];
+    if (cached != null) return cached;
+
+    if (_workspaceClassNotFound.contains(className)) return null;
+
+    for (final root in _workspaceRootUris) {
+      final info = await _tryLoadWorkspaceClassInfoForRoot(root, className);
+      if (info != null) {
+        _workspaceClassByNameCache[className] = info;
+        return info;
+      }
+    }
+
+    _workspaceClassNotFound.add(className);
+    return null;
+  }
+
+  Future<WorkspaceClassInfo?> _tryLoadWorkspaceClassInfoForRoot(
+    Uri workspaceRoot,
+    String className,
+  ) async {
+    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
+    final indexDirPath = PathUtils.join(rootPath, indexFolderName);
+    final filePath = PathUtils.join(indexDirPath, '$className.json');
+    final file = File(filePath);
+
+    if (!await file.exists()) return null;
+
+    try {
+      final content = await file.readAsString();
+      final decoded = jsonDecode(content);
+      return _parseWorkspaceClassInfo(decoded);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  WorkspaceClassInfo? _parseWorkspaceClassInfo(Object? decoded) {
+    if (decoded is! Map) return null;
+
+    final classNameValue = decoded['className'];
+    final className = classNameValue is String && classNameValue.isNotEmpty
+        ? classNameValue
+        : null;
+
+    final reflection = decoded['reflection'];
+    if (reflection is! Map) return null;
+
+    final typeMirror = reflection['typeMirror'];
+    if (typeMirror is! Map) return null;
+
+    final mirrorName = typeMirror['name'];
+    final resolvedName =
+        className ?? (mirrorName is String ? mirrorName : null);
+    if (resolvedName == null || resolvedName.isEmpty) return null;
+
+    final builder = WorkspaceClassBuilder(resolvedName);
+
+    final superclass = typeMirror['extended_class'];
+    if (superclass is String && superclass.isNotEmpty) {
+      builder.superclass = superclass;
+    }
+
+    _collectWorkspaceMemberNames(typeMirror['fields'], builder.addField);
+    _collectWorkspaceMemberNames(typeMirror['properties'], builder.addProperty);
+    _collectWorkspaceMemberNames(typeMirror['methods'], builder.addMethod);
+
+    return builder.build();
+  }
+
+  void _collectWorkspaceMemberNames(
+    Object? rawMembers,
+    void Function(String name) addMember,
+  ) {
+    if (rawMembers is! List) return;
+
+    for (final entry in rawMembers) {
+      if (entry is! Map) continue;
+      final name = entry['name'];
+      if (name is String && name.isNotEmpty) {
+        addMember(name);
       }
     }
   }

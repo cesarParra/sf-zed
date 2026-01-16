@@ -77,12 +77,18 @@ final class TreeSitterCompletionService {
           kind: CompletionKind.member,
           labels: const [],
           memberOfType: resolvedType,
+          memberTypeResolvedFromDocument: false,
         );
       }
 
       final prefix = context.prefix.toLowerCase();
+      final memberSet = <String>{
+        ...classInfo.fields,
+        ...classInfo.properties,
+        ...classInfo.methods,
+      };
       final members =
-          classInfo.fields
+          memberSet
               .where(
                 (name) =>
                     prefix.isEmpty || name.toLowerCase().startsWith(prefix),
@@ -94,6 +100,7 @@ final class TreeSitterCompletionService {
         kind: CompletionKind.member,
         labels: members,
         memberOfType: resolvedType,
+        memberTypeResolvedFromDocument: true,
       );
     }
 
@@ -330,6 +337,8 @@ final class TreeSitterCompletionService {
 
     final bodyNode = _getField(node, 'body');
     final fields = <String>{};
+    final properties = <String>{};
+    final methods = <String>{};
 
     if (!_isNullNode(bodyNode)) {
       final fieldDeclarations = _collectClassBodyFieldDeclarations(bodyNode);
@@ -348,6 +357,28 @@ final class TreeSitterCompletionService {
           }
         }
       }
+
+      final propertyDeclarations = _collectNamedDescendantsByType(
+        bodyNode,
+        'property_declaration',
+      );
+      for (final propertyDecl in propertyDeclarations) {
+        final name = _extractMemberName(propertyDecl, index);
+        if (name != null && name.isNotEmpty) {
+          properties.add(name);
+        }
+      }
+
+      final methodDeclarations = _collectNamedDescendantsByType(
+        bodyNode,
+        'method_declaration',
+      );
+      for (final methodDecl in methodDeclarations) {
+        final name = _extractMemberName(methodDecl, index);
+        if (name != null && name.isNotEmpty) {
+          methods.add(name);
+        }
+      }
     }
 
     final superclass = _extractSuperclass(node, index);
@@ -357,6 +388,8 @@ final class TreeSitterCompletionService {
       startByte: _bindings!.ts_node_start_byte(node),
       endByte: _bindings!.ts_node_end_byte(node),
       fields: fields.toList()..sort(),
+      properties: properties.toList()..sort(),
+      methods: methods.toList()..sort(),
       superclass: superclass,
     );
   }
@@ -450,6 +483,20 @@ final class TreeSitterCompletionService {
     }
 
     final fallback = _findFirstNamedDescendantOfType(declarator, 'identifier');
+    if (fallback != null && !_isNullNode(fallback)) {
+      return _nodeText(fallback, index);
+    }
+
+    return null;
+  }
+
+  String? _extractMemberName(TSNode node, _MutableApexDocumentIndex index) {
+    final nameNode = _getField(node, 'name');
+    if (!_isNullNode(nameNode)) {
+      return _nodeText(nameNode, index);
+    }
+
+    final fallback = _findFirstNamedDescendantOfType(node, 'identifier');
     if (fallback != null && !_isNullNode(fallback)) {
       return _nodeText(fallback, index);
     }
