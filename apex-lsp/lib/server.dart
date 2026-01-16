@@ -108,9 +108,6 @@ final class Server {
     await _apexIndexer.prepare(req);
 
     // Minimal InitializeResult with full document sync.
-    //
-    // TODO: Wire up workDoneProgress capability negotiation and proper
-    // InitializeResult classes.
     final result = <String, Object?>{
       'capabilities': <String, Object?>{
         'textDocumentSync': 1, // TextDocumentSyncKind.Full
