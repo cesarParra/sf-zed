@@ -24,6 +24,7 @@ final class CompletionAggregator {
       cursorOffset: cursorOffset,
     );
 
+    // TODO: There is a simpler return switch syntax for this
     switch (local.kind) {
       case CompletionKind.none:
         return local;

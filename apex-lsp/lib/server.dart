@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:apex_lsp/completion/completion.dart';
+import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
 import 'package:apex_lsp/initialization_status.dart';
 import 'package:get_it/get_it.dart';
@@ -22,7 +23,8 @@ final class Server {
       _reader = MessageReader(input),
       _exitFn = locator<ExitFn>(),
       _openDocuments = OpenDocuments(),
-      _apexIndexer = locator<ApexIndexer>();
+      _apexIndexer = locator<ApexIndexer>(),
+      _aggregator = locator<CompletionAggregator>();
 
   final LspOut _output;
   final MessageReader _reader;
@@ -30,6 +32,7 @@ final class Server {
 
   final OpenDocuments _openDocuments;
   final ApexIndexer _apexIndexer;
+  final CompletionAggregator _aggregator;
 
   InitializationStatus _initializationStatus = NotInitialized();
   bool _shutdownRequested = false;
@@ -143,7 +146,7 @@ final class Server {
   }) async {
     final completionList = await onCompletion(
       openDocuments: _openDocuments,
-      apexIndexer: _apexIndexer,
+      aggregator: _aggregator,
       id: id,
       params: params,
     );

@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:apex_lsp/completion/completion_aggregator.dart';
+import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
+import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/lsp_out.dart';
 import 'package:get_it/get_it.dart';
 
@@ -24,6 +27,25 @@ void initializeDependencies() {
     locator.registerSingleton<ApexIndexer>(
       ApexIndexer(sfdxWorkspaceLocator: locator<SfdxWorkspaceLocator>()),
     );
+  }
+
+  if (!locator.isRegistered<CompletionAggregator>()) {
+    locator.registerLazySingleton<CompletionAggregator>(() {
+      final libPath = Platform.environment['TS_SFAPEX_LIB'];
+      final hasOverride = libPath != null && libPath.isNotEmpty;
+
+      final bindings = TreeSitterBindings.load(
+        path: hasOverride ? libPath : null,
+      );
+      final treeSitterService = TreeSitterCompletionService(bindings: bindings);
+      final completionAggregator = CompletionAggregator(
+        documentService: treeSitterService!,
+        workspaceIndex: ApexIndexerWorkspaceIndexAdapter(
+          locator<ApexIndexer>(),
+        ),
+      );
+      return completionAggregator;
+    });
   }
 
   if (!locator.isRegistered<ExitFn>()) {
