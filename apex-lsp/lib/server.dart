@@ -88,7 +88,7 @@ final class Server {
           case InitializedMessage():
             await logMessage(MessageType.info, 'Apex LSP initialized');
             await for (final value in _apexIndexer.index(params)) {
-              // TODO
+              _output.progress2(params: value);
             }
 
           case TextDocumentDidOpenMessage(:final params):

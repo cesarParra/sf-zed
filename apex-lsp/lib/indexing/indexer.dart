@@ -27,8 +27,6 @@ final class ApexIndexer {
   // Workspace roots discovered during initialize.
   List<Uri> _workspaceRootUris = <Uri>[];
 
-  ProgressToken? _progressToken;
-
   // Minimal in-memory completion index derived from `.sf-zed/*.json`.
   // Top-level for now: just known class names.
   final Set<String> indexedClassNames = <String>{};
@@ -48,21 +46,25 @@ final class ApexIndexer {
     final packageDirectoryUris = await _sfdxWorkspaceLocator
         .packageDirectoryScopeForWorkspaces(_workspaceRootUris);
 
-    await _begingIndexing(packageDirectoryUris: packageDirectoryUris);
+    await for (final value in _begingIndexing(
+      packageDirectoryUris: packageDirectoryUris,
+    )) {
+      yield value;
+    }
   }
 
   /// Sends a work-done progress begin message for indexing.
   ///
   /// Prepares the progress token used for subsequent progress reports/ending.
-  Future<void> _begingIndexing({
+  Stream<WorkDoneProgressParams> _begingIndexing({
     required List<Uri> packageDirectoryUris,
-  }) async {
+  }) async* {
     final token = ProgressToken.string(
       'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
     );
 
     await _logger.workDoneProgressCreate(token: token);
-    _logger.progress(
+    yield WorkDoneProgressParams(
       token: token,
       value: const WorkDoneProgressBegin(
         title: 'Indexing Apex files',
@@ -71,16 +73,21 @@ final class ApexIndexer {
       ),
     );
 
-    _progressToken = token;
-
-    await _indexInBackground(packageDirectoryUris: packageDirectoryUris);
+    await _indexInBackground(
+      packageDirectoryUris: packageDirectoryUris,
+      token: token,
+    );
   }
 
   Future<void> _indexInBackground({
     required List<Uri> packageDirectoryUris,
+    required ProgressToken token,
   }) async {
     if (_workspaceRootUris.isEmpty) {
-      await _endIndexingProgress(message: 'Indexing complete (no workspaces)');
+      await _endIndexingProgress(
+        message: 'Indexing complete (no workspaces)',
+        token: token,
+      );
       return;
     }
 
@@ -115,6 +122,7 @@ final class ApexIndexer {
         await _indexWorkspace(
           workspaceRoot: root,
           packageDirectoryUris: packageDirsForRoot,
+          token: token,
         );
 
         // Load class names from the generated `.sf-zed` JSON index.
@@ -122,10 +130,10 @@ final class ApexIndexer {
         _logger.debug('Loaded $loaded indexed class names for $root');
       }
 
-      await _endIndexingProgress(message: 'Indexing complete');
+      await _endIndexingProgress(message: 'Indexing complete', token: token);
       _logger.debug('Indexing complete');
     } catch (e) {
-      await _endIndexingProgress(message: 'Indexing failed');
+      await _endIndexingProgress(message: 'Indexing failed', token: token);
       await _logger.logMessage(MessageType.error, 'Indexing failed: $e');
     }
   }
@@ -182,6 +190,7 @@ final class ApexIndexer {
   Future<void> _indexWorkspace({
     required Uri workspaceRoot,
     required List<Uri> packageDirectoryUris,
+    required ProgressToken token,
   }) async {
     _log('Indexing workspaceRoot=$workspaceRoot');
 
@@ -234,6 +243,7 @@ final class ApexIndexer {
         totalFiles: totalFiles,
         processedFiles: processedFiles,
         lastReportedPercent: lastReportedPercent,
+        token: token,
       );
 
       processedFiles = result.processedFiles;
@@ -242,7 +252,7 @@ final class ApexIndexer {
 
     // Ensure we end on 100% if there was anything to do.
     if (totalFiles > 0 && lastReportedPercent < 100) {
-      await _reportProgress(percentage: 100);
+      await _reportProgress(percentage: 100, token: token);
     }
 
     _log('Index output dir: ${indexDir.path}');
@@ -255,6 +265,7 @@ final class ApexIndexer {
     required int totalFiles,
     required int processedFiles,
     required int lastReportedPercent,
+    required ProgressToken token,
   }) async {
     final pkgDirPath = _toFilePath(pkgDirUri);
     final pkgDir = Directory(pkgDirPath);
@@ -298,7 +309,11 @@ final class ApexIndexer {
                 percent <= 100 &&
                 percent > lastReportedPercent) {
               lastReportedPercent = percent;
-              await _reportProgress(percentage: percent, fileName: value);
+              await _reportProgress(
+                percentage: percent,
+                fileName: value,
+                token: token,
+              );
             }
           }
         case Failure():
@@ -362,16 +377,14 @@ final class ApexIndexer {
     }
   }
 
-  Future<void> _endIndexingProgress({required String message}) async {
-    if (_progressToken == null) return;
-
+  Future<void> _endIndexingProgress({
+    required String message,
+    required ProgressToken token,
+  }) async {
     _logger.progress(
-      token: _progressToken!,
+      token: token,
       value: WorkDoneProgressEnd(message: message),
     );
-
-    // Reset token so a future re-index can start a new progress session cleanly.
-    _progressToken = null;
   }
 
   static String _toFilePath(Uri uri) {
@@ -422,11 +435,10 @@ final class ApexIndexer {
   Future<void> _reportProgress({
     required int percentage,
     String? fileName,
+    required ProgressToken token,
   }) async {
-    if (_progressToken == null) return;
-
     _logger.progress(
-      token: _progressToken!,
+      token: token,
       value: WorkDoneProgressReport(
         percentage: percentage,
         message: fileName,
