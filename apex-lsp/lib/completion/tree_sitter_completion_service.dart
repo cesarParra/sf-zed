@@ -2,10 +2,14 @@ import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:apex_lsp/completion/helpers.dart';
+import 'package:apex_lsp/di.dart';
+import 'package:apex_lsp/lsp_out.dart';
 import 'package:ffi/ffi.dart';
 
 import 'tree_sitter_bindings.dart';
 import 'tree_sitter_completion_types.dart';
+
+final logger = locator<LspOut>();
 
 final class TreeSitterCompletionService {
   TreeSitterCompletionService({
@@ -49,6 +53,18 @@ final class TreeSitterCompletionService {
 
     final cursorByteOffset = _byteOffset(text, cursorOffset);
     final index = _indexBuilder(text);
+    for (final currentClass in index.classes) {
+      logger.debug('Indexed open file: ${currentClass.name}');
+      logger.debug('Indexed open file - fields: ${currentClass.fields}');
+      logger.debug(
+        'Indexed open file - properties: ${currentClass.properties}',
+      );
+      logger.debug('Indexed open methods: ${currentClass.methods}');
+    }
+
+    for (final variable in index.variables) {
+      logger.debug('Indexeed variable: ${variable.name}');
+    }
 
     if (context.kind == .member) {
       final objectName = context.objectName;
@@ -102,16 +118,20 @@ final class TreeSitterCompletionService {
       );
     }
 
-    // Class name completion.
+    // Class name and local variable declaration completion.
+    // TODO: The way we are treating local variable declarations is pretty naive, since we don't
+    // care in which scope they were found. Variable declarations should only show up if the user
+    // is typing within the scope where it was declared (and before the currrent index)
     final prefix = context.prefix.toLowerCase();
-    final classNames =
-        index.classes
-            .map((c) => c.name)
-            .where(
-              (name) => prefix.isEmpty || name.toLowerCase().startsWith(prefix),
-            )
-            .toList()
-          ..sort();
+    final all = {
+      ...index.variables.map((v) => v.name).toList()..sort(),
+      ...index.classes.map((c) => c.name).toList()..sort(),
+    };
+    final classNames = all
+        .where(
+          (name) => prefix.isEmpty || name.toLowerCase().startsWith(prefix),
+        )
+        .toList();
 
     return CompletionCandidates(kind: .className, labels: classNames);
   }
