@@ -1,3 +1,5 @@
+import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
+
 /// Contract for indexed classes completion data.
 abstract class IndexedClassProvider {
   Iterable<String> get classNames;
@@ -5,74 +7,48 @@ abstract class IndexedClassProvider {
   Future<IndexedClass?> classByNameAsync(String name);
 }
 
-/// Represents an indexed class.
-final class IndexedClass {
-  IndexedClass({
-    required this.name,
-    required this.fields,
-    required this.properties,
-    required this.methods,
-    this.superclass,
-  });
+abstract class IndexedClass {
+  List<String> get memberNames;
+  bool hasMemberPrefix(String prefix);
+  List<String> membersMatching(String prefix);
+}
 
-  final String name;
-  final List<String> fields;
-  final List<String> properties;
-  final List<String> methods;
-  final String? superclass;
+/// Represents an indexed class.
+class ClassMirrorWrapper implements IndexedClass {
+  ClassMirrorWrapper({required this.classMirror});
+
+  final apex_reflection.ClassMirror classMirror;
 
   /// Combined member list in a stable, sorted order.
+  @override
   List<String> get memberNames {
-    final all = <String>{...fields, ...properties, ...methods};
+    final all = <String>{
+      ...classMirror.fields.map((f) => f.name),
+      ...classMirror.properties.map((p) => p.name),
+      ...classMirror.methods.map((m) => m.name),
+    };
     final result = all.toList()..sort();
     return result;
   }
 
   /// Returns true if any member matches [prefix] (case-insensitive).
+  @override
   bool hasMemberPrefix(String prefix) {
     final lower = prefix.toLowerCase();
-    return fields.any((m) => m.toLowerCase().startsWith(lower)) ||
-        properties.any((m) => m.toLowerCase().startsWith(lower)) ||
-        methods.any((m) => m.toLowerCase().startsWith(lower));
+    return memberNames.any(
+      (current) => current.toLowerCase().startsWith(lower),
+    );
   }
 
   /// Returns members that match [prefix] (case-insensitive), sorted.
+  @override
   List<String> membersMatching(String prefix) {
     if (prefix.isEmpty) return memberNames;
     final lower = prefix.toLowerCase();
-    final matches = <String>{
-      ...fields.where((m) => m.toLowerCase().startsWith(lower)),
-      ...properties.where((m) => m.toLowerCase().startsWith(lower)),
-      ...methods.where((m) => m.toLowerCase().startsWith(lower)),
-    };
+    final matches = memberNames.where(
+      (current) => current.toLowerCase().startsWith(lower),
+    );
     final result = matches.toList()..sort();
     return result;
-  }
-}
-
-final class IndexedClassBuilder {
-  IndexedClassBuilder(this.name);
-
-  final String name;
-  final Set<String> _fields = <String>{};
-  final Set<String> _properties = <String>{};
-  final Set<String> _methods = <String>{};
-  String? superclass;
-
-  void addField(String name) => _fields.add(name);
-  void addProperty(String name) => _properties.add(name);
-  void addMethod(String name) => _methods.add(name);
-
-  IndexedClass build() {
-    final fields = _fields.toList()..sort();
-    final properties = _properties.toList()..sort();
-    final methods = _methods.toList()..sort();
-    return IndexedClass(
-      name: name,
-      fields: fields,
-      properties: properties,
-      methods: methods,
-      superclass: superclass,
-    );
   }
 }

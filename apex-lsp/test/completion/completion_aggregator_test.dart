@@ -5,6 +5,50 @@ import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
 
+class LocalIndexedClass implements IndexedClass {
+  LocalIndexedClass({
+    required this.name,
+    required this.fields,
+    required this.properties,
+    required this.methods,
+    this.superclass,
+  });
+
+  final String name;
+  final List<String> fields;
+  final List<String> properties;
+  final List<String> methods;
+  final String? superclass;
+
+  @override
+  bool hasMemberPrefix(String prefix) {
+    final lower = prefix.toLowerCase();
+    return fields.any((m) => m.toLowerCase().startsWith(lower)) ||
+        properties.any((m) => m.toLowerCase().startsWith(lower)) ||
+        methods.any((m) => m.toLowerCase().startsWith(lower));
+  }
+
+  @override
+  List<String> get memberNames {
+    final all = <String>{...fields, ...properties, ...methods};
+    final result = all.toList()..sort();
+    return result;
+  }
+
+  @override
+  List<String> membersMatching(String prefix) {
+    if (prefix.isEmpty) return memberNames;
+    final lower = prefix.toLowerCase();
+    final matches = <String>{
+      ...fields.where((m) => m.toLowerCase().startsWith(lower)),
+      ...properties.where((m) => m.toLowerCase().startsWith(lower)),
+      ...methods.where((m) => m.toLowerCase().startsWith(lower)),
+    };
+    final result = matches.toList()..sort();
+    return result;
+  }
+}
+
 void main() {
   group('CompletionAggregator', () {
     test('prefers local member completions when available', () async {
@@ -37,7 +81,7 @@ void main() {
 
       final workspace = _FakeWorkspaceIndex(
         classesByName: {
-          'Foo': IndexedClass(
+          'Foo': LocalIndexedClass(
             name: 'Foo',
             fields: const ['workspaceField'],
             properties: const ['workspaceProp'],
@@ -85,7 +129,7 @@ void main() {
 
         final workspace = _FakeWorkspaceIndex(
           classesByName: {
-            'Foo': IndexedClass(
+            'Foo': LocalIndexedClass(
               name: 'Foo',
               fields: const ['memberField'],
               properties: const [],
@@ -124,14 +168,14 @@ void main() {
 
       final workspace = _FakeWorkspaceIndex(
         classesByName: {
-          'Foo': IndexedClass(
+          'Foo': LocalIndexedClass(
             name: 'Foo',
             fields: const [],
             properties: const [],
             methods: const [],
             superclass: null,
           ),
-          'Bar': IndexedClass(
+          'Bar': LocalIndexedClass(
             name: 'Bar',
             fields: const [],
             properties: const [],
@@ -189,14 +233,14 @@ void main() {
 
         final workspace = _FakeWorkspaceIndex(
           classesByName: {
-            'Bar': IndexedClass(
+            'Bar': LocalIndexedClass(
               name: 'Bar',
               fields: const [],
               properties: const [],
               methods: const [],
               superclass: null,
             ),
-            'Bazooka': IndexedClass(
+            'Bazooka': LocalIndexedClass(
               name: 'Bazooka',
               fields: const [],
               properties: const [],

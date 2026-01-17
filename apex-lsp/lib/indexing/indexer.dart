@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:apex_lsp/indexing/sfdx_workspace_locator.dart';
-import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
@@ -33,8 +32,7 @@ final class ApexIndexer {
     return _indexedClassNames;
   }
 
-  final Map<String, IndexedClass> _workspaceClassByNameCache =
-      <String, IndexedClass>{};
+  final _indexedClassByNameCache = <String, apex_reflection.ClassMirror>{};
   final Set<String> _workspaceClassNotFound = <String>{};
 
   Stream<WorkDoneProgressParams> index(InitializedParams params) async* {
@@ -128,7 +126,7 @@ final class ApexIndexer {
   void _resetCachesForReindex() {
     _indexedClassNamesLoaded = false;
     _indexedClassNames.clear();
-    _workspaceClassByNameCache.clear();
+    _indexedClassByNameCache.clear();
     _workspaceClassNotFound.clear();
   }
 
@@ -173,10 +171,12 @@ final class ApexIndexer {
     }
   }
 
-  Future<IndexedClass?> loadWorkspaceClassInfo(String className) async {
+  Future<apex_reflection.ClassMirror?> loadWorkspaceClassInfo(
+    String className,
+  ) async {
     if (className.isEmpty) return null;
 
-    final cached = _workspaceClassByNameCache[className];
+    final cached = _indexedClassByNameCache[className];
     if (cached != null) return cached;
 
     if (_workspaceClassNotFound.contains(className)) return null;
@@ -184,7 +184,7 @@ final class ApexIndexer {
     for (final root in _workspaceRootUris) {
       final info = await _tryLoadWorkspaceClassInfoForRoot(root, className);
       if (info != null) {
-        _workspaceClassByNameCache[className] = info;
+        _indexedClassByNameCache[className] = info;
         return info;
       }
     }
@@ -193,7 +193,7 @@ final class ApexIndexer {
     return null;
   }
 
-  Future<IndexedClass?> _tryLoadWorkspaceClassInfoForRoot(
+  Future<apex_reflection.ClassMirror?> _tryLoadWorkspaceClassInfoForRoot(
     Uri workspaceRoot,
     String className,
   ) async {
@@ -207,58 +207,22 @@ final class ApexIndexer {
     try {
       final content = await file.readAsString();
       final decoded = jsonDecode(content);
-      return _parseWorkspaceClassInfo(decoded);
+      return _parseIndexedClassInfo(decoded);
     } catch (_) {
       return null;
     }
   }
 
-  IndexedClass? _parseWorkspaceClassInfo(Object? decoded) {
+  apex_reflection.ClassMirror? _parseIndexedClassInfo(Object? decoded) {
     if (decoded is! Map) return null;
-
-    final classNameValue = decoded['className'];
-    final className = classNameValue is String && classNameValue.isNotEmpty
-        ? classNameValue
-        : null;
-
-    final reflection = decoded['reflection'];
-    if (reflection is! Map) return null;
-
-    final typeMirror = reflection['typeMirror'];
+    final typeMirror = decoded['typeMirror'];
     if (typeMirror is! Map) return null;
 
-    final mirrorName = typeMirror['name'];
-    final resolvedName =
-        className ?? (mirrorName is String ? mirrorName : null);
-    if (resolvedName == null || resolvedName.isEmpty) return null;
+    final classMirror = apex_reflection.ClassMirror.fromJson(
+      typeMirror as Map<String, dynamic>,
+    );
 
-    final builder = IndexedClassBuilder(resolvedName);
-
-    final superclass = typeMirror['extended_class'];
-    if (superclass is String && superclass.isNotEmpty) {
-      builder.superclass = superclass;
-    }
-
-    _collectWorkspaceMemberNames(typeMirror['fields'], builder.addField);
-    _collectWorkspaceMemberNames(typeMirror['properties'], builder.addProperty);
-    _collectWorkspaceMemberNames(typeMirror['methods'], builder.addMethod);
-
-    return builder.build();
-  }
-
-  void _collectWorkspaceMemberNames(
-    Object? rawMembers,
-    void Function(String name) addMember,
-  ) {
-    if (rawMembers is! List) return;
-
-    for (final entry in rawMembers) {
-      if (entry is! Map) continue;
-      final name = entry['name'];
-      if (name is String && name.isNotEmpty) {
-        addMember(name);
-      }
-    }
+    return classMirror;
   }
 
   /// Builds the index for a single workspace.
@@ -406,7 +370,7 @@ final class ApexIndexer {
           'uri': Uri.file(apexFile.path).toString(),
           'relativePath': relativePath,
         },
-        'reflection': reflectionResponse.toJson(),
+        'typeMirror': reflectionResponse.typeMirror!.toJson(),
       };
 
       await outFile.writeAsString(

@@ -119,7 +119,10 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
   Iterable<String> get classNames => _indexer.indexedClassNames;
 
   @override
-  Future<IndexedClass?> classByNameAsync(String name) {
-    return _indexer.loadWorkspaceClassInfo(name);
+  Future<IndexedClass?> classByNameAsync(String name) async {
+    final classMirror = await _indexer.loadWorkspaceClassInfo(name);
+    return classMirror != null
+        ? ClassMirrorWrapper(classMirror: classMirror)
+        : null;
   }
 }
