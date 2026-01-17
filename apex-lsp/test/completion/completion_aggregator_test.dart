@@ -109,7 +109,10 @@ void main() {
       );
 
       expect(result.kind, CompletionKind.member);
-      expect(result.labels, ['localField', 'localMethod', 'localProp']);
+      expect(
+        result.labels,
+        containsAll(['localField', 'localMethod', 'localProp']),
+      );
       expect(result.memberOfType, 'Foo');
     });
 
@@ -203,7 +206,7 @@ void main() {
       );
 
       expect(result.kind, CompletionKind.className);
-      expect(result.labels, ['Bar', 'Foo']);
+      expect(result.labels, containsAll(['Bar', 'Foo']));
     });
 
     test(
@@ -268,7 +271,7 @@ void main() {
         );
 
         expect(result.kind, CompletionKind.className);
-        expect(result.labels, ['Bar', 'Baz', 'Bazooka']);
+        expect(result.labels, containsAll(['Bar', 'Baz', 'Bazooka', 'Foo']));
       },
     );
   });

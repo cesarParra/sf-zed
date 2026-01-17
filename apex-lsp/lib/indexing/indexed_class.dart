@@ -10,7 +10,6 @@ abstract class IndexedClassProvider {
 abstract class IndexedClass {
   List<String> get memberNames;
   bool hasMemberPrefix(String prefix);
-  List<String> membersMatching(String prefix);
 }
 
 /// Represents an indexed class.
@@ -38,17 +37,5 @@ class ClassMirrorWrapper implements IndexedClass {
     return memberNames.any(
       (current) => current.toLowerCase().startsWith(lower),
     );
-  }
-
-  /// Returns members that match [prefix] (case-insensitive), sorted.
-  @override
-  List<String> membersMatching(String prefix) {
-    if (prefix.isEmpty) return memberNames;
-    final lower = prefix.toLowerCase();
-    final matches = memberNames.where(
-      (current) => current.toLowerCase().startsWith(lower),
-    );
-    final result = matches.toList()..sort();
-    return result;
   }
 }

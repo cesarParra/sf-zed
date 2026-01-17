@@ -39,7 +39,7 @@ public class Bar {}
 
       expect(result.kind, CompletionKind.className);
       expect(result.labels, contains('Foo'));
-      expect(result.labels, isNot(contains('Bar')));
+      expect(result.labels, contains('Bar'));
     });
 
     test('parses member fields for instance', () {
@@ -89,7 +89,7 @@ public class Baz {
 
       expect(result.kind, CompletionKind.member);
       expect(result.memberOfType, 'Foo');
-      expect(result.labels, ['myVar']);
+      expect(result.labels, containsAll(['myVar', 'other']));
     });
   });
 }

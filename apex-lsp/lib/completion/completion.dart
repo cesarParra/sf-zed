@@ -1,7 +1,6 @@
 import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
-import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
 import 'package:apex_lsp/lsp_out.dart';
@@ -59,9 +58,10 @@ Future<CompletionList> onCompletion({
     cursorOffset: cursorOffset,
   );
 
-  final sortedLabels = candidates.kind == CompletionKind.className
-      ? rank(candidates.labels, text.extractIndentifierPrefixAt(cursorOffset))
-      : candidates.labels;
+  final sortedLabels = rank(
+    candidates.labels,
+    text.extractIndentifierPrefixAt(cursorOffset),
+  );
 
   final items = sortedLabels
       .take(maxCompletionItems)

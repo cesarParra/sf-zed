@@ -95,24 +95,15 @@ final class TreeSitterCompletionService {
         );
       }
 
-      final prefix = context.prefix.toLowerCase();
       final memberSet = <String>{
         ...classInfo.fields,
         ...classInfo.properties,
         ...classInfo.methods,
       };
-      final members =
-          memberSet
-              .where(
-                (name) =>
-                    prefix.isEmpty || name.toLowerCase().startsWith(prefix),
-              )
-              .toList()
-            ..sort();
 
       return CompletionCandidates(
         kind: .member,
-        labels: members,
+        labels: memberSet.toList(),
         memberOfType: resolvedType,
         memberTypeResolvedFromDocument: true,
       );
@@ -122,18 +113,12 @@ final class TreeSitterCompletionService {
     // TODO: The way we are treating local variable declarations is pretty naive, since we don't
     // care in which scope they were found. Variable declarations should only show up if the user
     // is typing within the scope where it was declared (and before the currrent index)
-    final prefix = context.prefix.toLowerCase();
     final all = {
-      ...index.variables.map((v) => v.name).toList()..sort(),
-      ...index.classes.map((c) => c.name).toList()..sort(),
+      ...index.variables.map((v) => v.name),
+      ...index.classes.map((c) => c.name),
     };
-    final classNames = all
-        .where(
-          (name) => prefix.isEmpty || name.toLowerCase().startsWith(prefix),
-        )
-        .toList();
 
-    return CompletionCandidates(kind: .className, labels: classNames);
+    return CompletionCandidates(kind: .className, labels: all.toList());
   }
 
   _CompletionContext _detectContext(String text, int cursorOffset) {
@@ -225,17 +210,8 @@ final class TreeSitterCompletionService {
     }
     if (i < 0) return null;
 
-    var end = i + 1;
-    var start = i;
-    while (start >= 0 && text.codeUnitAt(start).isIdentifierChar) {
-      start--;
-    }
-    start++;
-
-    if (start < end) {
-      return text.substring(start, end);
-    }
-    return null;
+    final identifier = text.extractIndentifierPrefixAt(i + 1);
+    return identifier.isNotEmpty ? identifier : null;
   }
 
   bool _isWhitespace(int ch) {

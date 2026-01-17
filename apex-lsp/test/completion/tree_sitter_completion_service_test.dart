@@ -47,7 +47,7 @@ void main() {
       final result = service.suggest(text: text, cursorOffset: text.length);
 
       expect(result.kind, CompletionKind.className);
-      expect(result.labels, ['Foo']);
+      expect(result.labels, containsAll(['Foo', 'Bar']));
     });
 
     test('suggests members after dot', () {
@@ -112,7 +112,7 @@ void main() {
       final result = service.suggest(text: text, cursorOffset: text.length);
 
       expect(result.kind, CompletionKind.member);
-      expect(result.labels, ['myVar']);
+      expect(result.labels, containsAll(['myVar', 'other']));
       expect(result.memberOfType, 'Foo');
     });
 

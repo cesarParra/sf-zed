@@ -54,7 +54,6 @@ final class CompletionAggregator {
     }
 
     final resolvedType = local.memberOfType;
-    final prefix = text.extractIndentifierPrefixAt(cursorOffset);
 
     if (resolvedType != null && resolvedType.isNotEmpty) {
       final workspaceClass = await _indexedClassesRepository.classByNameAsync(
@@ -62,11 +61,9 @@ final class CompletionAggregator {
       );
 
       if (workspaceClass != null) {
-        final members = workspaceClass.membersMatching(prefix);
-
         return CompletionCandidates(
           kind: CompletionKind.member,
-          labels: members,
+          labels: workspaceClass.memberNames,
           memberOfType: resolvedType,
           memberTypeResolvedFromDocument: false,
         );
@@ -93,19 +90,14 @@ final class CompletionAggregator {
     required int cursorOffset,
     required CompletionCandidates local,
   }) {
-    final prefix = text.extractIndentifierPrefixAt(cursorOffset).toLowerCase();
-
     final merged = <String>{};
     merged.addAll(local.labels);
+    merged.addAll(_indexedClassesRepository.classNames);
 
-    for (final name in _indexedClassesRepository.classNames) {
-      if (prefix.isEmpty || name.toLowerCase().startsWith(prefix)) {
-        merged.add(name);
-      }
-    }
-
-    final labels = merged.toList()..sort();
-    return CompletionCandidates(kind: CompletionKind.className, labels: labels);
+    return CompletionCandidates(
+      kind: CompletionKind.className,
+      labels: merged.toList(),
+    );
   }
 }
 
