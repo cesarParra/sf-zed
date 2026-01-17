@@ -1,10 +1,45 @@
 import 'package:apex_lsp/completion/completion_aggregator.dart';
+import 'package:apex_lsp/completion/rank.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
 import 'package:apex_lsp/lsp_out.dart';
 import 'package:apex_lsp/message.dart';
 
+const maxCompletionItems = 25;
+
+/// Handles a Language Server Protocol completion request.
+///
+/// This function processes a completion request by retrieving
+/// the text content of the document at the given URI, extracting its position
+/// and delegates the work to the [aggregator]. It finally ranks the completion
+/// candidates returned by the aggregator.
+///
+/// - [openDocuments]: Collection of currently open documents in the editor.
+/// - [aggregator]: Service that aggregates completion candidates from both the
+///   current document (via Tree-sitter parsing) and the workspace index.
+/// - [id]: Unique identifier for this LSP request (used for logging).
+/// - [params]: LSP completion parameters containing the text document URI and cursor position.
+///
+/// Returns a [CompletionList] with up to 25 completion items. The list is marked
+/// as incomplete (`isIncomplete: true`) when there are more than 25 candidates
+/// available, indicating that the client may need to request more specific completions
+/// as the user continues typing.
+///
+/// Example:
+/// ```dart
+/// final completions = await onCompletion(
+///   openDocuments: openDocuments,
+///   aggregator: completionAggregator,
+///   id: requestId,
+///   params: completionParams,
+/// );
+/// // Send completions back to the LSP client
+/// ```
+///
+/// See also:
+///  * [CompletionAggregator], which provides the completion candidates.
+///  * [rankCandidates], which applies ranking to class name suggestions.
 Future<CompletionList> onCompletion({
   required OpenDocuments openDocuments,
   required CompletionAggregator aggregator,
@@ -23,6 +58,9 @@ Future<CompletionList> onCompletion({
     line: params.position.line,
     character: params.position.character,
   );
+  logger.debug(
+    '[completion] - finding a suggestion for ${_extractPrefixFromText(text, cursorOffset)} - Position - $cursorOffset',
+  );
 
   final candidates = await aggregator.suggest(
     text: text,
@@ -30,23 +68,46 @@ Future<CompletionList> onCompletion({
   );
 
   final sortedLabels = candidates.kind == CompletionKind.className
-      ? _scoreCandidatesByPrefix(
+      ? rankCandidates(
           candidates.labels,
           _extractPrefixFromText(text, cursorOffset),
         )
       : candidates.labels;
 
   final items = sortedLabels
-      .take(25)
+      .take(maxCompletionItems)
       .map((label) => CompletionItem(label: label, insertText: label))
       .toList();
 
   logger.debug(
-    'Returning ${items.length} out pf ${sortedLabels.length} possible',
+    '[completion] Returning ${items.length} out pf ${sortedLabels.length} possible',
   );
   return CompletionList(isIncomplete: sortedLabels.length > 25, items: items);
 }
 
+/// Converts a line and character position to a byte offset within the text.
+///
+/// This utility function calculates the zero-based byte offset corresponding to
+/// a given line and character position in a multiline text string. Lines are
+/// assumed to be separated by `\n` characters.
+///
+/// - [text]: The complete text content to calculate offsets within.
+/// - [line]: Zero-based line number.
+/// - [character]: Zero-based character position within the line.
+///
+/// Returns the byte offset as an integer. If the line number is negative,
+/// returns 0. If the line number exceeds the text length, returns the length
+/// of the text. The character position is clamped to the line's length.
+///
+/// Example:
+/// ```dart
+/// final offset = _offsetAtPosition(
+///   text: 'Hello\nWorld',
+///   line: 1,      // Second line
+///   character: 2, // Third character ('r')
+/// );
+/// print(offset); // 8 (6 for 'Hello\n' + 2 for 'Wo')
+/// ```
 int _offsetAtPosition({
   required String text,
   required int line,
@@ -68,6 +129,31 @@ int _offsetAtPosition({
   return offset + clamped;
 }
 
+/// Extracts the identifier prefix immediately before the cursor offset.
+///
+/// Scans backward from the cursor position to find the start of an identifier,
+/// defined as a sequence of characters matching Apex identifier rules:
+/// - Letters (A-Z, a-z)
+/// - Digits (0-9)
+/// - Underscore (_)
+/// - Dollar sign ($)
+///
+/// This prefix is used to filter completion candidates and compute ranking.
+///
+/// - [text]: The complete text content.
+/// - [cursorOffset]: Zero-based byte offset of the cursor position.
+///
+/// Returns the identifier prefix as a string, which may be empty if the cursor
+/// is not positioned after an identifier character.
+///
+/// Example:
+/// ```dart
+/// final prefix = _extractPrefixFromText(
+///   text: 'System.debug(myVar)',
+///   cursorOffset: 12, // Position after 'myVar'
+/// );
+/// print(prefix); // 'myVar'
+/// ```
 String _extractPrefixFromText(String text, int cursorOffset) {
   var i = cursorOffset;
   if (i > text.length) i = text.length;
@@ -86,73 +172,4 @@ String _extractPrefixFromText(String text, int cursorOffset) {
   }
 
   return text.substring(start, i);
-}
-
-List<String> _scoreCandidatesByPrefix(List<String> labels, String prefix) {
-  if (prefix.isEmpty) return List<String>.from(labels);
-  final lowerPrefix = prefix.toLowerCase();
-
-  final scored =
-      labels
-          .where((name) => name.toLowerCase().startsWith(lowerPrefix))
-          .map(
-            (name) => (
-              name: name,
-              length: name.length,
-              distance: _levenshteinDistance(lowerPrefix, name.toLowerCase()),
-            ),
-          )
-          .toList()
-        ..sort((a, b) {
-          final byDistance = a.distance.compareTo(b.distance);
-          if (byDistance != 0) return byDistance;
-
-          final byLength = a.length.compareTo(b.length);
-          if (byLength != 0) return byLength;
-
-          return a.name.compareTo(b.name);
-        });
-
-  return scored.map((c) => c.name).toList();
-}
-
-int _levenshteinDistance(String a, String b) {
-  if (a == b) return 0;
-  if (a.isEmpty) return b.length;
-  if (b.isEmpty) return a.length;
-
-  // Ensure we use less memory by keeping the shorter string as "b".
-  if (a.length < b.length) {
-    final tmp = a;
-    a = b;
-    b = tmp;
-  }
-
-  final previous = List<int>.generate(b.length + 1, (i) => i);
-  final current = List<int>.filled(b.length + 1, 0);
-
-  for (var i = 1; i <= a.length; i++) {
-    current[0] = i;
-    final aChar = a.codeUnitAt(i - 1);
-
-    for (var j = 1; j <= b.length; j++) {
-      final cost = aChar == b.codeUnitAt(j - 1) ? 0 : 1;
-
-      final deletion = previous[j] + 1;
-      final insertion = current[j - 1] + 1;
-      final substitution = previous[j - 1] + cost;
-
-      var best = deletion;
-      if (insertion < best) best = insertion;
-      if (substitution < best) best = substitution;
-
-      current[j] = best;
-    }
-
-    for (var j = 0; j < current.length; j++) {
-      previous[j] = current[j];
-    }
-  }
-
-  return previous[b.length];
 }
