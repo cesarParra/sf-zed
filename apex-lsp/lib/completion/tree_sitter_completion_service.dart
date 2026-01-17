@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ffi';
 
+import 'package:apex_lsp/completion/helpers.dart';
 import 'package:ffi/ffi.dart';
 
 import 'tree_sitter_bindings.dart';
@@ -126,7 +127,7 @@ final class TreeSitterCompletionService {
       return const _CompletionContext(kind: CompletionKind.none);
     }
 
-    final prefix = _extractIdentifierPrefix(text, cursorOffset);
+    final prefix = text.extractIndentifierPrefixAt(cursorOffset);
 
     // Member access: "foo." or "foo?."
     var dotIndex = _findMemberDotIndex(text, cursorOffset);
@@ -201,17 +202,6 @@ final class TreeSitterCompletionService {
     }
 
     return null;
-  }
-
-  String _extractIdentifierPrefix(String text, int cursorOffset) {
-    var i = cursorOffset;
-    if (i > text.length) i = text.length;
-
-    var start = i;
-    while (start > 0 && _isIdentifierChar(text.codeUnitAt(start - 1))) {
-      start--;
-    }
-    return text.substring(start, i);
   }
 
   String? _extractIdentifierBefore(String text, int index) {

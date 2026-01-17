@@ -53,9 +53,6 @@ Future<CompletionList> onCompletion({
     line: params.position.line,
     character: params.position.character,
   );
-  logger.debug(
-    '[completion] - finding a suggestion for ${_extractPrefixFromText(text, cursorOffset)} - Position - $cursorOffset',
-  );
 
   final candidates = await aggregator.suggest(
     text: text,
@@ -63,7 +60,7 @@ Future<CompletionList> onCompletion({
   );
 
   final sortedLabels = candidates.kind == CompletionKind.className
-      ? rank(candidates.labels, _extractPrefixFromText(text, cursorOffset))
+      ? rank(candidates.labels, text.extractIndentifierPrefixAt(cursorOffset))
       : candidates.labels;
 
   final items = sortedLabels
@@ -119,37 +116,4 @@ int _offsetAtPosition({
   final lineText = lines[line];
   final clamped = character.clamp(0, lineText.length).toInt();
   return offset + clamped;
-}
-
-/// Extracts the identifier prefix immediately before the cursor offset.
-/// Scans backward from the cursor position to find the start of an identifier.
-///
-/// This prefix is used to filter completion candidates and compute ranking.
-///
-/// - [text]: The complete text content.
-/// - [cursorOffset]: Zero-based byte offset of the cursor position.
-///
-/// Returns the identifier prefix as a string, which may be empty if the cursor
-/// is not positioned after an identifier character.
-///
-/// Example:
-/// ```dart
-/// final prefix = _extractPrefixFromText(
-///   text: 'System.debug(myVar)',
-///   cursorOffset: 12, // Position after 'myVar'
-/// );
-/// print(prefix); // 'myVar'
-/// ```
-String _extractPrefixFromText(String text, int cursorOffset) {
-  var i = cursorOffset;
-  if (i > text.length) i = text.length;
-
-  var start = i;
-  while (start > 0) {
-    final ch = text.codeUnitAt(start - 1);
-    if (!ch.isIdentifierChar) break;
-    start--;
-  }
-
-  return text.substring(start, i);
 }
