@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
-import 'package:apex_lsp/indexing/workspace_index.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
 
 void main() {
   group('CompletionAggregator', () {
@@ -37,7 +37,7 @@ void main() {
 
       final workspace = _FakeWorkspaceIndex(
         classesByName: {
-          'Foo': WorkspaceClassInfo(
+          'Foo': IndexedClass(
             name: 'Foo',
             fields: const ['workspaceField'],
             properties: const ['workspaceProp'],
@@ -85,7 +85,7 @@ void main() {
 
         final workspace = _FakeWorkspaceIndex(
           classesByName: {
-            'Foo': WorkspaceClassInfo(
+            'Foo': IndexedClass(
               name: 'Foo',
               fields: const ['memberField'],
               properties: const [],
@@ -124,14 +124,14 @@ void main() {
 
       final workspace = _FakeWorkspaceIndex(
         classesByName: {
-          'Foo': WorkspaceClassInfo(
+          'Foo': IndexedClass(
             name: 'Foo',
             fields: const [],
             properties: const [],
             methods: const [],
             superclass: null,
           ),
-          'Bar': WorkspaceClassInfo(
+          'Bar': IndexedClass(
             name: 'Bar',
             fields: const [],
             properties: const [],
@@ -189,14 +189,14 @@ void main() {
 
         final workspace = _FakeWorkspaceIndex(
           classesByName: {
-            'Bar': WorkspaceClassInfo(
+            'Bar': IndexedClass(
               name: 'Bar',
               fields: const [],
               properties: const [],
               methods: const [],
               superclass: null,
             ),
-            'Bazooka': WorkspaceClassInfo(
+            'Bazooka': IndexedClass(
               name: 'Bazooka',
               fields: const [],
               properties: const [],
@@ -224,17 +224,17 @@ void main() {
   });
 }
 
-final class _FakeWorkspaceIndex implements WorkspaceIndexProvider {
-  _FakeWorkspaceIndex({required Map<String, WorkspaceClassInfo> classesByName})
+final class _FakeWorkspaceIndex implements IndexedClassProvider {
+  _FakeWorkspaceIndex({required Map<String, IndexedClass> classesByName})
     : _classesByName = classesByName;
 
-  final Map<String, WorkspaceClassInfo> _classesByName;
+  final Map<String, IndexedClass> _classesByName;
 
   @override
   Iterable<String> get classNames => _classesByName.keys;
 
   @override
-  Future<WorkspaceClassInfo?> classByNameAsync(String name) async {
+  Future<IndexedClass?> classByNameAsync(String name) async {
     return _classesByName[name];
   }
 }

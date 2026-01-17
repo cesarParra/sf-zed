@@ -3,7 +3,7 @@ import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/indexer.dart';
-import 'package:apex_lsp/indexing/workspace_index.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/lsp_out.dart';
 
 final logger = locator<LspOut>();
@@ -13,12 +13,12 @@ final logger = locator<LspOut>();
 final class CompletionAggregator {
   CompletionAggregator({
     required TreeSitterCompletionService documentService,
-    required WorkspaceIndexProvider workspaceIndex,
+    required IndexedClassProvider workspaceIndex,
   }) : _documentService = documentService,
        _workspaceIndex = workspaceIndex;
 
   final TreeSitterCompletionService _documentService;
-  final WorkspaceIndexProvider _workspaceIndex;
+  final IndexedClassProvider _workspaceIndex;
 
   Future<CompletionCandidates> suggest({
     required String text,
@@ -109,8 +109,8 @@ final class CompletionAggregator {
   }
 }
 
-/// Adapter to expose [ApexIndexer] as a [WorkspaceIndexProvider].
-final class ApexIndexerWorkspaceIndexAdapter implements WorkspaceIndexProvider {
+/// Adapter to expose [ApexIndexer] as a [IndexedClassProvider].
+final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
   ApexIndexerWorkspaceIndexAdapter(this._indexer);
 
   final ApexIndexer _indexer;
@@ -119,7 +119,7 @@ final class ApexIndexerWorkspaceIndexAdapter implements WorkspaceIndexProvider {
   Iterable<String> get classNames => _indexer.indexedClassNames;
 
   @override
-  Future<WorkspaceClassInfo?> classByNameAsync(String name) {
+  Future<IndexedClass?> classByNameAsync(String name) {
     return _indexer.loadWorkspaceClassInfo(name);
   }
 }

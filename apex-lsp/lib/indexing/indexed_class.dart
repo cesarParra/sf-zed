@@ -1,40 +1,13 @@
-library;
-
-/// Contract for workspace completion data.
-abstract class WorkspaceIndexProvider {
+/// Contract for indexed classes completion data.
+abstract class IndexedClassProvider {
   Iterable<String> get classNames;
 
-  Future<WorkspaceClassInfo?> classByNameAsync(String name);
+  Future<IndexedClass?> classByNameAsync(String name);
 }
 
-/// Represents a workspace-wide completion index loaded from `.sf-zed` JSON.
-final class WorkspaceIndex implements WorkspaceIndexProvider {
-  WorkspaceIndex({required Map<String, WorkspaceClassInfo> classesByName})
-    : _classesByName = classesByName;
-
-  final Map<String, WorkspaceClassInfo> _classesByName;
-
-  @override
-  Iterable<String> get classNames => _classesByName.keys;
-
-  WorkspaceClassInfo? classByName(String name) => _classesByName[name];
-
-  @override
-  Future<WorkspaceClassInfo?> classByNameAsync(String name) async {
-    return classByName(name);
-  }
-
-  /// Returns all member names for a class, sorted.
-  List<String> memberNamesFor(String className) {
-    final info = _classesByName[className];
-    if (info == null) return const [];
-    return info.memberNames;
-  }
-}
-
-/// Workspace representation of a class and its members.
-final class WorkspaceClassInfo {
-  WorkspaceClassInfo({
+/// Represents an indexed class.
+final class IndexedClass {
+  IndexedClass({
     required this.name,
     required this.fields,
     required this.properties,
@@ -77,10 +50,8 @@ final class WorkspaceClassInfo {
   }
 }
 
-// TODO: This means we have more than a single source of truth (conflicts with ApexClassInfo). We want to get rid of this
-/// Simple builder for workspace class info.
-final class WorkspaceClassBuilder {
-  WorkspaceClassBuilder(this.name);
+final class IndexedClassBuilder {
+  IndexedClassBuilder(this.name);
 
   final String name;
   final Set<String> _fields = <String>{};
@@ -92,11 +63,11 @@ final class WorkspaceClassBuilder {
   void addProperty(String name) => _properties.add(name);
   void addMethod(String name) => _methods.add(name);
 
-  WorkspaceClassInfo build() {
+  IndexedClass build() {
     final fields = _fields.toList()..sort();
     final properties = _properties.toList()..sort();
     final methods = _methods.toList()..sort();
-    return WorkspaceClassInfo(
+    return IndexedClass(
       name: name,
       fields: fields,
       properties: properties,

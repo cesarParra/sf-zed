@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:apex_lsp/indexing/sfdx_workspace_locator.dart';
-import 'package:apex_lsp/indexing/workspace_index.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
@@ -33,8 +33,8 @@ final class ApexIndexer {
     return _indexedClassNames;
   }
 
-  final Map<String, WorkspaceClassInfo> _workspaceClassByNameCache =
-      <String, WorkspaceClassInfo>{};
+  final Map<String, IndexedClass> _workspaceClassByNameCache =
+      <String, IndexedClass>{};
   final Set<String> _workspaceClassNotFound = <String>{};
 
   Stream<WorkDoneProgressParams> index(InitializedParams params) async* {
@@ -173,7 +173,7 @@ final class ApexIndexer {
     }
   }
 
-  Future<WorkspaceClassInfo?> loadWorkspaceClassInfo(String className) async {
+  Future<IndexedClass?> loadWorkspaceClassInfo(String className) async {
     if (className.isEmpty) return null;
 
     final cached = _workspaceClassByNameCache[className];
@@ -193,7 +193,7 @@ final class ApexIndexer {
     return null;
   }
 
-  Future<WorkspaceClassInfo?> _tryLoadWorkspaceClassInfoForRoot(
+  Future<IndexedClass?> _tryLoadWorkspaceClassInfoForRoot(
     Uri workspaceRoot,
     String className,
   ) async {
@@ -213,7 +213,7 @@ final class ApexIndexer {
     }
   }
 
-  WorkspaceClassInfo? _parseWorkspaceClassInfo(Object? decoded) {
+  IndexedClass? _parseWorkspaceClassInfo(Object? decoded) {
     if (decoded is! Map) return null;
 
     final classNameValue = decoded['className'];
@@ -232,7 +232,7 @@ final class ApexIndexer {
         className ?? (mirrorName is String ? mirrorName : null);
     if (resolvedName == null || resolvedName.isEmpty) return null;
 
-    final builder = WorkspaceClassBuilder(resolvedName);
+    final builder = IndexedClassBuilder(resolvedName);
 
     final superclass = typeMirror['extended_class'];
     if (superclass is String && superclass.isNotEmpty) {
