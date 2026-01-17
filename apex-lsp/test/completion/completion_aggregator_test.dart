@@ -93,7 +93,7 @@ void main() {
 
       final aggregator = CompletionAggregator(
         documentService: service,
-        workspaceIndex: workspace,
+        indexedClassesRepository: workspace,
       );
 
       final text = 'myFooInstance.';
@@ -141,7 +141,7 @@ void main() {
 
         final aggregator = CompletionAggregator(
           documentService: service,
-          workspaceIndex: workspace,
+          indexedClassesRepository: workspace,
         );
 
         final text = 'myFooInstance.m';
@@ -187,7 +187,7 @@ void main() {
 
       final aggregator = CompletionAggregator(
         documentService: service,
-        workspaceIndex: workspace,
+        indexedClassesRepository: workspace,
       );
 
       final text = 'unknown.';
@@ -252,7 +252,7 @@ void main() {
 
         final aggregator = CompletionAggregator(
           documentService: service,
-          workspaceIndex: workspace,
+          indexedClassesRepository: workspace,
         );
 
         final text = 'Ba';

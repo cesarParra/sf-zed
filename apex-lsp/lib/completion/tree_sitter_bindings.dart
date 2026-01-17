@@ -4,7 +4,7 @@
 //
 // IMPORTANT:
 // - This is a low-level binding layer only. No parsing logic is implemented here.
-// - You must ship or build a native library that exports the Tree-sitter C API
+// - A native library that exports the Tree-sitter C API must be shipped,
 //   plus `tree_sitter_apex` from tree-sitter-sfapex.
 //
 // Expected native symbols:

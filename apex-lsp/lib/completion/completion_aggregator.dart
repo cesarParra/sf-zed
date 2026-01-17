@@ -13,12 +13,12 @@ final logger = locator<LspOut>();
 final class CompletionAggregator {
   CompletionAggregator({
     required TreeSitterCompletionService documentService,
-    required IndexedClassProvider workspaceIndex,
+    required IndexedClassProvider indexedClassesRepository,
   }) : _documentService = documentService,
-       _workspaceIndex = workspaceIndex;
+       _indexedClassesRepository = indexedClassesRepository;
 
   final TreeSitterCompletionService _documentService;
-  final IndexedClassProvider _workspaceIndex;
+  final IndexedClassProvider _indexedClassesRepository;
 
   Future<CompletionCandidates> suggest({
     required String text,
@@ -57,7 +57,7 @@ final class CompletionAggregator {
     final prefix = text.extractIndentifierPrefixAt(cursorOffset);
 
     if (resolvedType != null && resolvedType.isNotEmpty) {
-      final workspaceClass = await _workspaceIndex.classByNameAsync(
+      final workspaceClass = await _indexedClassesRepository.classByNameAsync(
         resolvedType,
       );
 
@@ -98,7 +98,7 @@ final class CompletionAggregator {
     final merged = <String>{};
     merged.addAll(local.labels);
 
-    for (final name in _workspaceIndex.classNames) {
+    for (final name in _indexedClassesRepository.classNames) {
       if (prefix.isEmpty || name.toLowerCase().startsWith(prefix)) {
         merged.add(name);
       }

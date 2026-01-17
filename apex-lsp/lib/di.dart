@@ -39,7 +39,7 @@ void initializeDependencies() {
       final treeSitterService = TreeSitterCompletionService(bindings: bindings);
       final completionAggregator = CompletionAggregator(
         documentService: treeSitterService,
-        workspaceIndex: ApexIndexerWorkspaceIndexAdapter(
+        indexedClassesRepository: ApexIndexerWorkspaceIndexAdapter(
           locator<ApexIndexer>(),
         ),
       );
