@@ -213,7 +213,7 @@ final class TreeSitterCompletionService {
 
     var end = i + 1;
     var start = i;
-    while (start >= 0 && _isIdentifierChar(text.codeUnitAt(start))) {
+    while (start >= 0 && text.codeUnitAt(start).isIdentifierChar) {
       start--;
     }
     start++;
@@ -222,14 +222,6 @@ final class TreeSitterCompletionService {
       return text.substring(start, end);
     }
     return null;
-  }
-
-  bool _isIdentifierChar(int ch) {
-    return (ch >= 48 && ch <= 57) || // 0-9
-        (ch >= 65 && ch <= 90) || // A-Z
-        (ch >= 97 && ch <= 122) || // a-z
-        ch == 95 || // _
-        ch == 36; // $
   }
 
   bool _isWhitespace(int ch) {
