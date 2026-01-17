@@ -54,7 +54,7 @@ final class CompletionAggregator {
     }
 
     final resolvedType = local.memberOfType;
-    final prefix = _extractIdentifierPrefix(text, cursorOffset);
+    final prefix = text.extractIndentifierPrefixAt(cursorOffset);
 
     if (resolvedType != null && resolvedType.isNotEmpty) {
       final workspaceClass = await _workspaceIndex.classByNameAsync(
@@ -93,7 +93,7 @@ final class CompletionAggregator {
     required int cursorOffset,
     required CompletionCandidates local,
   }) {
-    final prefix = _extractIdentifierPrefix(text, cursorOffset).toLowerCase();
+    final prefix = text.extractIndentifierPrefixAt(cursorOffset).toLowerCase();
 
     final merged = <String>{};
     merged.addAll(local.labels);
@@ -106,17 +106,6 @@ final class CompletionAggregator {
 
     final labels = merged.toList()..sort();
     return CompletionCandidates(kind: CompletionKind.className, labels: labels);
-  }
-
-  String _extractIdentifierPrefix(String text, int cursorOffset) {
-    var i = cursorOffset;
-    if (i > text.length) i = text.length;
-
-    var start = i;
-    while (start > 0 && text.codeUnitAt(start - 1).isIdentifierChar) {
-      start--;
-    }
-    return text.substring(start, i);
   }
 }
 

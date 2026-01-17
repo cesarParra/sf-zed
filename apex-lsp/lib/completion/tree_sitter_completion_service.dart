@@ -50,13 +50,10 @@ final class TreeSitterCompletionService {
     final cursorByteOffset = _byteOffset(text, cursorOffset);
     final index = _indexBuilder(text);
 
-    if (context.kind == CompletionKind.member) {
+    if (context.kind == .member) {
       final objectName = context.objectName;
       if (objectName == null || objectName.isEmpty) {
-        return CompletionCandidates(
-          kind: CompletionKind.member,
-          labels: const [],
-        );
+        return CompletionCandidates(kind: .member, labels: const []);
       }
 
       final resolvedType = _resolveTypeForObject(
@@ -75,7 +72,7 @@ final class TreeSitterCompletionService {
       final classInfo = index.classByName(resolvedType);
       if (classInfo == null) {
         return CompletionCandidates(
-          kind: CompletionKind.member,
+          kind: .member,
           labels: const [],
           memberOfType: resolvedType,
           memberTypeResolvedFromDocument: false,
@@ -98,7 +95,7 @@ final class TreeSitterCompletionService {
             ..sort();
 
       return CompletionCandidates(
-        kind: CompletionKind.member,
+        kind: .member,
         labels: members,
         memberOfType: resolvedType,
         memberTypeResolvedFromDocument: true,
@@ -116,15 +113,12 @@ final class TreeSitterCompletionService {
             .toList()
           ..sort();
 
-    return CompletionCandidates(
-      kind: CompletionKind.className,
-      labels: classNames,
-    );
+    return CompletionCandidates(kind: .className, labels: classNames);
   }
 
   _CompletionContext _detectContext(String text, int cursorOffset) {
     if (text.isEmpty || cursorOffset <= 0) {
-      return const _CompletionContext(kind: CompletionKind.none);
+      return const _CompletionContext(kind: .none);
     }
 
     final prefix = text.extractIndentifierPrefixAt(cursorOffset);
