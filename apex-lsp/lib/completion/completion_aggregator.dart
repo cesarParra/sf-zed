@@ -1,3 +1,4 @@
+import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/di.dart';
@@ -112,18 +113,10 @@ final class CompletionAggregator {
     if (i > text.length) i = text.length;
 
     var start = i;
-    while (start > 0 && _isIdentifierChar(text.codeUnitAt(start - 1))) {
+    while (start > 0 && text.codeUnitAt(start - 1).isIdentifierChar) {
       start--;
     }
     return text.substring(start, i);
-  }
-
-  bool _isIdentifierChar(int ch) {
-    return (ch >= 48 && ch <= 57) || // 0-9
-        (ch >= 65 && ch <= 90) || // A-Z
-        (ch >= 97 && ch <= 122) || // a-z
-        ch == 95 || // _
-        ch == 36; // $
   }
 }
 

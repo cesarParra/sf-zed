@@ -149,7 +149,6 @@ final class Server {
     final completionList = await onCompletion(
       openDocuments: _openDocuments,
       aggregator: _aggregator,
-      id: id,
       params: params,
     );
     await _output.sendResponse(id: id, result: completionList.toJson());

@@ -1,4 +1,5 @@
 import 'package:apex_lsp/completion/completion_aggregator.dart';
+import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/di.dart';
@@ -43,7 +44,6 @@ const maxCompletionItems = 25;
 Future<CompletionList> onCompletion({
   required OpenDocuments openDocuments,
   required CompletionAggregator aggregator,
-  required Object id,
   required CompletionParams params,
 }) async {
   final logger = locator<LspOut>();
@@ -130,13 +130,7 @@ int _offsetAtPosition({
 }
 
 /// Extracts the identifier prefix immediately before the cursor offset.
-///
-/// Scans backward from the cursor position to find the start of an identifier,
-/// defined as a sequence of characters matching Apex identifier rules:
-/// - Letters (A-Z, a-z)
-/// - Digits (0-9)
-/// - Underscore (_)
-/// - Dollar sign ($)
+/// Scans backward from the cursor position to find the start of an identifier.
 ///
 /// This prefix is used to filter completion candidates and compute ranking.
 ///
@@ -161,13 +155,7 @@ String _extractPrefixFromText(String text, int cursorOffset) {
   var start = i;
   while (start > 0) {
     final ch = text.codeUnitAt(start - 1);
-    final isIdent =
-        (ch >= 48 && ch <= 57) || // 0-9
-        (ch >= 65 && ch <= 90) || // A-Z
-        (ch >= 97 && ch <= 122) || // a-z
-        ch == 95 || // _
-        ch == 36; // $
-    if (!isIdent) break;
+    if (!ch.isIdentifierChar) break;
     start--;
   }
 
