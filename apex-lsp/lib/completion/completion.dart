@@ -1,6 +1,8 @@
 import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
+import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
+import 'package:apex_lsp/lsp_out.dart';
 import 'package:apex_lsp/message.dart';
 
 Future<CompletionList> onCompletion({
@@ -9,8 +11,10 @@ Future<CompletionList> onCompletion({
   required Object id,
   required CompletionParams params,
 }) async {
+  final logger = locator<LspOut>();
   final text = openDocuments.get(params.textDocument.uri);
   if (text == null) {
+    logger.debug('[completion] no text');
     return CompletionList(isIncomplete: false, items: <CompletionItem>[]);
   }
 
@@ -37,6 +41,9 @@ Future<CompletionList> onCompletion({
       .map((label) => CompletionItem(label: label, insertText: label))
       .toList();
 
+  logger.debug(
+    'Returning ${items.length} out pf ${sortedLabels.length} possible',
+  );
   return CompletionList(isIncomplete: sortedLabels.length > 25, items: items);
 }
 

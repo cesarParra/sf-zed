@@ -1,7 +1,11 @@
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
+import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/indexer.dart';
 import 'package:apex_lsp/indexing/workspace_index.dart';
+import 'package:apex_lsp/lsp_out.dart';
+
+final logger = locator<LspOut>();
 
 /// Aggregates completion candidates from the open document (Tree-sitter)
 /// and workspace index (.sf-zed JSON).
@@ -19,28 +23,24 @@ final class CompletionAggregator {
     required String text,
     required int cursorOffset,
   }) async {
-    final local = _documentService.suggest(
+    final candidates = _documentService.suggest(
       text: text,
       cursorOffset: cursorOffset,
     );
 
-    // TODO: There is a simpler return switch syntax for this
-    switch (local.kind) {
-      case CompletionKind.none:
-        return local;
-      case CompletionKind.member:
-        return _mergeMemberCandidates(
-          text: text,
-          cursorOffset: cursorOffset,
-          local: local,
-        );
-      case CompletionKind.className:
-        return _mergeClassNameCandidates(
-          text: text,
-          cursorOffset: cursorOffset,
-          local: local,
-        );
-    }
+    return switch (candidates.kind) {
+      .none => candidates,
+      .member => _mergeMemberCandidates(
+        text: text,
+        cursorOffset: cursorOffset,
+        local: candidates,
+      ),
+      .className => _mergeClassNameCandidates(
+        text: text,
+        cursorOffset: cursorOffset,
+        local: candidates,
+      ),
+    };
   }
 
   Future<CompletionCandidates> _mergeMemberCandidates({

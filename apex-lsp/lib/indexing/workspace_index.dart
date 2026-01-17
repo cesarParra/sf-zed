@@ -30,16 +30,6 @@ final class WorkspaceIndex implements WorkspaceIndexProvider {
     if (info == null) return const [];
     return info.memberNames;
   }
-
-  // TODO: Where is this used?
-  /// Merge another index into this one, preferring existing entries.
-  WorkspaceIndex mergedWith(WorkspaceIndex other) {
-    final merged = Map<String, WorkspaceClassInfo>.from(_classesByName);
-    other._classesByName.forEach((name, info) {
-      merged.putIfAbsent(name, () => info);
-    });
-    return WorkspaceIndex(classesByName: merged);
-  }
 }
 
 /// Workspace representation of a class and its members.

@@ -131,7 +131,9 @@ final class Server {
         'textDocumentSync': 1, // TextDocumentSyncKind.Full
         // Very basic completions using the prebuilt index.
         // We keep it minimal: advertise that we support completion requests.
-        'completionProvider': <String, Object?>{},
+        'completionProvider': <String, Object?>{
+          'triggerCharacters': ['.'],
+        },
       },
       // TODO: Get from dynamic JSON or pubspec or something like that
       'serverInfo': <String, Object?>{'name': 'apex-lsp', 'version': '0.0.1'},

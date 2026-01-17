@@ -31,7 +31,9 @@ void initializeDependencies() {
 
   if (!locator.isRegistered<CompletionAggregator>()) {
     locator.registerLazySingleton<CompletionAggregator>(() {
-      final libPath = Platform.environment['TS_SFAPEX_LIB'];
+      final libPath =
+          Platform.environment['TS_SFAPEX_LIB'] ??
+          '/Users/cesarparra/IdeaProjects/sf-zed/apex-lsp/libtree_sitter_sfapex.dylib';
       final hasOverride = libPath != null && libPath.isNotEmpty;
 
       final bindings = TreeSitterBindings.load(
@@ -39,7 +41,7 @@ void initializeDependencies() {
       );
       final treeSitterService = TreeSitterCompletionService(bindings: bindings);
       final completionAggregator = CompletionAggregator(
-        documentService: treeSitterService!,
+        documentService: treeSitterService,
         workspaceIndex: ApexIndexerWorkspaceIndexAdapter(
           locator<ApexIndexer>(),
         ),
