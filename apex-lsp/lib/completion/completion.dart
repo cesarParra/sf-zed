@@ -12,15 +12,9 @@ const maxCompletionItems = 25;
 /// Handles a Language Server Protocol completion request.
 ///
 /// This function processes a completion request by retrieving
-/// the text content of the document at the given URI, extracting its position
-/// and delegates the work to the [aggregator]. It finally ranks the completion
+/// the text content of the [openDocuments] at the given URI, extracting its position using
+/// the received [params], and delegates the work to the [aggregator]. It finally ranks the completion
 /// candidates returned by the aggregator.
-///
-/// - [openDocuments]: Collection of currently open documents in the editor.
-/// - [aggregator]: Service that aggregates completion candidates from both the
-///   current document (via Tree-sitter parsing) and the workspace index.
-/// - [id]: Unique identifier for this LSP request (used for logging).
-/// - [params]: LSP completion parameters containing the text document URI and cursor position.
 ///
 /// Returns a [CompletionList] with up to 25 completion items. The list is marked
 /// as incomplete (`isIncomplete: true`) when there are more than 25 candidates
@@ -45,6 +39,7 @@ Future<CompletionList> onCompletion({
   required OpenDocuments openDocuments,
   required CompletionAggregator aggregator,
   required CompletionParams params,
+  Rank rank = rankCandidates,
 }) async {
   final logger = locator<LspOut>();
   final text = openDocuments.get(params.textDocument.uri);
@@ -68,10 +63,7 @@ Future<CompletionList> onCompletion({
   );
 
   final sortedLabels = candidates.kind == CompletionKind.className
-      ? rankCandidates(
-          candidates.labels,
-          _extractPrefixFromText(text, cursorOffset),
-        )
+      ? rank(candidates.labels, _extractPrefixFromText(text, cursorOffset))
       : candidates.labels;
 
   final items = sortedLabels

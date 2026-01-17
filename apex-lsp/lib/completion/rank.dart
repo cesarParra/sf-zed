@@ -1,5 +1,7 @@
 import 'package:apex_lsp/completion/levenshtein_distance.dart';
 
+typedef Rank = List<String> Function(List<String> labels, String prefix);
+
 List<String> rankCandidates(List<String> labels, String prefix) {
   if (prefix.isEmpty) return List<String>.from(labels);
   final lowerPrefix = prefix.toLowerCase();

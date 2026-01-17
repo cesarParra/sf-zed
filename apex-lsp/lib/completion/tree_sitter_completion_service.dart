@@ -13,8 +13,8 @@ final class TreeSitterCompletionService {
   }) : _bindings = bindings {
     _indexBuilder = indexBuilder ?? _parseAndIndex;
     _parser = _bindings!.ts_parser_new();
-    final language = _bindings!.tree_sitter_apex();
-    final ok = _bindings!.ts_parser_set_language(_parser!, language);
+    final language = _bindings.tree_sitter_apex();
+    final ok = _bindings.ts_parser_set_language(_parser!, language);
     if (ok == 0) {
       throw StateError('Failed to set Tree-sitter Apex language.');
     }
@@ -323,7 +323,7 @@ final class TreeSitterCompletionService {
 
       final namedCount = _bindings!.ts_node_named_child_count(node);
       for (var i = 0; i < namedCount; i++) {
-        stack.add(_bindings!.ts_node_named_child(node, i));
+        stack.add(_bindings.ts_node_named_child(node, i));
       }
     }
   }
@@ -386,7 +386,7 @@ final class TreeSitterCompletionService {
     return ApexClassInfo(
       name: className,
       startByte: _bindings!.ts_node_start_byte(node),
-      endByte: _bindings!.ts_node_end_byte(node),
+      endByte: _bindings.ts_node_end_byte(node),
       fields: fields.toList()..sort(),
       properties: properties.toList()..sort(),
       methods: methods.toList()..sort(),
@@ -417,7 +417,7 @@ final class TreeSitterCompletionService {
             name: name,
             typeName: typeName,
             startByte: _bindings!.ts_node_start_byte(declarator),
-            endByte: _bindings!.ts_node_end_byte(declarator),
+            endByte: _bindings.ts_node_end_byte(declarator),
             kind: kind,
           ),
         );
@@ -433,7 +433,7 @@ final class TreeSitterCompletionService {
           name: _nodeText(nameNode, index),
           typeName: typeName,
           startByte: _bindings!.ts_node_start_byte(node),
-          endByte: _bindings!.ts_node_end_byte(node),
+          endByte: _bindings.ts_node_end_byte(node),
           kind: kind,
         ),
       );
@@ -509,7 +509,7 @@ final class TreeSitterCompletionService {
     final namedCount = _bindings!.ts_node_named_child_count(classBody);
 
     for (var i = 0; i < namedCount; i++) {
-      final child = _bindings!.ts_node_named_child(classBody, i);
+      final child = _bindings.ts_node_named_child(classBody, i);
       if (_nodeType(child) == 'field_declaration') {
         matches.add(child);
       }
@@ -530,7 +530,7 @@ final class TreeSitterCompletionService {
 
       final namedCount = _bindings!.ts_node_named_child_count(node);
       for (var i = 0; i < namedCount; i++) {
-        stack.add(_bindings!.ts_node_named_child(node, i));
+        stack.add(_bindings.ts_node_named_child(node, i));
       }
     }
 
@@ -561,7 +561,7 @@ final class TreeSitterCompletionService {
 
       final namedCount = _bindings!.ts_node_named_child_count(current);
       for (var i = 0; i < namedCount; i++) {
-        stack.add(_bindings!.ts_node_named_child(current, i));
+        stack.add(_bindings.ts_node_named_child(current, i));
       }
     }
 
@@ -577,7 +577,7 @@ final class TreeSitterCompletionService {
 
   String _nodeText(TSNode node, _MutableApexDocumentIndex index) {
     final start = _bindings!.ts_node_start_byte(node);
-    final end = _bindings!.ts_node_end_byte(node);
+    final end = _bindings.ts_node_end_byte(node);
     if (start < 0 || end > index.bytes.length || start >= end) return '';
     return utf8.decode(index.bytes.sublist(start, end));
   }
