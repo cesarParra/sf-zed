@@ -5,6 +5,8 @@ import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
 
+import '../support/lsp_test_harness.dart';
+
 class LocalIndexedClass implements IndexedClass {
   LocalIndexedClass({
     required this.name,
@@ -50,6 +52,10 @@ class LocalIndexedClass implements IndexedClass {
 }
 
 void main() {
+  setUpAll(() {
+    setupTestLocator();
+  });
+
   group('CompletionAggregator', () {
     test('prefers local member completions when available', () async {
       final documentIndex = ApexDocumentIndex(

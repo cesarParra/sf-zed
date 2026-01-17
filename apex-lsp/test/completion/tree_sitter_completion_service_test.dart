@@ -3,7 +3,13 @@ import 'package:test/test.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 
+import '../support/lsp_test_harness.dart';
+
 void main() {
+  setUpAll(() {
+    setupTestLocator();
+  });
+
   group('TreeSitterCompletionService (testOnly)', () {
     TreeSitterCompletionService buildService({
       required ApexDocumentIndex index,
