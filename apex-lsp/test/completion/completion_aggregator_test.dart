@@ -36,25 +36,10 @@ class LocalIndexedClass implements IndexedClass {
     final result = all.toList()..sort();
     return result;
   }
-
-  @override
-  List<String> membersMatching(String prefix) {
-    if (prefix.isEmpty) return memberNames;
-    final lower = prefix.toLowerCase();
-    final matches = <String>{
-      ...fields.where((m) => m.toLowerCase().startsWith(lower)),
-      ...properties.where((m) => m.toLowerCase().startsWith(lower)),
-      ...methods.where((m) => m.toLowerCase().startsWith(lower)),
-    };
-    final result = matches.toList()..sort();
-    return result;
-  }
 }
 
 void main() {
-  setUpAll(() {
-    setupTestLocator();
-  });
+  setUpAll(setupTestLocator);
 
   group('CompletionAggregator', () {
     test('prefers local member completions when available', () async {

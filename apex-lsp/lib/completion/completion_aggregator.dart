@@ -1,4 +1,3 @@
-import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/di.dart';
