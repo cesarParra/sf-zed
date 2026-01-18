@@ -25,3 +25,7 @@ Use the `zed-extension` directory as the root of the extension.
 ## Features
 
 - Apex code syntax highlighting
+
+## Credits
+
+- Syntax highlighting is based on the [tree-sitter-sfapex](https://github.com/aheber/tree-sitter-sfapex) grammar.
