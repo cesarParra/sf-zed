@@ -1,134 +1,112 @@
+import 'package:apex_lsp/completion/completion_aggregator.dart';
+import 'package:apex_lsp/completion/helpers.dart';
+import 'package:apex_lsp/completion/rank.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
-import 'package:apex_lsp/indexing/indexer.dart';
 import 'package:apex_lsp/message.dart';
 
+const maxCompletionItems = 25;
+
+/// Handles a Language Server Protocol completion request.
+///
+/// This function processes a completion request by retrieving
+/// the text content of the [openDocuments] at the given URI, extracting its position using
+/// the received [params], and delegates the work to the [aggregator]. It finally ranks the completion
+/// candidates returned by the aggregator.
+///
+/// Returns a [CompletionList] with up to 25 completion items. The list is marked
+/// as incomplete (`isIncomplete: true`) when there are more than 25 candidates
+/// available, indicating that the client may need to request more specific completions
+/// as the user continues typing.
+///
+/// Example:
+/// ```dart
+/// final completions = await onCompletion(
+///   openDocuments: openDocuments,
+///   aggregator: completionAggregator,
+///   id: requestId,
+///   params: completionParams,
+/// );
+/// // Send completions back to the LSP client
+/// ```
+///
+/// See also:
+///  * [CompletionAggregator], which provides the completion candidates.
+///  * [rankCandidates], which applies ranking to class name suggestions.
 Future<CompletionList> onCompletion({
   required OpenDocuments openDocuments,
-  required ApexIndexer apexIndexer,
-  required Object id,
+  required CompletionAggregator aggregator,
   required CompletionParams params,
+  Rank rank = rankCandidates,
 }) async {
-  final prefix = _extractPrefixAtPosition(
-    openDocuments: openDocuments,
-    uri: params.textDocument.uri,
+  final text = openDocuments.get(params.textDocument.uri);
+  if (text == null) {
+    return CompletionList(isIncomplete: false, items: <CompletionItem>[]);
+  }
+
+  final cursorOffset = _offsetAtPosition(
+    text: text,
     line: params.position.line,
     character: params.position.character,
   );
 
-  if (prefix.isEmpty) {
-    return CompletionList(isIncomplete: false, items: <CompletionItem>[]);
-  }
+  final candidates = await aggregator.suggest(
+    text: text,
+    cursorOffset: cursorOffset,
+  );
 
-  final lowerPrefix = prefix.toLowerCase();
+  final sortedLabels = rank(
+    candidates.labels,
+    text.extractIndentifierPrefixAt(cursorOffset),
+  );
 
-  // Score candidates so that "better" matches come first:
-  // 1) Prefer closer spelling using a simple edit-distance measure.
-  // 2) Then prefer shorter names (helps short class names surface).
-  // 3) Finally, fall back to alphabetical order.
-  //
-  // TODO: We currently only match startsWith(prefix). We want to eventually
-  // do fuzzy matching
-  final candidates =
-      apexIndexer.indexedClassNames
-          .where((name) => name.toLowerCase().startsWith(lowerPrefix))
-          .map(
-            (name) => (
-              name: name,
-              // Smaller is better.
-              length: name.length,
-              // Smaller is better.
-              distance: _levenshteinDistance(lowerPrefix, name.toLowerCase()),
-            ),
-          )
-          .toList()
-        ..sort((a, b) {
-          final byDistance = a.distance.compareTo(b.distance);
-          if (byDistance != 0) return byDistance;
-
-          final byLength = a.length.compareTo(b.length);
-          if (byLength != 0) return byLength;
-
-          return a.name.compareTo(b.name);
-        });
-
-  final items = candidates
-      .take(25)
-      .map((c) => CompletionItem(label: c.name, insertText: c.name))
+  final items = sortedLabels
+      .take(maxCompletionItems)
+      .map((label) => CompletionItem(label: label, insertText: label))
       .toList();
 
-  return CompletionList(isIncomplete: candidates.length > 25, items: items);
+  return CompletionList(isIncomplete: sortedLabels.length > 25, items: items);
 }
 
-String _extractPrefixAtPosition({
-  required OpenDocuments openDocuments,
-  required String uri,
+/// Converts a line and character position to a byte offset within the text.
+///
+/// This utility function calculates the zero-based byte offset corresponding to
+/// a given line and character position in a multiline text string. Lines are
+/// assumed to be separated by `\n` characters.
+///
+/// - [text]: The complete text content to calculate offsets within.
+/// - [line]: Zero-based line number.
+/// - [character]: Zero-based character position within the line.
+///
+/// Returns the byte offset as an integer. If the line number is negative,
+/// returns 0. If the line number exceeds the text length, returns the length
+/// of the text. The character position is clamped to the line's length.
+///
+/// Example:
+/// ```dart
+/// final offset = _offsetAtPosition(
+///   text: 'Hello\nWorld',
+///   line: 1,      // Second line
+///   character: 2, // Third character ('r')
+/// );
+/// print(offset); // 8 (6 for 'Hello\n' + 2 for 'Wo')
+/// ```
+int _offsetAtPosition({
+  required String text,
   required int line,
   required int character,
 }) {
-  final text = openDocuments.get(uri);
-  if (text == null) return '';
+  if (line < 0) return 0;
 
   final lines = text.split('\n');
-  if (line < 0 || line >= lines.length) return '';
+  if (lines.isEmpty) return 0;
+  if (line >= lines.length) return text.length;
+
+  var offset = 0;
+  for (var i = 0; i < line; i++) {
+    offset += lines[i].length + 1;
+  }
 
   final lineText = lines[line];
-
-  // LSP character is UTF-16 code unit offset; for now we treat it as a string index.
-  final clamped = character.clamp(0, lineText.length);
-
-  // Walk left while we’re in an identifier.
-  var start = clamped;
-  while (start > 0) {
-    final ch = lineText.codeUnitAt(start - 1);
-    final isIdent =
-        (ch >= 48 && ch <= 57) || // 0-9
-        (ch >= 65 && ch <= 90) || // A-Z
-        (ch >= 97 && ch <= 122) || // a-z
-        ch == 95; // _
-    if (!isIdent) break;
-    start--;
-  }
-
-  return lineText.substring(start, clamped);
-}
-
-int _levenshteinDistance(String a, String b) {
-  if (a == b) return 0;
-  if (a.isEmpty) return b.length;
-  if (b.isEmpty) return a.length;
-
-  // Ensure we use less memory by keeping the shorter string as "b".
-  if (a.length < b.length) {
-    final tmp = a;
-    a = b;
-    b = tmp;
-  }
-
-  final previous = List<int>.generate(b.length + 1, (i) => i);
-  final current = List<int>.filled(b.length + 1, 0);
-
-  for (var i = 1; i <= a.length; i++) {
-    current[0] = i;
-    final aChar = a.codeUnitAt(i - 1);
-
-    for (var j = 1; j <= b.length; j++) {
-      final cost = aChar == b.codeUnitAt(j - 1) ? 0 : 1;
-
-      final deletion = previous[j] + 1;
-      final insertion = current[j - 1] + 1;
-      final substitution = previous[j - 1] + cost;
-
-      var best = deletion;
-      if (insertion < best) best = insertion;
-      if (substitution < best) best = substitution;
-
-      current[j] = best;
-    }
-
-    for (var j = 0; j < current.length; j++) {
-      previous[j] = current[j];
-    }
-  }
-
-  return previous[b.length];
+  final clamped = character.clamp(0, lineText.length).toInt();
+  return offset + clamped;
 }

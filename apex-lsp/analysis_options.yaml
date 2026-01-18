@@ -5,6 +5,7 @@ analyzer:
     strict-casts: true
     strict-inference: true
     strict-raw-types: true
+  exclude: [lib/**/tree_sitter_bindings.dart]
 
 linter:
   rules:

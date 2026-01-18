@@ -76,15 +76,20 @@ class LspOut {
   }
 
   /// LSP `$/progress` notification for work-done progress.
-  Future<void> progress({
+  void progress({
     required ProgressToken token,
     required WorkDoneProgressValue value,
-  }) async {
+  }) {
     _writeMessage(
       WorkDoneProgressNotification(
         WorkDoneProgressParams(token: token, value: value),
       ),
     );
+  }
+
+  // TODO: Remove the other one
+  void progress2({required WorkDoneProgressParams params}) {
+    _writeMessage(WorkDoneProgressNotification(params));
   }
 
   void _writeMessage(OutgoingMessage message) {
