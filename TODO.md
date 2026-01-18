@@ -9,11 +9,12 @@
 
 ## LSP
 
-## Initialization
+## Indexing
 - [ ] Index local Apex files
 - [ ] Index local SObject files
 - [ ] Index standard library (e.g. System namespace)
 - [ ] Index metadata in org
+- [ ] Intelligent re-indexing instead of always recreating it
 
 ### Autocomplete
 - [ ] Indexed class names appear
