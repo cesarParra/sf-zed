@@ -9,9 +9,8 @@ import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import '../support/lsp_test_harness.dart';
 
 void main() {
-  setUpAll(() {
-    setupTestLocator();
-  });
+  setUpAll(setupTestLocator);
+
   final libPath = Platform.environment['TS_SFAPEX_LIB'];
 
   group('TreeSitterCompletionService integration', () {

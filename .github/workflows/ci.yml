@@ -24,10 +24,18 @@ jobs:
         working-directory: apex-lsp
         run: dart run build_runner build --delete-conflicting-outputs
 
+      - name: Build Tree-sitter library
+        working-directory: apex-lsp
+        run: |
+          chmod +x tool/build_tree_sitter_lib.sh
+          ./tool/build_tree_sitter_lib.sh
+
       - name: Analyze project source
         working-directory: apex-lsp
         run: dart analyze
 
       - name: Run tests
         working-directory: apex-lsp
+        env:
+          TS_SFAPEX_LIB: ${{ github.workspace }}/apex-lsp/libtree_sitter_sfapex.so
         run: dart test
