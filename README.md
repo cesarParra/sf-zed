@@ -28,4 +28,6 @@ Use the `zed-extension` directory as the root of the extension.
 
 ## Credits
 
-- Syntax highlighting is based on the [tree-sitter-sfapex](https://github.com/aheber/tree-sitter-sfapex) grammar.
+This project makes use of the following open-source components:
+
+- **Syntax Highlighting**: Powered by the [tree-sitter-sfapex](https://github.com/aheber/tree-sitter-sfapex) grammar (MIT License), created by [aheber](https://github.com/aheber).
