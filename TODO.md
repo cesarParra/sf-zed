@@ -1,3 +1,7 @@
+## Misc
+
+- [ ] CI GH Action
+
 ## Zed Extension
 
 - [x] Syntax highlight
@@ -12,7 +16,7 @@
 - [ ] Index metadata in org
 
 ### Autocomplete
-- [ ] Indexed class names
+- [ ] Indexed class names appear
 - [ ] Static members
 - [ ] Instance members
 - [ ] Static members of the opened file
@@ -23,5 +27,10 @@
 - [ ] `this`
 - [ ] `super`
 - [ ] Multiple multi-level instance references (`foo.bar.baz`)
+- [ ] Rank logic
+- [ ] Params and return type information
+- [ ] Apexdocs information
+
+## Go-to Definition
 
 ### Trigger file support

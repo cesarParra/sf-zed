@@ -1,15 +1,33 @@
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
-import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/indexer.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
-import 'package:apex_lsp/lsp_out.dart';
-
-final logger = locator<LspOut>();
 
 /// Aggregates completion candidates from the open document (Tree-sitter)
-/// and workspace index (.sf-zed JSON).
+/// and workspace index (.sf-zed JSON file repository).
+///
+/// This class acts as a coordinator between local document analysis provided
+/// by [TreeSitterCompletionService] and global workspace information provided
+/// by [IndexedClassProvider]. It determines the completion kind and merges
+/// results accordingly.
+///
+/// Example:
+/// ```dart
+/// final aggregator = CompletionAggregator(
+///   documentService: myTreeSitterService,
+///   indexedClassesRepository: myIndexerAdapter,
+/// );
+///
+/// final candidates = await aggregator.suggest(
+///   text: 'Account a; a.',
+///   cursorOffset: 12,
+/// );
+/// ```
 final class CompletionAggregator {
+  /// Creates a [CompletionAggregator] with the required services.
+  ///
+  /// - [documentService]: The service providing Tree-sitter based completions.
+  /// - [indexedClassesRepository]: The repository containing indexed workspace classes.
   CompletionAggregator({
     required TreeSitterCompletionService documentService,
     required IndexedClassProvider indexedClassesRepository,
@@ -19,6 +37,16 @@ final class CompletionAggregator {
   final TreeSitterCompletionService _documentService;
   final IndexedClassProvider _indexedClassesRepository;
 
+  /// Suggests completion candidates at the specified [cursorOffset] in the [text].
+  ///
+  /// It first queries the [documentService] for local candidates. Depending on
+  /// the kind of completion identified, it may merge those results with
+  /// information from the [_indexedClassesRepository].
+  ///
+  /// - [text]: The current content of the file being edited.
+  /// - [cursorOffset]: The 0-based character offset of the cursor.
+  ///
+  /// Returns a [Future] that completes with [CompletionCandidates].
   Future<CompletionCandidates> suggest({
     required String text,
     required int cursorOffset,
@@ -43,6 +71,15 @@ final class CompletionAggregator {
     };
   }
 
+  /// Merges member completion candidates from local and workspace sources.
+  ///
+  /// If [local] already has a resolved member type from the document, it is
+  /// returned as-is. Otherwise, it attempts to resolve the type using the
+  /// workspace index.
+  ///
+  /// - [text]: The current file content.
+  /// - [cursorOffset]: The cursor position.
+  /// - [local]: The candidates found by the document service.
   Future<CompletionCandidates> _mergeMemberCandidates({
     required String text,
     required int cursorOffset,
@@ -84,6 +121,14 @@ final class CompletionAggregator {
     );
   }
 
+  /// Merges class name candidates from local and workspace sources.
+  ///
+  /// Combines labels from [local] with all class names known to the
+  /// [_indexedClassesRepository].
+  ///
+  /// - [text]: The current file content.
+  /// - [cursorOffset]: The cursor position.
+  /// - [local]: The candidates found by the document service.
   CompletionCandidates _mergeClassNameCandidates({
     required String text,
     required int cursorOffset,
