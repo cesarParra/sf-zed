@@ -156,7 +156,7 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
 
   @override
   Future<IndexedClass?> classByNameAsync(String name) async {
-    final classMirror = await _indexer.loadWorkspaceClassInfo(name);
+    final classMirror = await _indexer.getIndexedClassInfo(name);
     return classMirror != null
         ? ClassMirrorWrapper(classMirror: classMirror)
         : null;

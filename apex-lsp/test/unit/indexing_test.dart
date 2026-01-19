@@ -120,7 +120,7 @@ void main() {
             .drain<void>();
 
         // 3. Verify lookup
-        final mirror = await indexer.loadWorkspaceClassInfo('Foo');
+        final mirror = await indexer.getIndexedClassInfo('Foo');
         expect(mirror, isNotNull);
         expect(mirror!.name, equals('Foo'));
 

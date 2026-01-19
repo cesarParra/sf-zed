@@ -17,7 +17,7 @@
 - [ ] Intelligent re-indexing instead of always recreating it
 
 ### Autocomplete
-- [ ] Indexed class names appear
+- [x] Indexed class names appear
 - [ ] Static members
 - [ ] Instance members
 - [ ] Static members of the opened file

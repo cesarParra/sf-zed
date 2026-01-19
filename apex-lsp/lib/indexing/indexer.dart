@@ -180,7 +180,7 @@ final class ApexIndexer {
     }
   }
 
-  Future<apex_reflection.ClassMirror?> loadWorkspaceClassInfo(
+  Future<apex_reflection.ClassMirror?> getIndexedClassInfo(
     String className,
   ) async {
     if (className.isEmpty) return null;

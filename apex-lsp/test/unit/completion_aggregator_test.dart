@@ -7,8 +7,8 @@ import 'package:apex_lsp/indexing/indexed_class.dart';
 
 import '../support/lsp_test_harness.dart';
 
-class LocalIndexedClass implements IndexedClass {
-  LocalIndexedClass({
+class InMemoryIndexedClass implements IndexedClass {
+  InMemoryIndexedClass({
     required this.name,
     required this.fields,
     required this.properties,
@@ -42,7 +42,7 @@ void main() {
   setUpAll(setupTestLocator);
 
   group('CompletionAggregator', () {
-    test('prefers local member completions when available', () async {
+    test('completes local members when available', () async {
       final documentIndex = ApexDocumentIndex(
         classes: [
           ApexClassInfo(
@@ -72,7 +72,7 @@ void main() {
 
       final workspace = _FakeWorkspaceIndex(
         classesByName: {
-          'Foo': LocalIndexedClass(
+          'Foo': InMemoryIndexedClass(
             name: 'Foo',
             fields: const ['workspaceField'],
             properties: const ['workspaceProp'],
@@ -123,7 +123,7 @@ void main() {
 
         final workspace = _FakeWorkspaceIndex(
           classesByName: {
-            'Foo': LocalIndexedClass(
+            'Foo': InMemoryIndexedClass(
               name: 'Foo',
               fields: const ['memberField'],
               properties: const [],
@@ -162,14 +162,14 @@ void main() {
 
       final workspace = _FakeWorkspaceIndex(
         classesByName: {
-          'Foo': LocalIndexedClass(
+          'Foo': InMemoryIndexedClass(
             name: 'Foo',
             fields: const [],
             properties: const [],
             methods: const [],
             superclass: null,
           ),
-          'Bar': LocalIndexedClass(
+          'Bar': InMemoryIndexedClass(
             name: 'Bar',
             fields: const [],
             properties: const [],
@@ -227,14 +227,14 @@ void main() {
 
         final workspace = _FakeWorkspaceIndex(
           classesByName: {
-            'Bar': LocalIndexedClass(
+            'Bar': InMemoryIndexedClass(
               name: 'Bar',
               fields: const [],
               properties: const [],
               methods: const [],
               superclass: null,
             ),
-            'Bazooka': LocalIndexedClass(
+            'Bazooka': InMemoryIndexedClass(
               name: 'Bazooka',
               fields: const [],
               properties: const [],
