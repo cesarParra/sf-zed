@@ -12,7 +12,9 @@ void main() {
     TreeSitterCompletionService buildService({
       required ApexDocumentIndex index,
     }) {
-      return TreeSitterCompletionService.testOnly(indexBuilder: (_) => index);
+      return TreeSitterCompletionService.withIndexBuilder(
+        builder: (_) => index,
+      );
     }
 
     test('suggests class names by prefix', () {

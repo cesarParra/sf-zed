@@ -2,21 +2,16 @@ import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:apex_lsp/completion/helpers.dart';
-import 'package:apex_lsp/di.dart';
-import 'package:apex_lsp/lsp_out.dart';
 import 'package:ffi/ffi.dart';
 
 import 'tree_sitter_bindings.dart';
 import 'tree_sitter_completion_types.dart';
 
-final logger = locator<LspOut>();
-
 final class TreeSitterCompletionService {
-  TreeSitterCompletionService({
+  TreeSitterCompletionService.withBindings({
     required TreeSitterBindings bindings,
-    ApexIndexBuilder? indexBuilder,
   }) : _bindings = bindings {
-    _indexBuilder = indexBuilder ?? _parseAndIndex;
+    _indexBuilder = _parseAndIndex;
     _parser = _bindings!.ts_parser_new();
     final language = _bindings.tree_sitter_apex();
     final ok = _bindings.ts_parser_set_language(_parser!, language);
@@ -25,11 +20,10 @@ final class TreeSitterCompletionService {
     }
   }
 
-  // TODO: Get rid of this testOnly stuff.
-  TreeSitterCompletionService.testOnly({required ApexIndexBuilder indexBuilder})
-    : _bindings = null,
-      _indexBuilder = indexBuilder,
-      _parser = null;
+  TreeSitterCompletionService.withIndexBuilder({
+    required ApexIndexBuilder builder,
+  }) : _bindings = null,
+       _indexBuilder = builder;
 
   final TreeSitterBindings? _bindings;
   late final ApexIndexBuilder _indexBuilder;
@@ -53,18 +47,6 @@ final class TreeSitterCompletionService {
 
     final cursorByteOffset = _byteOffset(text, cursorOffset);
     final index = _indexBuilder(text);
-    for (final currentClass in index.classes) {
-      logger.debug('Indexed open file: ${currentClass.name}');
-      logger.debug('Indexed open file - fields: ${currentClass.fields}');
-      logger.debug(
-        'Indexed open file - properties: ${currentClass.properties}',
-      );
-      logger.debug('Indexed open methods: ${currentClass.methods}');
-    }
-
-    for (final variable in index.variables) {
-      logger.debug('Indexeed variable: ${variable.name}');
-    }
 
     if (context.kind == .member) {
       final objectName = context.objectName;

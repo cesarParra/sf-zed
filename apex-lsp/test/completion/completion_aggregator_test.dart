@@ -66,8 +66,8 @@ void main() {
         ],
       );
 
-      final service = TreeSitterCompletionService.testOnly(
-        indexBuilder: (_) => documentIndex,
+      final service = TreeSitterCompletionService.withIndexBuilder(
+        builder: (_) => documentIndex,
       );
 
       final workspace = _FakeWorkspaceIndex(
@@ -117,8 +117,8 @@ void main() {
           ],
         );
 
-        final service = TreeSitterCompletionService.testOnly(
-          indexBuilder: (_) => documentIndex,
+        final service = TreeSitterCompletionService.withIndexBuilder(
+          builder: (_) => documentIndex,
         );
 
         final workspace = _FakeWorkspaceIndex(
@@ -156,8 +156,8 @@ void main() {
         variables: const [],
       );
 
-      final service = TreeSitterCompletionService.testOnly(
-        indexBuilder: (_) => documentIndex,
+      final service = TreeSitterCompletionService.withIndexBuilder(
+        builder: (_) => documentIndex,
       );
 
       final workspace = _FakeWorkspaceIndex(
@@ -221,8 +221,8 @@ void main() {
           variables: const [],
         );
 
-        final service = TreeSitterCompletionService.testOnly(
-          indexBuilder: (_) => documentIndex,
+        final service = TreeSitterCompletionService.withIndexBuilder(
+          builder: (_) => documentIndex,
         );
 
         final workspace = _FakeWorkspaceIndex(

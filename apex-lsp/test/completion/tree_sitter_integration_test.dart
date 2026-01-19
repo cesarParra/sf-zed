@@ -18,7 +18,7 @@ void main() {
 
     setUp(() {
       final bindings = TreeSitterBindings.load(path: libPath);
-      service = TreeSitterCompletionService(bindings: bindings);
+      service = TreeSitterCompletionService.withBindings(bindings: bindings);
     });
 
     tearDown(() {

@@ -54,7 +54,9 @@ void initializeDependencies() {
           '/Users/cesarparra/IdeaProjects/sf-zed/apex-lsp/libtree_sitter_sfapex.dylib';
 
       final bindings = TreeSitterBindings.load(path: libPath);
-      final treeSitterService = TreeSitterCompletionService(bindings: bindings);
+      final treeSitterService = TreeSitterCompletionService.withBindings(
+        bindings: bindings,
+      );
       final completionAggregator = CompletionAggregator(
         documentService: treeSitterService,
         indexedClassesRepository: ApexIndexerWorkspaceIndexAdapter(

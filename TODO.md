@@ -10,7 +10,7 @@
 ## LSP
 
 ## Indexing
-- [ ] Index local Apex files
+- [x] Index local Apex files
 - [ ] Index local SObject files
 - [ ] Index standard library (e.g. System namespace)
 - [ ] Index metadata in org
