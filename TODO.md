@@ -1,6 +1,6 @@
 ## Misc
 
-- [ ] CI GH Action
+- [x] CI GH Action
 
 ## Zed Extension
 
