@@ -1,23 +1,30 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:apex_lsp/indexing/sfdx_workspace_locator.dart';
+import 'package:apex_lsp/utils/platform.dart';
 import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
+import 'package:file/file.dart';
 
 import '../message.dart';
-import '../utils/path_utils.dart';
 
 /// Indexes Apex `.cls` files under a set of package directories and writes JSON
 /// metadata files into a hidden `.sf-zed` folder at each workspace root.
 final class ApexIndexer {
-  ApexIndexer({required SfdxWorkspaceLocator sfdxWorkspaceLocator})
-    : _sfdxWorkspaceLocator = sfdxWorkspaceLocator;
+  ApexIndexer({
+    required SfdxWorkspaceLocator sfdxWorkspaceLocator,
+    required FileSystem fileSystem,
+    required LspPlatform platform,
+  }) : _sfdxWorkspaceLocator = sfdxWorkspaceLocator,
+       _fileSystem = fileSystem,
+       _platform = platform;
 
   static const String indexFolderName = '.sf-zed';
 
   final SfdxWorkspaceLocator _sfdxWorkspaceLocator;
+  final FileSystem _fileSystem;
+  final LspPlatform _platform;
 
   // Workspace roots discovered during initialize.
   List<Uri> _workspaceRootUris = <Uri>[];
@@ -95,10 +102,10 @@ final class ApexIndexer {
       // all workspace roots. For indexing, we do a best-effort association:
       // index each workspace using the package directories that are under it.
       for (final root in _workspaceRootUris) {
-        final rootPath = root.toFilePath(windows: Platform.isWindows);
+        final rootPath = root.toFilePath(windows: _platform.isWindows);
 
         final packageDirsForRoot = packageDirectoryUris.where((pkgUri) {
-          final pkgPath = pkgUri.toFilePath(windows: Platform.isWindows);
+          final pkgPath = pkgUri.toFilePath(windows: _platform.isWindows);
           return pkgPath.startsWith(rootPath);
         }).toList();
 
@@ -146,8 +153,10 @@ final class ApexIndexer {
   }
 
   void _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) {
-    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
-    final indexDir = Directory('$rootPath/.sf-zed');
+    final rootPath = workspaceRoot.toFilePath(windows: _platform.isWindows);
+    final indexDir = _fileSystem.directory(
+      _fileSystem.path.join(rootPath, indexFolderName),
+    );
     if (!indexDir.existsSync()) return;
 
     for (final entity in indexDir.listSync(
@@ -158,7 +167,7 @@ final class ApexIndexer {
       if (!entity.path.toLowerCase().endsWith('.json')) continue;
 
       try {
-        final fileName = entity.path.split(Platform.pathSeparator).last;
+        final fileName = _fileSystem.path.basename(entity.path);
         if (!fileName.toLowerCase().endsWith('.json')) continue;
 
         final className = fileName.substring(0, fileName.length - 5);
@@ -197,10 +206,10 @@ final class ApexIndexer {
     Uri workspaceRoot,
     String className,
   ) async {
-    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
-    final indexDirPath = PathUtils.join(rootPath, indexFolderName);
-    final filePath = PathUtils.join(indexDirPath, '$className.json');
-    final file = File(filePath);
+    final rootPath = workspaceRoot.toFilePath(windows: _platform.isWindows);
+    final indexDirPath = _fileSystem.path.join(rootPath, indexFolderName);
+    final filePath = _fileSystem.path.join(indexDirPath, '$className.json');
+    final file = _fileSystem.file(filePath);
 
     if (!await file.exists()) return null;
 
@@ -234,12 +243,17 @@ final class ApexIndexer {
     required List<Uri> packageDirectoryUris,
     required ProgressToken token,
   }) async* {
-    final workspaceRootPath = _toFilePath(workspaceRoot);
-    final workspaceRootDir = Directory(workspaceRootPath);
+    final workspaceRootPath = workspaceRoot.toFilePath(
+      windows: _platform.isWindows,
+    );
+    final workspaceRootDir = _fileSystem.directory(workspaceRootPath);
 
     // Ensure `.sf-zed` is created under the actual on-disk workspace directory.
-    final indexDirPath = PathUtils.join(workspaceRootDir.path, indexFolderName);
-    final indexDir = Directory(indexDirPath);
+    final indexDirPath = _fileSystem.path.join(
+      workspaceRootDir.path,
+      indexFolderName,
+    );
+    final indexDir = _fileSystem.directory(indexDirPath);
 
     // At the moment, we always recreate the index from scratch.
     if (await indexDir.exists()) {
@@ -284,8 +298,8 @@ final class ApexIndexer {
     required int lastReportedPercent,
     required ProgressToken token,
   }) async* {
-    final pkgDirPath = _toFilePath(pkgDirUri);
-    final pkgDir = Directory(pkgDirPath);
+    final pkgDirPath = pkgDirUri.toFilePath(windows: _platform.isWindows);
+    final pkgDir = _fileSystem.directory(pkgDirPath);
 
     final exists = await pkgDir.exists();
 
@@ -354,8 +368,8 @@ final class ApexIndexer {
 
       final className = reflectionResponse.typeMirror!.name;
 
-      final outPath = PathUtils.join(indexDir.path, '$className.json');
-      final outFile = File(outPath);
+      final outPath = _fileSystem.path.join(indexDir.path, '$className.json');
+      final outFile = _fileSystem.file(outPath);
 
       final relativePath = _safeRelativePath(
         fromRoot: workspaceRoot,
@@ -383,20 +397,16 @@ final class ApexIndexer {
     }
   }
 
-  static String _toFilePath(Uri uri) {
-    return uri.toFilePath(windows: Platform.isWindows);
-  }
-
   /// Returns a best-effort relative path from [fromRoot] to [absolutePath].
   /// If the paths can’t be made relative (different roots), returns [absolutePath].
-  static String _safeRelativePath({
+  String _safeRelativePath({
     required Uri fromRoot,
     required String absolutePath,
   }) {
-    final rootPath = _toFilePath(fromRoot);
+    final rootPath = fromRoot.toFilePath(windows: _platform.isWindows);
     if (absolutePath.startsWith(rootPath)) {
       var rel = absolutePath.substring(rootPath.length);
-      if (rel.startsWith(Platform.pathSeparator)) {
+      if (rel.startsWith(_platform.pathSeparator)) {
         rel = rel.substring(1);
       }
       return rel;
@@ -408,8 +418,8 @@ final class ApexIndexer {
     var total = 0;
 
     for (final pkgDirUri in packageDirectoryUris) {
-      final pkgDirPath = _toFilePath(pkgDirUri);
-      final pkgDir = Directory(pkgDirPath);
+      final pkgDirPath = pkgDirUri.toFilePath(windows: _platform.isWindows);
+      final pkgDir = _fileSystem.directory(pkgDirPath);
 
       if (!await pkgDir.exists()) {
         continue;

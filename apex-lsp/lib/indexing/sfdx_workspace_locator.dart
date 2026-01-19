@@ -1,19 +1,28 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:file/file.dart';
+import 'package:apex_lsp/utils/platform.dart';
 
 import '../sfdx_project.dart';
-import '../utils/path_utils.dart';
 
 /// Discovers Salesforce DX workspace metadata from a workspace root.
 final class SfdxWorkspaceLocator {
-  const SfdxWorkspaceLocator();
+  const SfdxWorkspaceLocator({
+    required FileSystem fileSystem,
+    required LspPlatform platform,
+  }) : _fileSystem = fileSystem,
+       _platform = platform;
+
+  final FileSystem _fileSystem;
+  final LspPlatform _platform;
 
   static const String sfdxProjectFileName = 'sfdx-project.json';
 
   /// Returns the absolute URI to `sfdx-project.json` for [workspaceRoot], if it exists.
   Future<Uri?> findSfdxProjectFile(Uri workspaceRoot) async {
-    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
-    final file = File('$rootPath/$sfdxProjectFileName');
+    final rootPath = workspaceRoot.toFilePath(windows: _platform.isWindows);
+    final file = _fileSystem.file(
+      _fileSystem.path.join(rootPath, sfdxProjectFileName),
+    );
     if (!await file.exists()) return null;
     return workspaceRoot.resolve(sfdxProjectFileName);
   }
@@ -22,8 +31,10 @@ final class SfdxWorkspaceLocator {
   ///
   /// Returns `null` if the file is missing or cannot be parsed.
   Future<SfdxProject?> loadProject(Uri workspaceRoot) async {
-    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
-    final file = File('$rootPath/$sfdxProjectFileName');
+    final rootPath = workspaceRoot.toFilePath(windows: _platform.isWindows);
+    final file = _fileSystem.file(
+      _fileSystem.path.join(rootPath, sfdxProjectFileName),
+    );
     if (!await file.exists()) return null;
 
     try {
@@ -46,7 +57,7 @@ final class SfdxWorkspaceLocator {
       return const <Uri>[];
     }
 
-    final rootPath = workspaceRoot.toFilePath(windows: Platform.isWindows);
+    final rootPath = workspaceRoot.toFilePath(windows: _platform.isWindows);
 
     final scope = <Uri>[];
     for (final dir in dirs) {
@@ -55,8 +66,8 @@ final class SfdxWorkspaceLocator {
         continue;
       }
 
-      final resolvedPath = PathUtils.join(rootPath, relative);
-      final resolvedDir = Directory(resolvedPath);
+      final resolvedPath = _fileSystem.path.join(rootPath, relative);
+      final resolvedDir = _fileSystem.directory(resolvedPath);
 
       // Ensure the URI represents a directory.
       scope.add(Uri.directory(resolvedDir.path));
