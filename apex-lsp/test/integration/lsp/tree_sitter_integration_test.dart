@@ -1,11 +1,10 @@
 import 'dart:io';
 
-import 'package:apex_lsp/completion/completion_context.dart';
+import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:test/test.dart';
 
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
-import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 
 import '../../support/lsp_test_harness.dart';
 
@@ -37,7 +36,7 @@ public class Bar {}
         cursorOffset: text.indexOf('Fo') + 2,
       );
 
-      expect(result.kind, CompletionKind.className);
+      expect(result, isA<ClassNameCandidates>());
       expect(result.labels, contains('Foo'));
       expect(result.labels, contains('Bar'));
     });
@@ -62,9 +61,14 @@ public class Baz {
 
       final result = service.suggest(text: text, cursorOffset: cursorOffset);
 
-      expect(result.kind, CompletionKind.member);
-      expect(result.memberOfType, 'Foo');
+      expect(result, isA<MemberCandidates>());
       expect(result.labels, containsAll(['myVar', 'other']));
+      expect(
+        result,
+        predicate<MemberCandidates>((result) {
+          return result.memberOfType == 'Foo';
+        }),
+      );
     });
 
     test('filters members by prefix', () {
@@ -87,9 +91,14 @@ public class Baz {
 
       final result = service.suggest(text: text, cursorOffset: cursorOffset);
 
-      expect(result.kind, CompletionKind.member);
-      expect(result.memberOfType, 'Foo');
+      expect(result, isA<MemberCandidates>());
       expect(result.labels, containsAll(['myVar', 'other']));
+      expect(
+        result,
+        predicate<MemberCandidates>((result) {
+          return result.memberOfType == 'Foo';
+        }),
+      );
     });
   });
 }

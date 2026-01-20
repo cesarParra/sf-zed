@@ -42,8 +42,8 @@ final class TreeSitterCompletionService {
     required int cursorOffset,
   }) {
     final context = text.detectContext(cursorOffset);
-    if (context.kind == CompletionKind.none) {
-      return CompletionCandidates(kind: CompletionKind.none, labels: const []);
+    if (context case CompletionContextNone()) {
+      return NoCandidates();
     }
 
     final cursorByteOffset = _byteOffset(text, cursorOffset);
@@ -51,7 +51,7 @@ final class TreeSitterCompletionService {
 
     if (context case CompletionContextMember(objectName: final objectName)) {
       if (objectName == null || objectName.isEmpty) {
-        return CompletionCandidates(kind: .member, labels: const []);
+        return NoCandidates();
       }
 
       final resolvedType = _resolveTypeForObject(
@@ -61,21 +61,20 @@ final class TreeSitterCompletionService {
       );
 
       if (resolvedType == null) {
-        return CompletionCandidates(
-          kind: CompletionKind.member,
+        return MemberCandidates(
           labels: const [],
           // We are either dealing with a static call, or something unknown.
           // Regardless, we return the objectName so that the aggregator tries to
           // find it in the index.
           memberOfType: objectName,
           objectName: objectName,
+          memberTypeResolvedFromDocument: false,
         );
       }
 
       final classInfo = index.classByName(resolvedType);
       if (classInfo == null) {
-        return CompletionCandidates(
-          kind: .member,
+        return MemberCandidates(
           labels: const [],
           memberOfType: resolvedType,
           objectName: objectName,
@@ -89,8 +88,7 @@ final class TreeSitterCompletionService {
         ...classInfo.methods,
       };
 
-      return CompletionCandidates(
-        kind: .member,
+      return MemberCandidates(
         labels: memberSet.toList(),
         memberOfType: resolvedType,
         memberTypeResolvedFromDocument: true,
@@ -107,7 +105,7 @@ final class TreeSitterCompletionService {
       ...index.classes.map((c) => c.name),
     };
 
-    return CompletionCandidates(kind: .className, labels: all.toList());
+    return ClassNameCandidates(labels: all.toList());
   }
 
   int _byteOffset(String text, int codeUnitOffset) {

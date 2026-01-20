@@ -1,4 +1,3 @@
-import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:test/test.dart';
 
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
@@ -47,7 +46,7 @@ void main() {
       final text = 'Fo';
       final result = service.suggest(text: text, cursorOffset: text.length);
 
-      expect(result.kind, CompletionKind.className);
+      expect(result, isA<ClassNameCandidates>());
       expect(result.labels, containsAll(['Foo', 'Bar']));
     });
 
@@ -79,9 +78,14 @@ void main() {
       final text = 'myFooInstance.';
       final result = service.suggest(text: text, cursorOffset: text.length);
 
-      expect(result.kind, CompletionKind.member);
+      expect(result, isA<MemberCandidates>());
       expect(result.labels, ['myVar', 'other']);
-      expect(result.memberOfType, 'Foo');
+      expect(
+        result,
+        predicate<MemberCandidates>((result) {
+          return result.memberOfType == 'Foo';
+        }),
+      );
     });
 
     test('filters members by prefix', () {
@@ -112,9 +116,14 @@ void main() {
       final text = 'myFooInstance.my';
       final result = service.suggest(text: text, cursorOffset: text.length);
 
-      expect(result.kind, CompletionKind.member);
+      expect(result, isA<MemberCandidates>());
       expect(result.labels, containsAll(['myVar', 'other']));
-      expect(result.memberOfType, 'Foo');
+      expect(
+        result,
+        predicate<MemberCandidates>((result) {
+          return result.memberOfType == 'Foo';
+        }),
+      );
     });
 
     test('supports safe-navigation operator', () {
@@ -145,9 +154,14 @@ void main() {
       final text = 'myFooInstance?.';
       final result = service.suggest(text: text, cursorOffset: text.length);
 
-      expect(result.kind, CompletionKind.member);
+      expect(result, isA<MemberCandidates>());
       expect(result.labels, ['myVar']);
-      expect(result.memberOfType, 'Foo');
+      expect(
+        result,
+        predicate<MemberCandidates>((result) {
+          return result.memberOfType == 'Foo';
+        }),
+      );
     });
 
     test('resolves class name as member receiver', () {
@@ -170,9 +184,14 @@ void main() {
       final text = 'Foo.';
       final result = service.suggest(text: text, cursorOffset: text.length);
 
-      expect(result.kind, CompletionKind.member);
+      expect(result, isA<MemberCandidates>());
       expect(result.labels, ['myVar']);
-      expect(result.memberOfType, 'Foo');
+      expect(
+        result,
+        predicate<MemberCandidates>((result) {
+          return result.memberOfType == 'Foo';
+        }),
+      );
     });
   });
 }

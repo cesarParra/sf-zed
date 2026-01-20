@@ -1,4 +1,3 @@
-import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:test/test.dart';
 
 import 'package:apex_lsp/completion/completion_aggregator.dart';
@@ -132,12 +131,17 @@ void main() {
           cursorOffset: text.length,
         );
 
-        expect(result.kind, CompletionKind.member);
+        expect(result, isA<MemberCandidates>());
         expect(
           result.labels,
           containsAll(['localField', 'localMethod', 'localProp']),
         );
-        expect(result.memberOfType, 'Foo');
+        expect(
+          result,
+          predicate<MemberCandidates>((result) {
+            return result.memberOfType == 'Foo';
+          }),
+        );
       });
     });
 
@@ -182,9 +186,14 @@ void main() {
           cursorOffset: text.length,
         );
 
-        expect(result.kind, CompletionKind.member);
+        expect(result, isA<MemberCandidates>());
         expect(result.labels, ['memberField', 'methodOne']);
-        expect(result.memberOfType, 'Foo');
+        expect(
+          result,
+          predicate<MemberCandidates>((result) {
+            return result.memberOfType == 'Foo';
+          }),
+        );
       });
 
       test('the index is used to complete static members', () async {
@@ -227,15 +236,18 @@ void main() {
           cursorOffset: text.length,
         );
 
-        expect(result.kind, CompletionKind.member);
+        expect(result, isA<MemberCandidates>());
         expect(result.labels, ['memberField', 'methodOne']);
-        expect(result.memberOfType, 'Foo');
+        expect(
+          result,
+          predicate<MemberCandidates>((result) {
+            return result.memberOfType == 'Foo';
+          }),
+        );
       });
     });
 
-    // TODO: This is actually not good behavior, if we don't know
-    // what the user is talking about, we do not want to autocomplete
-    test('falls back to class names when member type is unresolved', () async {
+    test('has no candidates when the member type is unresolved', () async {
       final documentIndex = ApexDocumentIndex(
         classes: const [],
         variables: const [],
@@ -273,8 +285,7 @@ void main() {
         cursorOffset: text.length,
       );
 
-      expect(result.kind, CompletionKind.className);
-      expect(result.labels, containsAll(['Bar', 'Foo']));
+      expect(result, isA<NoCandidates>());
     });
 
     test(
@@ -336,7 +347,7 @@ void main() {
           cursorOffset: text.length,
         );
 
-        expect(result.kind, CompletionKind.className);
+        expect(result, isA<ClassNameCandidates>());
         expect(result.labels, containsAll(['Bar', 'Baz', 'Bazooka', 'Foo']));
       },
     );

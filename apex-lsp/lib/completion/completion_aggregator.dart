@@ -1,4 +1,3 @@
-import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/indexing/indexer.dart';
@@ -57,14 +56,14 @@ final class CompletionAggregator {
       cursorOffset: cursorOffset,
     );
 
-    return switch (candidates.kind) {
-      .none => candidates,
-      .member => _mergeMemberCandidates(
+    return switch (candidates) {
+      NoCandidates() => candidates,
+      MemberCandidates() => _mergeMemberCandidates(
         text: text,
         cursorOffset: cursorOffset,
         candidates: candidates,
       ),
-      .className => _mergeClassNameCandidates(
+      ClassNameCandidates() => _mergeClassNameCandidates(
         text: text,
         cursorOffset: cursorOffset,
         local: candidates,
@@ -84,7 +83,7 @@ final class CompletionAggregator {
   Future<CompletionCandidates> _mergeMemberCandidates({
     required String text,
     required int cursorOffset,
-    required CompletionCandidates candidates,
+    required MemberCandidates candidates,
   }) async {
     // If the candidate comes from the open document, we return the local information
     // instead of merging with the indexed class, which represent the rest of the codebase.
@@ -93,7 +92,7 @@ final class CompletionAggregator {
     }
 
     final resolvedType = candidates.memberOfType;
-    if (resolvedType != null && resolvedType.isNotEmpty) {
+    if (resolvedType.isNotEmpty) {
       final workspaceClass = await _indexedClassesRepository.classByNameAsync(
         resolvedType,
       );
@@ -104,28 +103,16 @@ final class CompletionAggregator {
             ? MemberType.static
             : MemberType.instance;
 
-        return CompletionCandidates(
-          kind: CompletionKind.member,
+        return MemberCandidates(
           labels: workspaceClass.memberNamesByType(memberType),
           memberOfType: resolvedType,
           memberTypeResolvedFromDocument: false,
+          objectName: candidates.objectName,
         );
       }
     }
 
-    if (candidates.labels.isNotEmpty) {
-      return candidates;
-    }
-
-    // If we couldn't resolve a member type, fall back to class name completion.
-    return _mergeClassNameCandidates(
-      text: text,
-      cursorOffset: cursorOffset,
-      local: CompletionCandidates(
-        kind: CompletionKind.className,
-        labels: const [],
-      ),
-    );
+    return NoCandidates();
   }
 
   /// Merges class name candidates from local and workspace sources.
@@ -139,16 +126,13 @@ final class CompletionAggregator {
   CompletionCandidates _mergeClassNameCandidates({
     required String text,
     required int cursorOffset,
-    required CompletionCandidates local,
+    required ClassNameCandidates local,
   }) {
     final merged = <String>{};
     merged.addAll(local.labels);
     merged.addAll(_indexedClassesRepository.classNames);
 
-    return CompletionCandidates(
-      kind: CompletionKind.className,
-      labels: merged.toList(),
-    );
+    return ClassNameCandidates(labels: merged.toList());
   }
 }
 
