@@ -41,7 +41,7 @@ final class TreeSitterCompletionService {
     required String text,
     required int cursorOffset,
   }) {
-    final context = _detectContext(text, cursorOffset);
+    final context = text.detectContext(cursorOffset);
     if (context.kind == CompletionKind.none) {
       return CompletionCandidates(kind: CompletionKind.none, labels: const []);
     }
@@ -73,6 +73,7 @@ final class TreeSitterCompletionService {
           kind: .member,
           labels: const [],
           memberOfType: resolvedType,
+          objectName: objectName,
           memberTypeResolvedFromDocument: false,
         );
       }
@@ -103,97 +104,12 @@ final class TreeSitterCompletionService {
     return CompletionCandidates(kind: .className, labels: all.toList());
   }
 
-  CompletionContext _detectContext(String text, int cursorOffset) {
-    if (text.isEmpty || cursorOffset <= 0) {
-      return const CompletionContextNone();
-    }
-
-    final prefix = text.extractIndentifierPrefixAt(cursorOffset);
-
-    // Member access: "foo." or "foo?."
-    var dotIndex = _findMemberDotIndex(text, cursorOffset);
-
-    // If we're typing a member name (e.g., "foo.ba"), look just before the prefix
-    // to detect the member access.
-    if (dotIndex == null && prefix.isNotEmpty) {
-      final probeIndex = cursorOffset - prefix.length - 1;
-      if (probeIndex >= 0) {
-        final ch = text.codeUnitAt(probeIndex);
-        if (ch == 0x2E /* . */ ) {
-          dotIndex = probeIndex;
-        } else if (ch == 0x3F /* ? */ ) {
-          final next = probeIndex + 1;
-          if (next < text.length && text.codeUnitAt(next) == 0x2E /* . */ ) {
-            dotIndex = next;
-          }
-        }
-      }
-    }
-
-    if (dotIndex != null) {
-      var objectIndex = dotIndex - 1;
-      if (objectIndex >= 0 && text.codeUnitAt(objectIndex) == 0x3F /* ? */ ) {
-        objectIndex--;
-      }
-      final objectName = _extractIdentifierBefore(text, objectIndex);
-      return CompletionContextMember(objectName: objectName, prefix: prefix);
-    }
-
-    return CompletionContextClass(className: prefix);
-  }
-
   int _byteOffset(String text, int codeUnitOffset) {
     if (codeUnitOffset <= 0) return 0;
     if (codeUnitOffset >= text.length) {
       return utf8.encode(text).length;
     }
     return utf8.encode(text.substring(0, codeUnitOffset)).length;
-  }
-
-  int? _findMemberDotIndex(String text, int cursorOffset) {
-    var i = cursorOffset - 1;
-    if (i < 0) return null;
-
-    // Skip whitespace between dot and cursor (rare but possible).
-    while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
-      i--;
-    }
-    if (i < 0) return null;
-
-    final ch = text.codeUnitAt(i);
-
-    if (ch == 0x2E /* . */ ) {
-      return i;
-    }
-
-    if (ch == 0x3F /* ? */ ) {
-      final next = i + 1;
-      if (next < text.length && text.codeUnitAt(next) == 0x2E /* . */ ) {
-        return next;
-      }
-
-      final prev = i - 1;
-      if (prev >= 0 && text.codeUnitAt(prev) == 0x2E /* . */ ) {
-        return prev;
-      }
-    }
-
-    return null;
-  }
-
-  String? _extractIdentifierBefore(String text, int index) {
-    var i = index;
-    while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
-      i--;
-    }
-    if (i < 0) return null;
-
-    final identifier = text.extractIndentifierPrefixAt(i + 1);
-    return identifier.isNotEmpty ? identifier : null;
-  }
-
-  bool _isWhitespace(int ch) {
-    return ch == 32 || ch == 9 || ch == 10 || ch == 13;
   }
 
   String? _resolveTypeForObject({

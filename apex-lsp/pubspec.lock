@@ -30,7 +30,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: ecb61743e8e6da894d810411a5db06639e31dc69
+      resolved-ref: "30f7080610e6133402a8f911cd24bd4bedfb7afd"
       url: "https://github.com/cesarParra/apex-reflection.git"
     source: git
     version: "1.0.0"
@@ -390,10 +390,10 @@ packages:
     dependency: transitive
     description:
       name: source_gen
-      sha256: "585bc140f20da42c584ece2df28f4d9ef2566955332b626f655957b3a8c8ad54"
+      sha256: "1d562a3c1f713904ebbed50d2760217fd8a51ca170ac4b05b0db490699dbac17"
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.2"
+    version: "4.2.0"
   source_helper:
     dependency: transitive
     description:

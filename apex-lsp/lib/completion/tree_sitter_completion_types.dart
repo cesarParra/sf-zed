@@ -2,12 +2,15 @@ import 'package:apex_lsp/completion/completion_context.dart';
 
 typedef ApexIndexBuilder = ApexDocumentIndex Function(String text);
 
+// TODO: Make this a union type where the members are actually representative of the type
+
 /// Public completion result payload produced by completion services.
 final class CompletionCandidates {
   CompletionCandidates({
     required this.kind,
     required this.labels,
     this.memberOfType,
+    this.objectName,
     this.memberTypeResolvedFromDocument = false,
   });
 
@@ -16,6 +19,10 @@ final class CompletionCandidates {
 
   /// When [kind] is [CompletionKind.member], this is the resolved type name.
   final String? memberOfType;
+
+  // When [kind] is [CompletionKid.member], this represents the name of the
+  // object. For example, if the user typed `foo.m`, then this is foo.
+  final String? objectName;
 
   /// True when member type resolution came from the document index.
   final bool memberTypeResolvedFromDocument;

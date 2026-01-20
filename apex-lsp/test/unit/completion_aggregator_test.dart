@@ -12,14 +12,12 @@ class InMemoryIndexedClass implements IndexedClass {
   InMemoryIndexedClass({
     required this.name,
     required this.fields,
-    required this.properties,
     required this.methods,
     this.superclass,
   });
 
   final String name;
   final List<String> fields;
-  final List<String> properties;
   final List<String> methods;
   final String? superclass;
 
@@ -27,13 +25,17 @@ class InMemoryIndexedClass implements IndexedClass {
   bool hasMemberPrefix(String prefix) {
     final lower = prefix.toLowerCase();
     return fields.any((m) => m.toLowerCase().startsWith(lower)) ||
-        properties.any((m) => m.toLowerCase().startsWith(lower)) ||
         methods.any((m) => m.toLowerCase().startsWith(lower));
   }
 
   @override
+  List<String> memberNamesByType(MemberType type) {
+    return memberNames;
+  }
+
+  @override
   List<String> get memberNames {
-    final all = <String>{...fields, ...properties, ...methods};
+    final all = <String>{...fields, ...methods};
     final result = all.toList()..sort();
     return result;
   }
@@ -75,8 +77,7 @@ void main() {
         classesByName: {
           'Foo': InMemoryIndexedClass(
             name: 'Foo',
-            fields: const ['workspaceField'],
-            properties: const ['workspaceProp'],
+            fields: const ['workspaceField', 'workspaceProp'],
             methods: const ['workspaceMethod'],
             superclass: null,
           ),
@@ -127,7 +128,6 @@ void main() {
             'Foo': InMemoryIndexedClass(
               name: 'Foo',
               fields: const ['memberField'],
-              properties: const [],
               methods: const ['methodOne'],
               superclass: null,
             ),
@@ -168,14 +168,12 @@ void main() {
           'Foo': InMemoryIndexedClass(
             name: 'Foo',
             fields: const [],
-            properties: const [],
             methods: const [],
             superclass: null,
           ),
           'Bar': InMemoryIndexedClass(
             name: 'Bar',
             fields: const [],
-            properties: const [],
             methods: const [],
             superclass: null,
           ),
@@ -233,14 +231,12 @@ void main() {
             'Bar': InMemoryIndexedClass(
               name: 'Bar',
               fields: const [],
-              properties: const [],
               methods: const [],
               superclass: null,
             ),
             'Bazooka': InMemoryIndexedClass(
               name: 'Bazooka',
               fields: const [],
-              properties: const [],
               methods: const [],
               superclass: null,
             ),

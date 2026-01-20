@@ -63,7 +63,7 @@ final class CompletionAggregator {
       .member => _mergeMemberCandidates(
         text: text,
         cursorOffset: cursorOffset,
-        local: candidates,
+        candidates: candidates,
       ),
       .className => _mergeClassNameCandidates(
         text: text,
@@ -75,44 +75,47 @@ final class CompletionAggregator {
 
   /// Merges member completion candidates from local and workspace sources.
   ///
-  /// If [local] already has a resolved member type from the document, it is
+  /// If [candidates] already has a resolved member type from the document, it is
   /// returned as-is. Otherwise, it attempts to resolve the type using the
   /// workspace index.
   ///
   /// - [text]: The current file content.
   /// - [cursorOffset]: The cursor position.
-  /// - [local]: The candidates found by the document service.
+  /// - [candidates]: The candidates found by the document service.
   Future<CompletionCandidates> _mergeMemberCandidates({
     required String text,
     required int cursorOffset,
-    required CompletionCandidates local,
+    required CompletionCandidates candidates,
   }) async {
-    if (local.memberTypeResolvedFromDocument) {
-      return local;
+    // If the candidate comes from the open document, we return the local information
+    // instead of merging with the indexed class, which represent the rest of the codebase.
+    if (candidates.memberTypeResolvedFromDocument) {
+      return candidates;
     }
 
-    final tempIdentifier = text.extractIndentifierPrefixAt(cursorOffset);
-    print(tempIdentifier);
-
-    final resolvedType = local.memberOfType;
-
+    final resolvedType = candidates.memberOfType;
     if (resolvedType != null && resolvedType.isNotEmpty) {
       final workspaceClass = await _indexedClassesRepository.classByNameAsync(
         resolvedType,
       );
 
       if (workspaceClass != null) {
+        final memberType =
+            resolvedType.toLowerCase() == candidates.objectName?.toLowerCase()
+            ? MemberType.static
+            : MemberType.instance;
+
         return CompletionCandidates(
           kind: CompletionKind.member,
-          labels: workspaceClass.memberNames,
+          labels: workspaceClass.memberNamesByType(memberType),
           memberOfType: resolvedType,
           memberTypeResolvedFromDocument: false,
         );
       }
     }
 
-    if (local.labels.isNotEmpty) {
-      return local;
+    if (candidates.labels.isNotEmpty) {
+      return candidates;
     }
 
     // If we couldn't resolve a member type, fall back to class name completion.

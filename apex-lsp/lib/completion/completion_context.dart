@@ -7,6 +7,11 @@ sealed class CompletionContext {
 
 final class CompletionContextNone extends CompletionContext {
   const CompletionContextNone() : super(kind: CompletionKind.none);
+
+  @override
+  String toString() {
+    return 'CompletionContextNone()';
+  }
 }
 
 final class CompletionContextClass extends CompletionContext {
@@ -14,6 +19,11 @@ final class CompletionContextClass extends CompletionContext {
     : super(kind: CompletionKind.className);
 
   final String className;
+
+  @override
+  String toString() {
+    return 'CompletionContextClass(className: $className)';
+  }
 }
 
 final class CompletionContextMember extends CompletionContext {
@@ -22,4 +32,9 @@ final class CompletionContextMember extends CompletionContext {
 
   final String? objectName;
   final String prefix;
+
+  @override
+  String toString() {
+    return 'CompletionContextMember(objectName: $objectName, prefix: $prefix)';
+  }
 }
