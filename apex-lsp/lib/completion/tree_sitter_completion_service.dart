@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ffi';
 
+import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:ffi/ffi.dart';
 
@@ -48,8 +49,7 @@ final class TreeSitterCompletionService {
     final cursorByteOffset = _byteOffset(text, cursorOffset);
     final index = _indexBuilder(text);
 
-    if (context.kind == .member) {
-      final objectName = context.objectName;
+    if (context case CompletionContextMember(objectName: final objectName)) {
       if (objectName == null || objectName.isEmpty) {
         return CompletionCandidates(kind: .member, labels: const []);
       }
@@ -103,9 +103,9 @@ final class TreeSitterCompletionService {
     return CompletionCandidates(kind: .className, labels: all.toList());
   }
 
-  _CompletionContext _detectContext(String text, int cursorOffset) {
+  CompletionContext _detectContext(String text, int cursorOffset) {
     if (text.isEmpty || cursorOffset <= 0) {
-      return const _CompletionContext(kind: .none);
+      return const CompletionContextNone();
     }
 
     final prefix = text.extractIndentifierPrefixAt(cursorOffset);
@@ -136,14 +136,10 @@ final class TreeSitterCompletionService {
         objectIndex--;
       }
       final objectName = _extractIdentifierBefore(text, objectIndex);
-      return _CompletionContext(
-        kind: CompletionKind.member,
-        prefix: prefix,
-        objectName: objectName,
-      );
+      return CompletionContextMember(objectName: objectName, prefix: prefix);
     }
 
-    return _CompletionContext(kind: CompletionKind.className, prefix: prefix);
+    return CompletionContextClass(className: prefix);
   }
 
   int _byteOffset(String text, int codeUnitOffset) {
@@ -561,18 +557,6 @@ final class TreeSitterCompletionService {
     }
     return best;
   }
-}
-
-final class _CompletionContext {
-  const _CompletionContext({
-    required this.kind,
-    this.prefix = '',
-    this.objectName,
-  });
-
-  final CompletionKind kind;
-  final String prefix;
-  final String? objectName;
 }
 
 final class _MutableApexDocumentIndex {

@@ -1,3 +1,4 @@
+import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:test/test.dart';
 
 import 'package:apex_lsp/completion/completion_aggregator.dart';
@@ -150,6 +151,8 @@ void main() {
       },
     );
 
+    // TODO: This is actually not good behavior, if we don't know
+    // what the user is talking about, we do not want to autocomplete
     test('falls back to class names when member type is unresolved', () async {
       final documentIndex = ApexDocumentIndex(
         classes: const [],
@@ -276,3 +279,7 @@ final class _FakeWorkspaceIndex implements IndexedClassProvider {
     return _classesByName[name];
   }
 }
+
+// TODO: Tests to add
+// When the . gets typed -> show all static members
+// When the user starts typing after the dot for a class -> show static members that match what the user is typing

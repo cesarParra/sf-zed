@@ -1,7 +1,6 @@
-typedef ApexIndexBuilder = ApexDocumentIndex Function(String text);
+import 'package:apex_lsp/completion/completion_context.dart';
 
-/// Public-facing completion context result kinds.
-enum CompletionKind { none, className, member }
+typedef ApexIndexBuilder = ApexDocumentIndex Function(String text);
 
 /// Public completion result payload produced by completion services.
 final class CompletionCandidates {

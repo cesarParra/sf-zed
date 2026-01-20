@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:test/test.dart';
 
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
