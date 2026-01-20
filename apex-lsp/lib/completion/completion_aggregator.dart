@@ -99,7 +99,7 @@ final class CompletionAggregator {
 
       if (workspaceClass != null) {
         final memberType =
-            resolvedType.toLowerCase() == candidates.objectName?.toLowerCase()
+            resolvedType.toLowerCase() == candidates.objectName.toLowerCase()
             ? MemberType.static
             : MemberType.instance;
 

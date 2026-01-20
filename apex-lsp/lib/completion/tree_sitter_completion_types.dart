@@ -1,5 +1,3 @@
-import 'package:apex_lsp/completion/completion_context.dart';
-
 typedef ApexIndexBuilder = ApexDocumentIndex Function(String text);
 
 // TODO: Make this a union type where the members are actually representative of the type
