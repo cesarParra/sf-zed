@@ -18,7 +18,7 @@
 
 ### Autocomplete
 - [x] Indexed class names appear
-- [ ] Static members of indexed files
+- [x] Static members of indexed files
 - [ ] Instance members of indexed files
 - [ ] Static members of the opened file
 - [ ] Instance members of the opened file
@@ -31,6 +31,8 @@
 - [ ] Rank logic
 - [ ] Params and return type information
 - [ ] Apexdocs information
+- [ ] Private members are not surfaced
+- [ ] @TestVisible members are surfaced only when inside a test file
 
 ## Namespaces
 - [ ] Can work on a namespaced scratch org (e.g. autocomplete works when referencing a file in the same namespace)

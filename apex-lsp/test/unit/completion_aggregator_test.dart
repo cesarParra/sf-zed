@@ -8,6 +8,27 @@ import 'package:apex_lsp/indexing/indexed_class.dart';
 
 import '../support/lsp_test_harness.dart';
 
+final class Field {
+  final String name;
+  final bool isStatic;
+
+  const Field({required this.name, required this.isStatic});
+}
+
+final class Method {
+  final String name;
+  final bool isStatic;
+
+  const Method({required this.name, required this.isStatic});
+}
+
+extension on String {
+  Field staticField() => Field(name: this, isStatic: true);
+  Field instanceField() => Field(name: this, isStatic: false);
+  Method staticMethod() => Method(name: this, isStatic: true);
+  Method instanceMethod() => Method(name: this, isStatic: false);
+}
+
 class InMemoryIndexedClass implements IndexedClass {
   InMemoryIndexedClass({
     required this.name,
@@ -17,25 +38,37 @@ class InMemoryIndexedClass implements IndexedClass {
   });
 
   final String name;
-  final List<String> fields;
-  final List<String> methods;
+  final List<Field> fields;
+  final List<Method> methods;
   final String? superclass;
 
   @override
   bool hasMemberPrefix(String prefix) {
     final lower = prefix.toLowerCase();
-    return fields.any((m) => m.toLowerCase().startsWith(lower)) ||
-        methods.any((m) => m.toLowerCase().startsWith(lower));
+    return fields.any((m) => m.name.toLowerCase().startsWith(lower)) ||
+        methods.any((m) => m.name.toLowerCase().startsWith(lower));
   }
 
   @override
   List<String> memberNamesByType(MemberType type) {
-    return memberNames;
+    return switch (type) {
+      .static => [
+        ...fields.where((f) => f.isStatic).map((f) => f.name),
+        ...methods.where((m) => m.isStatic).map((m) => m.name),
+      ],
+      .instance => [
+        ...fields.where((f) => !f.isStatic).map((f) => f.name),
+        ...methods.where((m) => !m.isStatic).map((m) => m.name),
+      ],
+    };
   }
 
   @override
   List<String> get memberNames {
-    final all = <String>{...fields, ...methods};
+    final all = <String>{
+      ...fields.map((f) => f.name),
+      ...methods.map((m) => m.name),
+    };
     final result = all.toList()..sort();
     return result;
   }
@@ -44,68 +77,72 @@ class InMemoryIndexedClass implements IndexedClass {
 void main() {
   setUpAll(setupTestLocator);
 
-  group('CompletionAggregator', () {
-    test('completes local members when available', () async {
-      final documentIndex = ApexDocumentIndex(
-        classes: [
-          ApexClassInfo(
-            name: 'Foo',
-            startByte: 0,
-            endByte: 100,
-            fields: const ['localField'],
-            properties: const ['localProp'],
-            methods: const ['localMethod'],
-            superclass: null,
-          ),
-        ],
-        variables: [
-          ApexVariableInfo(
-            name: 'myFooInstance',
-            typeName: 'Foo',
-            startByte: 0,
-            endByte: 50,
-            kind: 'local_variable_declaration',
-          ),
-        ],
-      );
+  group('when autocompleting object members', () {
+    group('and local candidates are available', () {
+      test('the local document is used', () async {
+        final documentIndex = ApexDocumentIndex(
+          classes: [
+            ApexClassInfo(
+              name: 'Foo',
+              startByte: 0,
+              endByte: 100,
+              fields: const ['localField'],
+              properties: const ['localProp'],
+              methods: const ['localMethod'],
+              superclass: null,
+            ),
+          ],
+          variables: [
+            ApexVariableInfo(
+              name: 'myFooInstance',
+              typeName: 'Foo',
+              startByte: 0,
+              endByte: 50,
+              kind: 'local_variable_declaration',
+            ),
+          ],
+        );
 
-      final service = TreeSitterCompletionService.withIndexBuilder(
-        builder: (_) => documentIndex,
-      );
+        final service = TreeSitterCompletionService.withIndexBuilder(
+          builder: (_) => documentIndex,
+        );
 
-      final workspace = _FakeWorkspaceIndex(
-        classesByName: {
-          'Foo': InMemoryIndexedClass(
-            name: 'Foo',
-            fields: const ['workspaceField', 'workspaceProp'],
-            methods: const ['workspaceMethod'],
-            superclass: null,
-          ),
-        },
-      );
+        final workspace = _FakeWorkspaceIndex(
+          classesByName: {
+            'Foo': InMemoryIndexedClass(
+              name: 'Foo',
+              fields: [
+                'workspaceField'.instanceField(),
+                'workspaceProp'.instanceField(),
+              ],
+              methods: ['workspaceMethod'.instanceMethod()],
+              superclass: null,
+            ),
+          },
+        );
 
-      final aggregator = CompletionAggregator(
-        documentService: service,
-        indexedClassesRepository: workspace,
-      );
+        final aggregator = CompletionAggregator(
+          documentService: service,
+          indexedClassesRepository: workspace,
+        );
 
-      final text = 'myFooInstance.';
-      final result = await aggregator.suggest(
-        text: text,
-        cursorOffset: text.length,
-      );
+        final text = 'myFooInstance.';
+        final result = await aggregator.suggest(
+          text: text,
+          cursorOffset: text.length,
+        );
 
-      expect(result.kind, CompletionKind.member);
-      expect(
-        result.labels,
-        containsAll(['localField', 'localMethod', 'localProp']),
-      );
-      expect(result.memberOfType, 'Foo');
+        expect(result.kind, CompletionKind.member);
+        expect(
+          result.labels,
+          containsAll(['localField', 'localMethod', 'localProp']),
+        );
+        expect(result.memberOfType, 'Foo');
+      });
     });
 
-    test(
-      'falls back to workspace members when document lacks class info',
-      () async {
+    group('and local candidates are not available', () {
+      test('the index is used to complete instance members', () async {
         final documentIndex = ApexDocumentIndex(
           classes: const [],
           variables: [
@@ -127,8 +164,8 @@ void main() {
           classesByName: {
             'Foo': InMemoryIndexedClass(
               name: 'Foo',
-              fields: const ['memberField'],
-              methods: const ['methodOne'],
+              fields: ['memberField'.instanceField()],
+              methods: ['methodOne'.instanceMethod()],
               superclass: null,
             ),
           },
@@ -148,8 +185,53 @@ void main() {
         expect(result.kind, CompletionKind.member);
         expect(result.labels, ['memberField', 'methodOne']);
         expect(result.memberOfType, 'Foo');
-      },
-    );
+      });
+
+      test('the index is used to complete static members', () async {
+        final documentIndex = ApexDocumentIndex(
+          classes: const [],
+          variables: [
+            ApexVariableInfo(
+              name: 'myFooInstance',
+              typeName: 'Foo',
+              startByte: 0,
+              endByte: 50,
+              kind: 'local_variable_declaration',
+            ),
+          ],
+        );
+
+        final service = TreeSitterCompletionService.withIndexBuilder(
+          builder: (_) => documentIndex,
+        );
+
+        final workspace = _FakeWorkspaceIndex(
+          classesByName: {
+            'Foo': InMemoryIndexedClass(
+              name: 'Foo',
+              fields: ['memberField'.staticField()],
+              methods: ['methodOne'.staticMethod()],
+              superclass: null,
+            ),
+          },
+        );
+
+        final aggregator = CompletionAggregator(
+          documentService: service,
+          indexedClassesRepository: workspace,
+        );
+
+        final text = 'Foo.m';
+        final result = await aggregator.suggest(
+          text: text,
+          cursorOffset: text.length,
+        );
+
+        expect(result.kind, CompletionKind.member);
+        expect(result.labels, ['memberField', 'methodOne']);
+        expect(result.memberOfType, 'Foo');
+      });
+    });
 
     // TODO: This is actually not good behavior, if we don't know
     // what the user is talking about, we do not want to autocomplete

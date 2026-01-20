@@ -64,6 +64,11 @@ final class TreeSitterCompletionService {
         return CompletionCandidates(
           kind: CompletionKind.member,
           labels: const [],
+          // We are either dealing with a static call, or something unknown.
+          // Regardless, we return the objectName so that the aggregator tries to
+          // find it in the index.
+          memberOfType: objectName,
+          objectName: objectName,
         );
       }
 
@@ -89,6 +94,7 @@ final class TreeSitterCompletionService {
         labels: memberSet.toList(),
         memberOfType: resolvedType,
         memberTypeResolvedFromDocument: true,
+        objectName: objectName,
       );
     }
 
