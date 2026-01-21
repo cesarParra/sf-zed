@@ -122,7 +122,7 @@ void main() {
         // 3. Verify lookup
         final mirror = await indexer.getIndexedClassInfo('Foo');
         expect(mirror, isNotNull);
-        expect(mirror!.name, equals('Foo'));
+        expect(mirror!.typeMirror.name, equals('Foo'));
 
         // Verify it's in the indexed class names set
         expect(indexer.indexedClassNames.contains('Foo'), isTrue);

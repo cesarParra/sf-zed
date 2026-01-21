@@ -1,7 +1,7 @@
 import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
 import 'package:apex_lsp/completion/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/indexing/indexer.dart';
-import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart' as indexed_class;
 
 /// Aggregates completion candidates from the open document (Tree-sitter)
 /// and workspace index (.sf-zed JSON file repository).
@@ -30,12 +30,12 @@ final class CompletionAggregator {
   /// - [indexedClassesRepository]: The repository containing indexed workspace classes.
   CompletionAggregator({
     required TreeSitterCompletionService documentService,
-    required IndexedClassProvider indexedClassesRepository,
+    required indexed_class.IndexedClassProvider indexedClassesRepository,
   }) : _documentService = documentService,
        _indexedClassesRepository = indexedClassesRepository;
 
   final TreeSitterCompletionService _documentService;
-  final IndexedClassProvider _indexedClassesRepository;
+  final indexed_class.IndexedClassProvider _indexedClassesRepository;
 
   /// Suggests completion candidates at the specified [cursorOffset] in the [text].
   ///
@@ -93,15 +93,15 @@ final class CompletionAggregator {
 
     final resolvedType = candidates.memberOfType;
     if (resolvedType.isNotEmpty) {
-      final workspaceClass = await _indexedClassesRepository.classByNameAsync(
+      final workspaceClass = await _indexedClassesRepository.typeByNameAsync(
         resolvedType,
       );
 
       if (workspaceClass != null) {
         final memberType =
             resolvedType.toLowerCase() == candidates.objectName.toLowerCase()
-            ? MemberType.static
-            : MemberType.instance;
+            ? indexed_class.MemberType.static
+            : indexed_class.MemberType.instance;
 
         return MemberCandidates(
           labels: workspaceClass.memberNamesByType(memberType),
@@ -137,7 +137,8 @@ final class CompletionAggregator {
 }
 
 /// Adapter to expose [ApexIndexer] as a [IndexedClassProvider].
-final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
+final class ApexIndexerWorkspaceIndexAdapter
+    implements indexed_class.IndexedClassProvider {
   ApexIndexerWorkspaceIndexAdapter(this._indexer);
 
   final ApexIndexer _indexer;
@@ -146,10 +147,17 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
   Iterable<String> get classNames => _indexer.indexedClassNames;
 
   @override
-  Future<IndexedClass?> classByNameAsync(String name) async {
-    final classMirror = await _indexer.getIndexedClassInfo(name);
-    return classMirror != null
-        ? ClassMirrorWrapper(classMirror: classMirror)
-        : null;
+  Future<indexed_class.IndexedType?> typeByNameAsync(String name) async {
+    final typeMirror = await _indexer.getIndexedClassInfo(name);
+
+    return switch (typeMirror) {
+      ClassMirrorWrapper(:final typeMirror) => indexed_class.ClassMirrorWrapper(
+        classMirror: typeMirror,
+      ),
+      EnumMirrorWrapper(:final typeMirror) => indexed_class.EnumMirrorWrapper(
+        enumMirror: typeMirror,
+      ),
+      null => null,
+    };
   }
 }

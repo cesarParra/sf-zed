@@ -28,7 +28,7 @@ extension on String {
   Method instanceMethod() => Method(name: this, isStatic: false);
 }
 
-class InMemoryIndexedClass implements IndexedClass {
+class InMemoryIndexedClass implements IndexedType {
   InMemoryIndexedClass({
     required this.name,
     required this.fields,
@@ -73,6 +73,28 @@ class InMemoryIndexedClass implements IndexedClass {
   }
 }
 
+class InMemoryIndexedEnum implements IndexedType {
+  InMemoryIndexedEnum(this.enumValueNames);
+
+  final List<String> enumValueNames;
+
+  @override
+  List<String> get memberNames => enumValueNames;
+
+  @override
+  List<String> memberNamesByType(MemberType type) {
+    return switch (type) {
+      .static => enumValueNames,
+      .instance => [],
+    };
+  }
+
+  @override
+  bool hasMemberPrefix(String prefix) {
+    return enumValueNames.any((name) => name.startsWith(prefix));
+  }
+}
+
 void main() {
   setUpAll(setupTestLocator);
 
@@ -107,7 +129,7 @@ void main() {
         );
 
         final workspace = _FakeWorkspaceIndex(
-          classesByName: {
+          typeByName: {
             'Foo': InMemoryIndexedClass(
               name: 'Foo',
               fields: [
@@ -146,7 +168,113 @@ void main() {
     });
 
     group('and local candidates are not available', () {
-      test('the index is used to complete instance members', () async {
+      test(
+        'the index is used to complete instance members for classes',
+        () async {
+          final documentIndex = ApexDocumentIndex(
+            classes: const [],
+            variables: [
+              ApexVariableInfo(
+                name: 'myFooInstance',
+                typeName: 'Foo',
+                startByte: 0,
+                endByte: 50,
+                kind: 'local_variable_declaration',
+              ),
+            ],
+          );
+
+          final service = TreeSitterCompletionService.withIndexBuilder(
+            builder: (_) => documentIndex,
+          );
+
+          final workspace = _FakeWorkspaceIndex(
+            typeByName: {
+              'Foo': InMemoryIndexedClass(
+                name: 'Foo',
+                fields: ['memberField'.instanceField()],
+                methods: ['methodOne'.instanceMethod()],
+                superclass: null,
+              ),
+            },
+          );
+
+          final aggregator = CompletionAggregator(
+            documentService: service,
+            indexedClassesRepository: workspace,
+          );
+
+          final text = 'myFooInstance.m';
+          final result = await aggregator.suggest(
+            text: text,
+            cursorOffset: text.length,
+          );
+
+          expect(result, isA<MemberCandidates>());
+          expect(result.labels, ['memberField', 'methodOne']);
+          expect(
+            result,
+            predicate<MemberCandidates>((result) {
+              return result.memberOfType == 'Foo';
+            }),
+          );
+        },
+      );
+
+      test(
+        'the index is used to complete static members for classes',
+        () async {
+          final documentIndex = ApexDocumentIndex(
+            classes: const [],
+            variables: [
+              ApexVariableInfo(
+                name: 'myFooInstance',
+                typeName: 'Foo',
+                startByte: 0,
+                endByte: 50,
+                kind: 'local_variable_declaration',
+              ),
+            ],
+          );
+
+          final service = TreeSitterCompletionService.withIndexBuilder(
+            builder: (_) => documentIndex,
+          );
+
+          final workspace = _FakeWorkspaceIndex(
+            typeByName: {
+              'Foo': InMemoryIndexedClass(
+                name: 'Foo',
+                fields: ['memberField'.staticField()],
+                methods: ['methodOne'.staticMethod()],
+                superclass: null,
+              ),
+            },
+          );
+
+          final aggregator = CompletionAggregator(
+            documentService: service,
+            indexedClassesRepository: workspace,
+          );
+
+          final text = 'Foo.m';
+          final result = await aggregator.suggest(
+            text: text,
+            cursorOffset: text.length,
+          );
+
+          expect(result, isA<MemberCandidates>());
+          expect(result.labels, ['memberField', 'methodOne']);
+          expect(
+            result,
+            predicate<MemberCandidates>((result) {
+              return result.memberOfType == 'Foo';
+            }),
+          );
+        },
+      );
+
+      test('the index is used to complete enum values', () async {
         final documentIndex = ApexDocumentIndex(
           classes: const [],
           variables: [
@@ -165,13 +293,8 @@ void main() {
         );
 
         final workspace = _FakeWorkspaceIndex(
-          classesByName: {
-            'Foo': InMemoryIndexedClass(
-              name: 'Foo',
-              fields: ['memberField'.instanceField()],
-              methods: ['methodOne'.instanceMethod()],
-              superclass: null,
-            ),
+          typeByName: {
+            'Foo': InMemoryIndexedEnum(['VALUE1', 'VALUE2', 'VALUE3']),
           },
         );
 
@@ -180,64 +303,14 @@ void main() {
           indexedClassesRepository: workspace,
         );
 
-        final text = 'myFooInstance.m';
+        final text = 'Foo.V';
         final result = await aggregator.suggest(
           text: text,
           cursorOffset: text.length,
         );
 
         expect(result, isA<MemberCandidates>());
-        expect(result.labels, ['memberField', 'methodOne']);
-        expect(
-          result,
-          predicate<MemberCandidates>((result) {
-            return result.memberOfType == 'Foo';
-          }),
-        );
-      });
-
-      test('the index is used to complete static members', () async {
-        final documentIndex = ApexDocumentIndex(
-          classes: const [],
-          variables: [
-            ApexVariableInfo(
-              name: 'myFooInstance',
-              typeName: 'Foo',
-              startByte: 0,
-              endByte: 50,
-              kind: 'local_variable_declaration',
-            ),
-          ],
-        );
-
-        final service = TreeSitterCompletionService.withIndexBuilder(
-          builder: (_) => documentIndex,
-        );
-
-        final workspace = _FakeWorkspaceIndex(
-          classesByName: {
-            'Foo': InMemoryIndexedClass(
-              name: 'Foo',
-              fields: ['memberField'.staticField()],
-              methods: ['methodOne'.staticMethod()],
-              superclass: null,
-            ),
-          },
-        );
-
-        final aggregator = CompletionAggregator(
-          documentService: service,
-          indexedClassesRepository: workspace,
-        );
-
-        final text = 'Foo.m';
-        final result = await aggregator.suggest(
-          text: text,
-          cursorOffset: text.length,
-        );
-
-        expect(result, isA<MemberCandidates>());
-        expect(result.labels, ['memberField', 'methodOne']);
+        expect(result.labels, ['VALUE1', 'VALUE2', 'VALUE3']);
         expect(
           result,
           predicate<MemberCandidates>((result) {
@@ -258,7 +331,7 @@ void main() {
       );
 
       final workspace = _FakeWorkspaceIndex(
-        classesByName: {
+        typeByName: {
           'Foo': InMemoryIndexedClass(
             name: 'Foo',
             fields: const [],
@@ -320,7 +393,7 @@ void main() {
         );
 
         final workspace = _FakeWorkspaceIndex(
-          classesByName: {
+          typeByName: {
             'Bar': InMemoryIndexedClass(
               name: 'Bar',
               fields: const [],
@@ -355,16 +428,16 @@ void main() {
 }
 
 final class _FakeWorkspaceIndex implements IndexedClassProvider {
-  _FakeWorkspaceIndex({required Map<String, IndexedClass> classesByName})
-    : _classesByName = classesByName;
+  _FakeWorkspaceIndex({required Map<String, IndexedType> typeByName})
+    : _typesByName = typeByName;
 
-  final Map<String, IndexedClass> _classesByName;
-
-  @override
-  Iterable<String> get classNames => _classesByName.keys;
+  final Map<String, IndexedType> _typesByName;
 
   @override
-  Future<IndexedClass?> classByNameAsync(String name) async {
-    return _classesByName[name];
+  Iterable<String> get classNames => _typesByName.keys;
+
+  @override
+  Future<IndexedType?> typeByNameAsync(String name) async {
+    return _typesByName[name];
   }
 }

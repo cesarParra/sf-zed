@@ -30,7 +30,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "30f7080610e6133402a8f911cd24bd4bedfb7afd"
+      resolved-ref: "942485e8c7d32b5344119091c13c247cb2c62483"
       url: "https://github.com/cesarParra/apex-reflection.git"
     source: git
     version: "1.0.0"

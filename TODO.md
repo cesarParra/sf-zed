@@ -22,7 +22,13 @@
 - [x] Instance members of indexed files
 - [x] Static members of the opened file
 - [x] Instance members of the opened file
-- [ ] Class, enum and interfaces of the opened file
+- [ ] Enum members of indexed files
+- [ ] Other classes of the opened file
+- [ ] Interfaces of the opened file
+- [ ] Enums of the opened file
+- [ ] Subclasses of indexed files
+- [ ] Subinterfaces of indexed files
+- [ ] Subenums of indexed files
 - [ ] `this`
 - [ ] `super`
 - [ ] Multiple multi-level instance references (`foo.bar.baz`)

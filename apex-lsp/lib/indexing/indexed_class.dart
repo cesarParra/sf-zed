@@ -4,19 +4,19 @@ import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 abstract class IndexedClassProvider {
   Iterable<String> get classNames;
 
-  Future<IndexedClass?> classByNameAsync(String name);
+  Future<IndexedType?> typeByNameAsync(String name);
 }
 
 enum MemberType { static, instance }
 
-abstract class IndexedClass {
+abstract class IndexedType {
   List<String> get memberNames;
   List<String> memberNamesByType(MemberType type);
   bool hasMemberPrefix(String prefix);
 }
 
 /// Represents an indexed class.
-class ClassMirrorWrapper implements IndexedClass {
+class ClassMirrorWrapper implements IndexedType {
   ClassMirrorWrapper({required this.classMirror});
 
   final apex_reflection.ClassMirror classMirror;
@@ -45,6 +45,36 @@ class ClassMirrorWrapper implements IndexedClass {
         ...classMirror.properties.where((f) => !f.isStatic).map((f) => f.name),
         ...classMirror.methods.where((f) => !f.isStatic).map((f) => f.name),
       ],
+    };
+  }
+
+  /// Returns true if any member matches [prefix] (case-insensitive).
+  @override
+  bool hasMemberPrefix(String prefix) {
+    final lower = prefix.toLowerCase();
+    return memberNames.any(
+      (current) => current.toLowerCase().startsWith(lower),
+    );
+  }
+}
+
+class EnumMirrorWrapper implements IndexedType {
+  EnumMirrorWrapper({required this.enumMirror});
+
+  final apex_reflection.EnumMirror enumMirror;
+
+  /// Combined member list.
+  @override
+  List<String> get memberNames {
+    final all = <String>{...enumMirror.values.map((v) => v.name)};
+    return all.toList();
+  }
+
+  @override
+  List<String> memberNamesByType(MemberType type) {
+    return switch (type) {
+      .static => [...enumMirror.values.map((v) => v.name)],
+      .instance => [],
     };
   }
 

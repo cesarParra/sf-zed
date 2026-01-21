@@ -9,6 +9,22 @@ import 'package:file/file.dart';
 
 import '../message.dart';
 
+sealed class TypeMirrorWrapper<T extends apex_reflection.TypeMirror> {
+  const TypeMirrorWrapper(this.typeMirror);
+
+  final T typeMirror;
+}
+
+final class ClassMirrorWrapper
+    extends TypeMirrorWrapper<apex_reflection.ClassMirror> {
+  const ClassMirrorWrapper(super.typeMirror);
+}
+
+final class EnumMirrorWrapper
+    extends TypeMirrorWrapper<apex_reflection.EnumMirror> {
+  const EnumMirrorWrapper(super.typeMirror);
+}
+
 /// Indexes Apex `.cls` files under a set of package directories and writes JSON
 /// metadata files into a hidden `.sf-zed` folder at each workspace root.
 final class ApexIndexer {
@@ -39,7 +55,7 @@ final class ApexIndexer {
     return _indexedClassNames;
   }
 
-  final _indexedClassByNameCache = <String, apex_reflection.ClassMirror>{};
+  final _indexedClassByNameCache = <String, TypeMirrorWrapper>{};
   final Set<String> _workspaceClassNotFound = <String>{};
 
   Stream<WorkDoneProgressParams> index(InitializedParams params) async* {
@@ -180,9 +196,7 @@ final class ApexIndexer {
     }
   }
 
-  Future<apex_reflection.ClassMirror?> getIndexedClassInfo(
-    String className,
-  ) async {
+  Future<TypeMirrorWrapper?> getIndexedClassInfo(String className) async {
     if (className.isEmpty) return null;
 
     final cached = _indexedClassByNameCache[className];
@@ -202,7 +216,7 @@ final class ApexIndexer {
     return null;
   }
 
-  Future<apex_reflection.ClassMirror?> _tryLoadWorkspaceClassInfoForRoot(
+  Future<TypeMirrorWrapper?> _tryLoadWorkspaceClassInfoForRoot(
     Uri workspaceRoot,
     String className,
   ) async {
@@ -217,21 +231,28 @@ final class ApexIndexer {
       final content = await file.readAsString();
       final decoded = jsonDecode(content);
       return _parseIndexedClassInfo(decoded);
-    } catch (_) {
+    } catch (e) {
+      print('caught $e');
       return null;
     }
   }
 
-  apex_reflection.ClassMirror? _parseIndexedClassInfo(Object? decoded) {
+  TypeMirrorWrapper? _parseIndexedClassInfo(Object? decoded) {
     if (decoded is! Map) return null;
     final typeMirror = decoded['typeMirror'];
     if (typeMirror is! Map) return null;
 
-    final classMirror = apex_reflection.ClassMirror.fromJson(
-      typeMirror as Map<String, dynamic>,
-    );
+    final typeMirrorJson = typeMirror as Map<String, dynamic>;
 
-    return classMirror;
+    return switch (typeMirrorJson['type_name']) {
+      'enum' => EnumMirrorWrapper(
+        apex_reflection.EnumMirror.fromJson(typeMirrorJson),
+      ),
+      'class' => ClassMirrorWrapper(
+        apex_reflection.ClassMirror.fromJson(typeMirrorJson),
+      ),
+      _ => null,
+    };
   }
 
   /// Builds the index for a single workspace.
