@@ -20,10 +20,8 @@
 - [x] Indexed class names appear
 - [x] Static members of indexed files
 - [x] Instance members of indexed files
-- [ ] Static members of the opened file
-- [ ] Instance members of the opened file
-- [ ] Local declaration of the current block
-- [ ] Scoped params of the current block
+- [x] Static members of the opened file
+- [x] Instance members of the opened file
 - [ ] Class, enum and interfaces of the opened file
 - [ ] `this`
 - [ ] `super`
@@ -31,8 +29,12 @@
 - [ ] Rank logic
 - [ ] Params and return type information
 - [ ] Apexdocs information
-- [ ] Private members are not surfaced
+- [ ] Private members (of other files) should not be shown
 - [ ] @TestVisible members are surfaced only when inside a test file
+
+### Block support
+- [ ] Local declaration of the current block
+- [ ] Scoped params of the current block
 
 Block support notes
 * When in a static block, can only call into static members

@@ -36,7 +36,7 @@ public class Bar {}
         cursorOffset: text.indexOf('Fo') + 2,
       );
 
-      expect(result, isA<ClassNameCandidates>());
+      expect(result, isA<ClassNameOrLocalCandidates>());
       expect(result.labels, contains('Foo'));
       expect(result.labels, contains('Bar'));
     });
@@ -69,6 +69,45 @@ public class Baz {
           return result.memberOfType == 'Foo';
         }),
       );
+    });
+
+    test('parses instance variables', () {
+      final text = '''
+public class Foo {
+  public String myVar;
+  public Integer other;
+
+  public String concat() {
+    return myV
+  }
+}
+''';
+
+      final cursorOffset = text.indexOf('return myV') + 'return myV.'.length;
+
+      final result = service.suggest(text: text, cursorOffset: cursorOffset);
+
+      expect(result, isA<ClassNameOrLocalCandidates>());
+      expect(result.labels, containsAll(['myVar']));
+    });
+
+    test('parses instance methods', () {
+      final text = '''
+public class Foo {
+  public String concat() {
+    doSom
+  }
+
+  public void doSomething() {}
+}
+''';
+
+      final cursorOffset = text.indexOf('doSom') + 'doSom'.length;
+
+      final result = service.suggest(text: text, cursorOffset: cursorOffset);
+
+      expect(result, isA<ClassNameOrLocalCandidates>());
+      expect(result.labels, containsAll(['doSomething']));
     });
 
     test('filters members by prefix', () {

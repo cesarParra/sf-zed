@@ -101,11 +101,23 @@ final class TreeSitterCompletionService {
     // care in which scope they were found. Variable declarations should only show up if the user
     // is typing within the scope where it was declared (and before the currrent index)
     final all = {
+      // All top level variables declared in the file. This
+      // is more for the anonymous Apex case, where things can be declared
+      // at any level.
       ...index.variables.map((v) => v.name),
+
+      // For the declared class, expands all local members.
+      // TODO: This is a naive implementation that does't work for anon-apex,
+      // since it doesn't care from which class the member came from.
+      ...index.classes.expand((c) => c.fields),
+      ...index.classes.expand((c) => c.properties),
+      ...index.classes.expand((c) => c.methods),
+
+      // The name of the declared class (or classes in case of anon-apex) itself.
       ...index.classes.map((c) => c.name),
     };
 
-    return ClassNameCandidates(labels: all.toList());
+    return ClassNameOrLocalCandidates(labels: all.toList());
   }
 
   int _byteOffset(String text, int codeUnitOffset) {

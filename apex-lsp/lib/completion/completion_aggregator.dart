@@ -63,7 +63,7 @@ final class CompletionAggregator {
         cursorOffset: cursorOffset,
         candidates: candidates,
       ),
-      ClassNameCandidates() => _mergeClassNameCandidates(
+      ClassNameOrLocalCandidates() => _mergeClassNameCandidates(
         text: text,
         cursorOffset: cursorOffset,
         local: candidates,
@@ -126,13 +126,13 @@ final class CompletionAggregator {
   CompletionCandidates _mergeClassNameCandidates({
     required String text,
     required int cursorOffset,
-    required ClassNameCandidates local,
+    required ClassNameOrLocalCandidates local,
   }) {
     final merged = <String>{};
     merged.addAll(local.labels);
     merged.addAll(_indexedClassesRepository.classNames);
 
-    return ClassNameCandidates(labels: merged.toList());
+    return ClassNameOrLocalCandidates(labels: merged.toList());
   }
 }
 

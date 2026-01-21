@@ -347,7 +347,7 @@ void main() {
           cursorOffset: text.length,
         );
 
-        expect(result, isA<ClassNameCandidates>());
+        expect(result, isA<ClassNameOrLocalCandidates>());
         expect(result.labels, containsAll(['Bar', 'Baz', 'Bazooka', 'Foo']));
       },
     );

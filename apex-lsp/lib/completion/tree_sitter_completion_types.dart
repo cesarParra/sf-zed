@@ -10,8 +10,13 @@ final class NoCandidates extends CompletionCandidates {
   NoCandidates() : super(labels: const []);
 }
 
-final class ClassNameCandidates extends CompletionCandidates {
-  ClassNameCandidates({required super.labels});
+final class ClassNameOrLocalCandidates extends CompletionCandidates {
+  ClassNameOrLocalCandidates({required super.labels});
+
+  @override
+  String toString() {
+    return 'ClassNameCandidates(labels: $labels)';
+  }
 }
 
 final class MemberCandidates extends CompletionCandidates {
@@ -46,6 +51,11 @@ final class ApexDocumentIndex {
     }
     return null;
   }
+
+  @override
+  String toString() {
+    return 'ApexDocumentIndex(classes: $classes, variables: $variables)';
+  }
 }
 
 /// Public representation of an Apex class in a parsed document.
@@ -67,6 +77,11 @@ final class ApexClassInfo {
   final List<String> properties;
   final List<String> methods;
   final String? superclass;
+
+  @override
+  String toString() {
+    return 'ApexClassInfo(name: $name, startByte: $startByte, endByte: $endByte, fields: $fields, properties: $properties, methods: $methods, superclass: $superclass)';
+  }
 }
 
 /// Public representation of an Apex variable in a parsed document.
@@ -84,4 +99,9 @@ final class ApexVariableInfo {
   final int startByte;
   final int endByte;
   final String kind;
+
+  @override
+  String toString() {
+    return 'ApexVariableInfo(name: $name, typeName: $typeName, startByte: $startByte, endByte: $endByte, kind: $kind)';
+  }
 }
