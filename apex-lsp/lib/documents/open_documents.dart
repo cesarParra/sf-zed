@@ -4,7 +4,6 @@ class OpenDocuments {
   // Minimal in-memory document store so we can compute basic completions.
   final Map<String, String> _openDocuments = <String, String>{};
 
-  // TODO: What is this for?
   String? get(String uri) => _openDocuments[uri];
 
   void didOpen(DidOpenTextDocumentParams params) {

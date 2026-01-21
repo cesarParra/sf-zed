@@ -7,7 +7,7 @@
 - [x] Syntax highlight
 - [ ] Download latest LSP version on install
 
-## LSP
+# LSP
 
 ## Indexing
 - [x] Index local Apex files
@@ -33,6 +33,10 @@
 - [ ] Apexdocs information
 - [ ] Private members are not surfaced
 - [ ] @TestVisible members are surfaced only when inside a test file
+
+Block support notes
+* When in a static block, can only call into static members
+* When in an instance block, can call into both static and instance members
 
 ## Namespaces
 - [ ] Can work on a namespaced scratch org (e.g. autocomplete works when referencing a file in the same namespace)

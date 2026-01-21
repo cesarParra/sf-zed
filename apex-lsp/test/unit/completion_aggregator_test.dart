@@ -368,7 +368,3 @@ final class _FakeWorkspaceIndex implements IndexedClassProvider {
     return _classesByName[name];
   }
 }
-
-// TODO: Tests to add
-// When the . gets typed -> show all static members
-// When the user starts typing after the dot for a class -> show static members that match what the user is typing
