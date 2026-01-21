@@ -19,7 +19,7 @@
 ### Autocomplete
 - [x] Indexed class names appear
 - [x] Static members of indexed files
-- [ ] Instance members of indexed files
+- [x] Instance members of indexed files
 - [ ] Static members of the opened file
 - [ ] Instance members of the opened file
 - [ ] Local declaration of the current block
