@@ -37,5 +37,5 @@ jobs:
       - name: Run tests
         working-directory: apex-lsp
         env:
-          TS_SFAPEX_LIB: ${{ github.workspace }}/apex-lsp/libtree_sitter_sfapex.so
+          TS_SFAPEX_LIB: ${{ github.workspace }}/apex-lsp/bin/libtree_sitter_sfapex.so
         run: dart test
