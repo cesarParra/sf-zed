@@ -15,3 +15,5 @@ zed-extension/grammars
 
 .DS_Store
 .idea/
+
+libtree_sitter_sfapex.*

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io' as io;
 
 import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
@@ -25,7 +25,9 @@ void initializeDependencies() {
   }
 
   if (!locator.isRegistered<LspOut>()) {
-    locator.registerSingleton<LspOut>(LspOut(output: StdoutByteSink(stdout)));
+    locator.registerSingleton<LspOut>(
+      LspOut(output: StdoutByteSink(io.stdout)),
+    );
   }
 
   if (!locator.isRegistered<SfdxWorkspaceLocator>()) {
@@ -49,11 +51,18 @@ void initializeDependencies() {
 
   if (!locator.isRegistered<CompletionAggregator>()) {
     locator.registerLazySingleton<CompletionAggregator>(() {
-      final libPath =
-          Platform.environment['TS_SFAPEX_LIB'] ??
-          '/Users/cesarparra/IdeaProjects/sf-zed/apex-lsp/libtree_sitter_sfapex.dylib';
+      String resolveFromCurrentDirectory(String location) {
+        final fileSystem = locator<FileSystem>();
+        final scriptDir = fileSystem.path.dirname(
+          io.Platform.script.toFilePath(),
+        );
+        return fileSystem.path.join(scriptDir, location);
+      }
 
-      final bindings = TreeSitterBindings.load(path: libPath);
+      final bindings = TreeSitterBindings.load(
+        pathResolver: resolveFromCurrentDirectory,
+        path: io.Platform.environment['TS_SFAPEX_LIB'],
+      );
       final treeSitterService = TreeSitterCompletionService.withBindings(
         bindings: bindings,
       );
@@ -68,6 +77,6 @@ void initializeDependencies() {
   }
 
   if (!locator.isRegistered<ExitFn>()) {
-    locator.registerFactory<ExitFn>(() => exit);
+    locator.registerFactory<ExitFn>(() => io.exit);
   }
 }

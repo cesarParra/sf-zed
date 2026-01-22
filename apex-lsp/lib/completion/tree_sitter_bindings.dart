@@ -19,6 +19,10 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 
+typedef ResolveFromCurrentDirectory = String Function(String);
+
+String defaultResolver(String location) => location;
+
 /// Minimal opaque handles to Tree-sitter objects.
 final class TSParser extends Opaque {}
 
@@ -120,34 +124,44 @@ final class TreeSitterBindings {
   ///
   /// If you want to load from the process (e.g., statically linked),
   /// pass `DynamicLibrary.process()` in [loadFromProcess].
-  static TreeSitterBindings load({String? path, bool loadFromProcess = false}) {
+  static TreeSitterBindings load({
+    ResolveFromCurrentDirectory pathResolver = defaultResolver,
+    String? path,
+    bool loadFromProcess = false,
+  }) {
     if (loadFromProcess) {
       return TreeSitterBindings._(DynamicLibrary.process());
     }
 
-    final resolved = _resolveLibraryPath(path);
+    final resolved = _resolveLibraryPath(
+      pathResolver: pathResolver,
+      path: path,
+    );
     return TreeSitterBindings._(DynamicLibrary.open(resolved));
   }
 
   /// Resolve platform-specific library filename if a short name is provided.
-  static String _resolveLibraryPath(String? path) {
+  static String _resolveLibraryPath({
+    required ResolveFromCurrentDirectory pathResolver,
+    String? path,
+  }) {
     if (path != null && path.isNotEmpty) {
       return path;
     }
 
     // Fallback to platform naming conventions.
     if (Platform.isMacOS) {
-      return 'libtree_sitter_sfapex.dylib';
+      return pathResolver('libtree_sitter_sfapex.dylib');
     }
     if (Platform.isLinux) {
-      return 'libtree_sitter_sfapex.so';
+      return pathResolver('libtree_sitter_sfapex.so');
     }
     if (Platform.isWindows) {
-      return 'tree_sitter_sfapex.dll';
+      return pathResolver('tree_sitter_sfapex.dll');
     }
 
     // Default (unknown platform): attempt POSIX .so
-    return 'libtree_sitter_sfapex.so';
+    return pathResolver('libtree_sitter_sfapex.so');
   }
 
   // ====== C API bindings ======

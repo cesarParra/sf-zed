@@ -11,5 +11,9 @@ Type
   | Self # the class being edited itself
   
 Member {
-  Type
+  Type::MemberType
 }
+
+MemberType
+  | Static
+  | Instance

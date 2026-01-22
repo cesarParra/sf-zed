@@ -41,9 +41,9 @@ Build the library, set the env var, and run the integration tests:
 ```/dev/null/commands.sh#L1-L4
 ./tool/build_tree_sitter_lib.sh
 # For macOS:
-export TS_SFAPEX_LIB="$(pwd)/libtree_sitter_sfapex.dylib"
+export TS_SFAPEX_LIB="$(pwd)/bin/libtree_sitter_sfapex.dylib"
 # For Linux:
-export TS_SFAPEX_LIB="$(pwd)/libtree_sitter_sfapex.so"
+export TS_SFAPEX_LIB="$(pwd)/bin/libtree_sitter_sfapex.so"
 
 dart test test/completion/tree_sitter_integration_test.dart
 ```

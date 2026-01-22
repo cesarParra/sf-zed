@@ -13,6 +13,7 @@ set -euo pipefail
 # - Print the TS_SFAPEX_LIB env var to use for integration tests
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BIN_DIR="${ROOT_DIR}/bin"
 WORK_DIR="${ROOT_DIR}/.tree-sitter-build"
 TREE_SITTER_DIR="${WORK_DIR}/tree-sitter"
 SFAPEX_DIR="${WORK_DIR}/tree-sitter-sfapex"
@@ -30,7 +31,7 @@ else
   exit 1
 fi
 
-OUT_LIB="${ROOT_DIR}/libtree_sitter_sfapex.${LIB_EXT}"
+OUT_LIB="${BIN_DIR}/libtree_sitter_sfapex.${LIB_EXT}"
 
 echo "Workspace: ${ROOT_DIR}"
 echo "Build dir: ${WORK_DIR}"
