@@ -100,7 +100,7 @@ void main() {
 
   group('when autocompleting object members', () {
     group('and local candidates are available', () {
-      test('the local document is used', () async {
+      test('the local document is used to complete members', () async {
         final documentIndex = ApexDocumentIndex(
           classes: [
             ApexClassInfo(
@@ -164,6 +164,72 @@ void main() {
             return result.memberOfType == 'Foo';
           }),
         );
+      });
+
+      test('the local document is used to complete classes', () async {
+        final documentIndex = ApexDocumentIndex(
+          classes: [
+            ApexClassInfo(
+              name: 'Foo',
+              startByte: 0,
+              endByte: 100,
+              fields: const ['localField'],
+              properties: const ['localProp'],
+              methods: const ['localMethod'],
+              superclass: null,
+            ),
+            ApexClassInfo(
+              name: 'Bar',
+              startByte: 0,
+              endByte: 100,
+              fields: const ['localField'],
+              properties: const ['localProp'],
+              methods: const ['localMethod'],
+              superclass: null,
+            ),
+          ],
+          variables: [
+            ApexVariableInfo(
+              name: 'myFooInstance',
+              typeName: 'Foo',
+              startByte: 0,
+              endByte: 50,
+              kind: 'local_variable_declaration',
+            ),
+          ],
+        );
+
+        final service = TreeSitterCompletionService.withIndexBuilder(
+          builder: (_) => documentIndex,
+        );
+
+        final workspace = _FakeWorkspaceIndex(
+          typeByName: {
+            'Foo': InMemoryIndexedClass(
+              name: 'Foo',
+              fields: [
+                'workspaceField'.instanceField(),
+                'workspaceProp'.instanceField(),
+              ],
+              methods: ['workspaceMethod'.instanceMethod()],
+              superclass: null,
+            ),
+          },
+        );
+
+        final aggregator = CompletionAggregator(
+          documentService: service,
+          indexedClassesRepository: workspace,
+        );
+
+        final text = 'Ba';
+        final result = await aggregator.suggest(
+          text: text,
+          cursorOffset: text.length,
+        );
+
+        expect(result, isA<ClassNameOrLocalCandidates>());
+        expect(result.labels, containsAll(['Bar']));
       });
     });
 

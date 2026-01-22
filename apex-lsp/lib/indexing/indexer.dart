@@ -232,7 +232,6 @@ final class ApexIndexer {
       final decoded = jsonDecode(content);
       return _parseIndexedClassInfo(decoded);
     } catch (e) {
-      print('caught $e');
       return null;
     }
   }
