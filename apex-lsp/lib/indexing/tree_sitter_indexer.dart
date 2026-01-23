@@ -1,167 +1,27 @@
 import 'dart:convert';
 import 'dart:ffi';
 
-import 'package:apex_lsp/completion/completion_context.dart';
-import 'package:apex_lsp/completion/helpers.dart';
+import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
+import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 import 'package:ffi/ffi.dart';
 
-import 'tree_sitter_bindings.dart';
-import 'tree_sitter_completion_types.dart';
-
-final class TreeSitterCompletionService {
-  TreeSitterCompletionService.withBindings({
-    required TreeSitterBindings bindings,
-  }) : _bindings = bindings {
-    _indexBuilder = _parseAndIndex;
-    _parser = _bindings!.ts_parser_new();
+class TreeSitterIndexer {
+  TreeSitterIndexer({required TreeSitterBindings bindings})
+    : _bindings = bindings,
+      _parser = bindings.ts_parser_new() {
     final language = _bindings.tree_sitter_apex();
-    final ok = _bindings.ts_parser_set_language(_parser!, language);
+    final ok = _bindings.ts_parser_set_language(_parser, language);
     if (ok == 0) {
       throw StateError('Failed to set Tree-sitter Apex language.');
     }
   }
 
-  TreeSitterCompletionService.withIndexBuilder({
-    required ApexIndexBuilder builder,
-  }) : _bindings = null,
-       _indexBuilder = builder;
+  final TreeSitterBindings _bindings;
+  final Pointer<TSParser> _parser;
 
-  final TreeSitterBindings? _bindings;
-  late final ApexIndexBuilder _indexBuilder;
-  late final Pointer<TSParser>? _parser;
-
-  void dispose() {
-    final parser = _parser;
-    final bindings = _bindings;
-    if (parser == null || bindings == null) return;
-    bindings.ts_parser_delete(parser);
-  }
-
-  CompletionCandidates suggest({
-    required String text,
-    required int cursorOffset,
-  }) {
-    final context = text.detectContext(cursorOffset);
-    if (context case CompletionContextNone()) {
-      return NoCandidates();
-    }
-
-    final cursorByteOffset = _byteOffset(text, cursorOffset);
-    final index = _indexBuilder(text);
-
-    if (context case CompletionContextMember(objectName: final objectName)) {
-      if (objectName == null || objectName.isEmpty) {
-        return NoCandidates();
-      }
-
-      final resolvedType = _resolveTypeForObject(
-        objectName: objectName,
-        cursorByteOffset: cursorByteOffset,
-        index: index,
-      );
-
-      if (resolvedType == null) {
-        return MemberCandidates(
-          labels: const [],
-          // We are either dealing with a static call, or something unknown.
-          // Regardless, we return the objectName so that the aggregator tries to
-          // find it in the index.
-          memberOfType: objectName,
-          objectName: objectName,
-          memberTypeResolvedFromDocument: false,
-        );
-      }
-
-      final classInfo = index.classByName(resolvedType);
-      if (classInfo == null) {
-        return MemberCandidates(
-          labels: const [],
-          memberOfType: resolvedType,
-          objectName: objectName,
-          memberTypeResolvedFromDocument: false,
-        );
-      }
-
-      final memberSet = <String>{
-        ...classInfo.fields,
-        ...classInfo.properties,
-        ...classInfo.methods,
-      };
-
-      return MemberCandidates(
-        labels: memberSet.toList(),
-        memberOfType: resolvedType,
-        memberTypeResolvedFromDocument: true,
-        objectName: objectName,
-      );
-    }
-
-    // Class name and local variable declaration completion.
-    // TODO: The way we are treating local variable declarations is pretty naive, since we don't
-    // care in which scope they were found. Variable declarations should only show up if the user
-    // is typing within the scope where it was declared (and before the currrent index)
-    final all = {
-      // All top level variables declared in the file. This
-      // is more for the anonymous Apex case, where things can be declared
-      // at any level.
-      ...index.variables.map((v) => v.name),
-
-      // For the declared class, expands all local members.
-      // TODO: This is a naive implementation that does't work for anon-apex,
-      // since it doesn't care from which class the member came from.
-      ...index.classes.expand((c) => c.fields),
-      ...index.classes.expand((c) => c.properties),
-      ...index.classes.expand((c) => c.methods),
-
-      // The name of the declared class (or classes in case of anon-apex) itself.
-      ...index.classes.map((c) => c.name),
-    };
-
-    return ClassNameOrLocalCandidates(labels: all.toList());
-  }
-
-  int _byteOffset(String text, int codeUnitOffset) {
-    if (codeUnitOffset <= 0) return 0;
-    if (codeUnitOffset >= text.length) {
-      return utf8.encode(text).length;
-    }
-    return utf8.encode(text.substring(0, codeUnitOffset)).length;
-  }
-
-  String? _resolveTypeForObject({
-    required String objectName,
-    required int cursorByteOffset,
-    required ApexDocumentIndex index,
-  }) {
-    if (objectName == 'this') {
-      final containing = _findClassAtOffset(index, cursorByteOffset);
-      return containing?.name;
-    }
-    if (objectName == 'super') {
-      final containing = _findClassAtOffset(index, cursorByteOffset);
-      return containing?.superclass ?? containing?.name;
-    }
-
-    final variable = _resolveVariable(index, objectName, cursorByteOffset);
-    if (variable != null) {
-      return variable.typeName;
-    }
-
-    // If the object name itself is a class name, treat as that type.
-    final classInfo = index.classByName(objectName);
-    if (classInfo != null) {
-      return classInfo.name;
-    }
-
-    return null;
-  }
-
-  ApexDocumentIndex _parseAndIndex(String text) {
+  ApexDocumentIndex parseAndIndex(String text) {
     final bindings = _bindings;
     final parser = _parser;
-    if (bindings == null || parser == null) {
-      throw StateError('Tree-sitter bindings are not available.');
-    }
     final sourceBytes = utf8.encode(text);
     final sourcePtr = text.toNativeUtf8();
     try {
@@ -208,6 +68,11 @@ final class TreeSitterCompletionService {
         stack.add(_bindings.ts_node_named_child(node, i));
       }
     }
+  }
+
+  String _nodeType(TSNode node) {
+    final ptr = _bindings!.ts_node_type(node);
+    return ptr.toDartString();
   }
 
   ApexClassInfo? _extractClass(TSNode node, _MutableApexDocumentIndex index) {
@@ -276,6 +141,19 @@ final class TreeSitterCompletionService {
     );
   }
 
+  TSNode _getField(TSNode node, String fieldName) {
+    final fieldPtr = fieldName.toNativeUtf8();
+    try {
+      return _bindings.ts_node_child_by_field_name(
+        node,
+        fieldPtr,
+        fieldName.length,
+      );
+    } finally {
+      malloc.free(fieldPtr);
+    }
+  }
+
   List<ApexVariableInfo> _extractVariables(
     TSNode node,
     _MutableApexDocumentIndex index, {
@@ -322,6 +200,48 @@ final class TreeSitterCompletionService {
     }
 
     return variables;
+  }
+
+  bool _isNullNode(TSNode node) => node.id.address == 0;
+
+  String _nodeText(TSNode node, _MutableApexDocumentIndex index) {
+    final start = _bindings.ts_node_start_byte(node);
+    final end = _bindings.ts_node_end_byte(node);
+    if (start < 0 || end > index.bytes.length || start >= end) return '';
+    return utf8.decode(index.bytes.sublist(start, end));
+  }
+
+  List<TSNode> _collectClassBodyFieldDeclarations(TSNode classBody) {
+    final matches = <TSNode>[];
+    final namedCount = _bindings!.ts_node_named_child_count(classBody);
+
+    for (var i = 0; i < namedCount; i++) {
+      final child = _bindings.ts_node_named_child(classBody, i);
+      if (_nodeType(child) == 'field_declaration') {
+        matches.add(child);
+      }
+    }
+
+    return matches;
+  }
+
+  List<TSNode> _collectNamedDescendantsByType(TSNode root, String typeName) {
+    final matches = <TSNode>[];
+    final stack = <TSNode>[root];
+
+    while (stack.isNotEmpty) {
+      final node = stack.removeLast();
+      if (_nodeType(node) == typeName) {
+        matches.add(node);
+      }
+
+      final namedCount = _bindings!.ts_node_named_child_count(node);
+      for (var i = 0; i < namedCount; i++) {
+        stack.add(_bindings.ts_node_named_child(node, i));
+      }
+    }
+
+    return matches;
   }
 
   String? _extractSuperclass(
@@ -386,52 +306,6 @@ final class TreeSitterCompletionService {
     return null;
   }
 
-  List<TSNode> _collectClassBodyFieldDeclarations(TSNode classBody) {
-    final matches = <TSNode>[];
-    final namedCount = _bindings!.ts_node_named_child_count(classBody);
-
-    for (var i = 0; i < namedCount; i++) {
-      final child = _bindings.ts_node_named_child(classBody, i);
-      if (_nodeType(child) == 'field_declaration') {
-        matches.add(child);
-      }
-    }
-
-    return matches;
-  }
-
-  List<TSNode> _collectNamedDescendantsByType(TSNode root, String typeName) {
-    final matches = <TSNode>[];
-    final stack = <TSNode>[root];
-
-    while (stack.isNotEmpty) {
-      final node = stack.removeLast();
-      if (_nodeType(node) == typeName) {
-        matches.add(node);
-      }
-
-      final namedCount = _bindings!.ts_node_named_child_count(node);
-      for (var i = 0; i < namedCount; i++) {
-        stack.add(_bindings.ts_node_named_child(node, i));
-      }
-    }
-
-    return matches;
-  }
-
-  TSNode _getField(TSNode node, String fieldName) {
-    final fieldPtr = fieldName.toNativeUtf8();
-    try {
-      return _bindings!.ts_node_child_by_field_name(
-        node,
-        fieldPtr,
-        fieldName.length,
-      );
-    } finally {
-      malloc.free(fieldPtr);
-    }
-  }
-
   TSNode? _findFirstNamedDescendantOfType(TSNode node, String typeName) {
     final stack = <TSNode>[node];
 
@@ -448,46 +322,6 @@ final class TreeSitterCompletionService {
     }
 
     return null;
-  }
-
-  bool _isNullNode(TSNode node) => node.id.address == 0;
-
-  String _nodeType(TSNode node) {
-    final ptr = _bindings!.ts_node_type(node);
-    return ptr.toDartString();
-  }
-
-  String _nodeText(TSNode node, _MutableApexDocumentIndex index) {
-    final start = _bindings!.ts_node_start_byte(node);
-    final end = _bindings.ts_node_end_byte(node);
-    if (start < 0 || end > index.bytes.length || start >= end) return '';
-    return utf8.decode(index.bytes.sublist(start, end));
-  }
-
-  ApexClassInfo? _findClassAtOffset(ApexDocumentIndex index, int offset) {
-    for (final c in index.classes) {
-      if (offset >= c.startByte && offset <= c.endByte) {
-        return c;
-      }
-    }
-    return null;
-  }
-
-  ApexVariableInfo? _resolveVariable(
-    ApexDocumentIndex index,
-    String name,
-    int cursorByteOffset,
-  ) {
-    ApexVariableInfo? best;
-    for (final v in index.variables) {
-      if (v.name != name) continue;
-      if (v.startByte > cursorByteOffset) continue;
-
-      if (best == null || v.startByte > best.startByte) {
-        best = v;
-      }
-    }
-    return best;
   }
 }
 

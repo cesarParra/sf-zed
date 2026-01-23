@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:apex_lsp/completion/completion.dart';
-import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/initialization_status.dart';
 import 'package:get_it/get_it.dart';
 
@@ -24,7 +25,8 @@ final class Server {
       _exitFn = locator<ExitFn>(),
       _openDocuments = OpenDocuments(),
       _apexIndexer = locator<ApexIndexer>(),
-      _aggregator = locator<CompletionAggregator>();
+      _localIndexer = locator<TreeSitterIndexer>(),
+      _indexedClassProvider = locator<IndexedClassProvider>();
 
   final LspOut _output;
   final MessageReader _reader;
@@ -32,7 +34,8 @@ final class Server {
 
   final OpenDocuments _openDocuments;
   final ApexIndexer _apexIndexer;
-  final CompletionAggregator _aggregator;
+  final TreeSitterIndexer _localIndexer;
+  final IndexedClassProvider _indexedClassProvider;
 
   InitializationStatus _initializationStatus = NotInitialized();
   bool _shutdownRequested = false;
@@ -80,7 +83,12 @@ final class Server {
         _shutdownRequested = true;
         await _output.sendResponse(id: req.id, result: null);
       case CompletionRequest(:final id, :final params):
-        await _onCompletion(id: id, params: params);
+        await _onCompletion(
+          id: id,
+          params: params,
+          localIndexer: _localIndexer,
+          indexedClassProvider: _indexedClassProvider,
+        );
     }
   }
 
@@ -145,11 +153,14 @@ final class Server {
   Future<void> _onCompletion({
     required Object id,
     required CompletionParams params,
+    required TreeSitterIndexer localIndexer,
+    required IndexedClassProvider indexedClassProvider,
   }) async {
     final completionList = await onCompletion(
       openDocuments: _openDocuments,
-      aggregator: _aggregator,
       params: params,
+      localIndexer: localIndexer,
+      indexedClasProvider: indexedClassProvider,
     );
     await _output.sendResponse(id: id, result: completionList.toJson());
   }

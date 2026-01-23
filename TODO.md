@@ -69,6 +69,7 @@ Block support notes
 - [ ] Apexdocs information
 - [ ] Private members (of other files) should not be shown
 - [ ] @TestVisible members are surfaced only when inside a test file
+- [ ] Language keywords
 
 ## Namespaces
 - [ ] Can work on a namespaced scratch org (e.g. autocomplete works when referencing a file in the same namespace)

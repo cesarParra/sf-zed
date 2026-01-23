@@ -1,3 +1,4 @@
+import 'package:apex_lsp/completion/completion_candidates.dart';
 import 'package:test/test.dart';
 
 import 'package:apex_lsp/completion/completion_aggregator.dart';
