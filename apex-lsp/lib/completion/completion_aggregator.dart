@@ -1,9 +1,7 @@
 import 'dart:async';
 
 import 'package:apex_lsp/completion/completion.dart';
-import 'package:apex_lsp/completion/completion_candidates.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
-import 'package:apex_lsp/indexing/indexer.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart' as indexed_class;
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 
@@ -32,52 +30,6 @@ final class CompletionAggregatorLegacy {
   //   };
   // }
 
-  /// Merges member completion candidates from local and workspace sources.
-  ///
-  /// If [candidates] already has a resolved member type from the document, it is
-  /// returned as-is. Otherwise, it attempts to resolve the type using the
-  /// workspace index.
-  ///
-  /// - [text]: The current file content.
-  /// - [cursorOffset]: The cursor position.
-  /// - [candidates]: The candidates found by the document service.
-  // Future<CompletionCandidates> _mergeMemberCandidates({
-  //   required String text,
-  //   required int cursorOffset,
-  //   required MemberCandidates candidates,
-  // }) async {
-  //   // If the candidate comes from the open document, we return the local information
-  //   // instead of merging with the indexed class, which represent the rest of the codebase.
-  //   if (candidates.memberTypeResolvedFromDocument) {
-  //     return candidates;
-  //   }
-
-  //   final resolvedType = candidates.memberOfType;
-  //   if (resolvedType.isNotEmpty) {
-  //     final workspaceClass = await _indexedClassesRepository.typeByNameAsync(
-  //       resolvedType,
-  //     );
-
-  //     if (workspaceClass != null) {
-  //       final memberType =
-  //           resolvedType.toLowerCase() == candidates.objectName.toLowerCase()
-  //           ? indexed_class.MemberType.static
-  //           : indexed_class.MemberType.instance;
-
-  //       return MemberCandidates(
-  //         labels: workspaceClass.memberNamesByType(memberType),
-  //         memberOfType: resolvedType,
-  //         memberTypeResolvedFromDocument: false,
-  //         objectName: candidates.objectName,
-  //       );
-  //     }
-  //   }
-
-  //   return NoCandidates();
-  // }
-
-  /// Merges class name candidates from local and workspace sources.
-  ///
   /// Combines labels from [local] with all class names known to the
   /// [_indexedClassesRepository].
   ///
@@ -139,7 +91,8 @@ final class CompletionAggregator implements CompletionSuggestion {
     required CompletionContext context,
   }) {
     // TODO: aggregation of suggestion logic
-    throw UnimplementedError();
+    //throw UnimplementedError();
+    return localSuggestion.suggest(context: context);
   }
 }
 
@@ -174,26 +127,10 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
         ...classInfo.properties,
         ...classInfo.methods,
       };
-      final members = memberSet.map((memberName) {
-        final member = classInfo.memberByName(memberName);
-        if (member == null) return null;
-        return MemberCandidate(
-          label: memberName,
-          kind: member.kind,
-          type: member.type,
-          resolvedType: apexType,
-          memberOfType: apexType,
-          memberTypeResolvedFromDocument: true,
-          objectName: objectName,
-        );
-      }).whereType<MemberCandidate>().toList();
 
-      return MemberCandidates(
-        labels: memberSet.toList(),
-        memberOfType: resolvedType,
-        memberTypeResolvedFromDocument: true,
-        objectName: objectName,
-      );
+      final members = membersFromName(memberSet, apexType);
+
+      return members.map(MemberCandidate.new).toList();
     }
 
     List<CompletionCandidate> completeTopLevel() {
@@ -201,24 +138,34 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
       // TODO: The way we are treating local variable declarations is pretty naive, since we don't
       // care in which scope they were found. Variable declarations should only show up if the user
       // is typing within the scope where it was declared (and before the currrent index)
-      final all = {
-        // All top level variables declared in the file. This
-        // is more for the anonymous Apex case, where things can be declared
-        // at any level.
-        ..._index.variables.map((v) => v.name),
 
-        // For the declared class, expands all local members.
-        // TODO: This is a naive implementation that does't work for anon-apex,
-        // since it doesn't care from which class the member came from.
-        ..._index.classes.expand((c) => c.fields),
-        ..._index.classes.expand((c) => c.properties),
-        ..._index.classes.expand((c) => c.methods),
+      // All top level variables declared in the file. This
+      // is more for the anonymous Apex case, where things can be declared
+      // at any level.
+      final topLevelVariables = _index.variables.map(
+        (v) => LocalVariableCandidate(v.name),
+      );
 
-        // The name of the declared class (or classes in case of anon-apex) itself.
-        ..._index.classes.map((c) => c.name),
-      };
+      // For the declared class, expands all local members.
+      // TODO: This is a naive implementation that does't work for anon-apex,
+      // since it doesn't care from which class the member came from.
+      // Eventually we want this to be only for types of "Self"
+      final localMembers = [
+        ..._index.classes.expand(
+          (c) => [
+            ...membersFromName(c.fields, Local(name: c.name)),
+            ...membersFromName(c.properties, Local(name: c.name)),
+            ...membersFromName(c.methods, Local(name: c.name)),
+          ],
+        ),
+      ].map(MemberCandidate.new);
 
-      return ClassNameOrLocalCandidates(labels: all.toList());
+      // The name of the declared class (or classes in case of anon-apex) itself.
+      final localClasses = _index.classes
+          .map((c) => Local(name: c.name))
+          .map(ApexTypeCandidate.new);
+
+      return [...topLevelVariables, ...localMembers, ...localClasses];
     }
 
     return switch (context) {
@@ -251,7 +198,67 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
   FutureOr<List<CompletionCandidate>> suggest({
     required CompletionContext context,
   }) {
-    // TODO: implementation of suggestion logic
-    throw UnimplementedError();
+    Future<List<CompletionCandidate>> completeMembersFromIndex(
+      String? resolvedType,
+      String? objectName,
+    ) async {
+      if (resolvedType == null || resolvedType.isEmpty || objectName == null) {
+        return [];
+      }
+
+      final workspaceClass = await _indexClassProvider.typeByNameAsync(
+        resolvedType,
+      );
+
+      if (workspaceClass == null) {
+        return [];
+      }
+
+      final memberType = resolvedType.toLowerCase() == objectName.toLowerCase()
+          // If the name of the type itself matches the name of the variable
+          // we resolved for, then we are dealing with a static call (e.g. Foo.b)
+          ? MemberType.static
+          : MemberType.instance;
+
+      final memberNamesForType = workspaceClass.memberNamesByType(memberType);
+
+      return memberNamesForType.map((memberName) {
+        return MemberCandidate(
+          Member(
+            name: memberName,
+            parentType: Indexed(name: resolvedType),
+            type: memberType,
+          ),
+        );
+      }).toList();
+    }
+
+    Future<List<CompletionCandidate>> completeTypesFromIndex() async {
+      return _indexClassProvider.classNames.map((classInfo) {
+        return ApexTypeCandidate(Indexed(name: classInfo));
+      }).toList();
+    }
+
+    return switch (context) {
+      CompletionContextNone() => [],
+      CompletionContextMember(:final typeName, :final objectName) =>
+        completeMembersFromIndex(typeName, objectName),
+      CompletionContextTopLevel() => completeTypesFromIndex(),
+    };
   }
+}
+
+// TODO: At the moment, the information comming from tree sitter
+// is not enough to know the type of member we are dealing with, so
+// we are adding it as both static and instace for the time being.
+Iterable<Member> membersFromName(
+  Iterable<String> memberNames,
+  ApexType apexType,
+) {
+  return memberNames.expand<Member>((memberName) {
+    return [
+      Member(name: memberName, parentType: apexType, type: .instance),
+      Member(name: memberName, parentType: apexType, type: .static),
+    ];
+  });
 }

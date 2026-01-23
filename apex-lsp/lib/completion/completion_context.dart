@@ -18,18 +18,18 @@ final class CompletionContextNone extends CompletionContext {
 
 final class CompletionContextTopLevel extends CompletionContext {
   const CompletionContextTopLevel({
-    required this.className,
+    required this.prefix,
     required this.text,
     required this.cursorOffset,
   });
 
-  final String className;
+  final String prefix;
   final String text;
   final int cursorOffset;
 
   @override
   String toString() {
-    return 'CompletionContextClass(className: $className)';
+    return 'CompletionContextClass(className: $prefix)';
   }
 }
 
@@ -110,7 +110,7 @@ final class ContextDetector {
     }
 
     return CompletionContextTopLevel(
-      className: prefix,
+      prefix: prefix,
       text: text,
       cursorOffset: cursorOffset,
     );

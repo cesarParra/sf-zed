@@ -1,3 +1,4 @@
+import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/indexing/indexer.dart' as indexer;
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
@@ -32,8 +33,6 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
     };
   }
 }
-
-enum MemberType { static, instance }
 
 abstract class IndexedType {
   List<String> get memberNames;

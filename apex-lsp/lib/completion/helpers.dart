@@ -44,4 +44,8 @@ extension StringCompletionExtension on String {
     }
     return substring(start, i);
   }
+
+  bool startsWithIgnoreCase(String prefix) {
+    return toLowerCase().startsWith(prefix.toLowerCase());
+  }
 }
