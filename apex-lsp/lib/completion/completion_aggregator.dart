@@ -76,7 +76,7 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
       required String? objectName,
       required String? typeName,
     }) {
-      if (typeName == null) {
+      if (typeName == null || objectName == null) {
         return [];
       }
 
@@ -85,14 +85,21 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
         return [];
       }
 
+      final memberType = typeName.toLowerCase() == objectName.toLowerCase()
+          ? MemberType.static
+          : MemberType.instance;
+
       final apexType = Local(name: classInfo.name);
-      final memberSet = <String>{
+      final memberList = <ApexMemberInfo>[
         ...classInfo.fields,
         ...classInfo.properties,
         ...classInfo.methods,
-      };
+      ];
 
-      final members = membersFromName(memberSet, apexType);
+      final members = membersFromMemberInfo(
+        memberList,
+        apexType,
+      ).where((m) => m.type == memberType);
 
       return members.map(MemberCandidate.new).toList();
     }
@@ -117,9 +124,9 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
       final localMembers = [
         ..._index.classes.expand(
           (c) => [
-            ...membersFromName(c.fields, Local(name: c.name)),
-            ...membersFromName(c.properties, Local(name: c.name)),
-            ...membersFromName(c.methods, Local(name: c.name)),
+            ...membersFromMemberInfo(c.fields, Local(name: c.name)),
+            ...membersFromMemberInfo(c.properties, Local(name: c.name)),
+            ...membersFromMemberInfo(c.methods, Local(name: c.name)),
           ],
         ),
       ].map(MemberCandidate.new);
@@ -214,17 +221,15 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
   }
 }
 
-// TODO: At the moment, the information comming from tree sitter
-// is not enough to know the type of member we are dealing with, so
-// we are adding it as both static and instace for the time being.
-Iterable<Member> membersFromName(
-  Iterable<String> memberNames,
+Iterable<Member> membersFromMemberInfo(
+  Iterable<ApexMemberInfo> members,
   ApexType apexType,
 ) {
-  return memberNames.expand<Member>((memberName) {
-    return [
-      Member(name: memberName, parentType: apexType, type: .instance),
-      Member(name: memberName, parentType: apexType, type: .static),
-    ];
+  return members.map((member) {
+    return Member(
+      name: member.name,
+      parentType: apexType,
+      type: member.isStatic ? MemberType.static : MemberType.instance,
+    );
   });
 }

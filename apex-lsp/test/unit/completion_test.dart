@@ -230,6 +230,80 @@ void main() {
     });
   });
 
+  group('Local Member Completion', () {
+    test('suggests instance members from local class definition', () async {
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(
+          classes: [
+            ApexClassInfo(
+              name: 'MyClass',
+              startByte: 0,
+              endByte: 0,
+              fields: [
+                ApexMemberInfo(name: 'instanceField', isStatic: false),
+                ApexMemberInfo(name: 'staticField', isStatic: true),
+              ],
+              properties: [],
+              methods: [
+                ApexMemberInfo(name: 'instanceMethod', isStatic: false),
+                ApexMemberInfo(name: 'staticMethod', isStatic: true),
+              ],
+            ),
+          ],
+          variables: [
+            ApexVariableInfo(
+              name: 'inst',
+              typeName: 'MyClass',
+              startByte: 0,
+              endByte: 0,
+              kind: 'local_variable_declaration',
+            ),
+          ],
+        ),
+      );
+
+      final text = 'MyClass inst; inst.';
+      final result = await complete(text, line: 0, character: text.length);
+
+      final labels = result.items.map((i) => i.label);
+      expect(labels, containsAll(['instanceField', 'instanceMethod']));
+      expect(labels, isNot(contains('staticField')));
+      expect(labels, isNot(contains('staticMethod')));
+    });
+
+    test('suggests static members from local class definition', () async {
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(
+          classes: [
+            ApexClassInfo(
+              name: 'MyClass',
+              startByte: 0,
+              endByte: 0,
+              fields: [
+                ApexMemberInfo(name: 'instanceField', isStatic: false),
+                ApexMemberInfo(name: 'staticField', isStatic: true),
+              ],
+              properties: [],
+              methods: [
+                ApexMemberInfo(name: 'instanceMethod', isStatic: false),
+                ApexMemberInfo(name: 'staticMethod', isStatic: true),
+              ],
+            ),
+          ],
+          variables: [],
+        ),
+      );
+
+      final text = 'MyClass.';
+      final result = await complete(text, line: 0, character: text.length);
+
+      final labels = result.items.map((i) => i.label);
+      expect(labels, containsAll(['staticField', 'staticMethod']));
+      expect(labels, isNot(contains('instanceField')));
+      expect(labels, isNot(contains('instanceMethod')));
+    });
+  });
+
   group('Pagination & Limits', () {
     test('caps results at 25 and sets incomplete flag', () async {
       // Create 30 classes

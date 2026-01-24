@@ -35,15 +35,25 @@ final class ApexClassInfo {
   final String name;
   final int startByte;
   final int endByte;
-  final List<String> fields;
-  final List<String> properties;
-  final List<String> methods;
+  final List<ApexMemberInfo> fields;
+  final List<ApexMemberInfo> properties;
+  final List<ApexMemberInfo> methods;
   final String? superclass;
 
   @override
   String toString() {
     return 'ApexClassInfo(name: $name, startByte: $startByte, endByte: $endByte, fields: $fields, properties: $properties, methods: $methods, superclass: $superclass)';
   }
+}
+
+final class ApexMemberInfo {
+  ApexMemberInfo({required this.name, required this.isStatic});
+
+  final String name;
+  final bool isStatic;
+
+  @override
+  String toString() => 'ApexMemberInfo(name: $name, isStatic: $isStatic)';
 }
 
 /// Public representation of an Apex variable in a parsed document.

@@ -152,4 +152,96 @@ public class Baz {
       }
     });
   });
+
+  group('Static vs Instance Integration', () {
+    late TreeSitterIndexer indexer;
+    late TreeSitterBindings bindings;
+
+    setUp(() {
+      bindings = TreeSitterBindings.load(path: libPath);
+      indexer = TreeSitterIndexer(bindings: bindings);
+    });
+
+    Future<List<CompletionCandidate>> suggest({
+      required String text,
+      required int cursorOffset,
+    }) async {
+      final index = indexer.parseAndIndex(text);
+      final detector = ContextDetector(index: index);
+      final context = detector.detect(text: text, cursorOffset: cursorOffset);
+      final service = TreeSitterCompletionService(index: index);
+      return service.suggest(context: context);
+    }
+
+    test('CollectionUtils static access', () async {
+      final text = '''
+public with sharing class CollectionUtils {
+    public String myVar;
+
+    public static List<Object> toObjectList(Iterable<Object> values) {
+        List<Object> objects = new List<Object>();
+        for (Object s : values) {
+            objects.add(s);
+        }
+
+        return objects;
+    }
+
+    public static Integer sum(Int a, Int b) {
+        return a + b;
+    }
+}
+
+public class Consumer {
+    public void test() {
+        CollectionUtils.
+    }
+}
+''';
+
+      final cursorOffset =
+          text.indexOf('CollectionUtils.') + 'CollectionUtils.'.length;
+      final results = await suggest(text: text, cursorOffset: cursorOffset);
+      final names = results.map((c) => c.name).toList();
+
+      expect(names, containsAll(['toObjectList', 'sum']));
+      expect(names, isNot(contains('myVar')));
+    });
+
+    test('CollectionUtils instance access', () async {
+      final text = '''
+public with sharing class CollectionUtils {
+    public String myVar;
+
+    public static List<Object> toObjectList(Iterable<Object> values) {
+        List<Object> objects = new List<Object>();
+        for (Object s : values) {
+            objects.add(s);
+        }
+
+        return objects;
+    }
+
+    public static Integer sum(Int a, Int b) {
+        return a + b;
+    }
+}
+
+public class Consumer {
+    public void test() {
+        CollectionUtils utils = new CollectionUtils();
+        utils.
+    }
+}
+''';
+
+      final cursorOffset = text.indexOf('utils.') + 'utils.'.length;
+      final results = await suggest(text: text, cursorOffset: cursorOffset);
+      final names = results.map((c) => c.name).toList();
+
+      expect(names, contains('myVar'));
+      expect(names, isNot(contains('toObjectList')));
+      expect(names, isNot(contains('sum')));
+    });
+  });
 }

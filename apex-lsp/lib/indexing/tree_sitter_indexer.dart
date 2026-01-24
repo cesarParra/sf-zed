@@ -83,47 +83,51 @@ class TreeSitterIndexer {
     if (className.isEmpty) return null;
 
     final bodyNode = _getField(node, 'body');
-    final fields = <String>{};
-    final properties = <String>{};
-    final methods = <String>{};
+    final fields = <ApexMemberInfo>[];
+    final properties = <ApexMemberInfo>[];
+    final methods = <ApexMemberInfo>[];
 
     if (!_isNullNode(bodyNode)) {
-      final fieldDeclarations = _collectClassBodyFieldDeclarations(bodyNode);
+      final fieldDeclarations = _collectDirectChildrenByType(
+        bodyNode,
+        'field_declaration',
+      );
       for (final fieldDecl in fieldDeclarations) {
         final typeName = _extractTypeName(fieldDecl, index);
         if (typeName == null || typeName.isEmpty) continue;
 
-        final declarators = _collectNamedDescendantsByType(
+        final isStatic = _hasStaticModifier(fieldDecl, index);
+        final isProperty = _collectDirectChildrenByType(
+          fieldDecl,
+          'accessor_list',
+        ).isNotEmpty;
+
+        final declarators = _collectDirectChildrenByType(
           fieldDecl,
           'variable_declarator',
         );
         for (final declarator in declarators) {
           final varName = _extractDeclaratorName(declarator, index);
           if (varName != null && varName.isNotEmpty) {
-            fields.add(varName);
+            final member = ApexMemberInfo(name: varName, isStatic: isStatic);
+            if (isProperty) {
+              properties.add(member);
+            } else {
+              fields.add(member);
+            }
           }
         }
       }
 
-      final propertyDeclarations = _collectNamedDescendantsByType(
-        bodyNode,
-        'property_declaration',
-      );
-      for (final propertyDecl in propertyDeclarations) {
-        final name = _extractMemberName(propertyDecl, index);
-        if (name != null && name.isNotEmpty) {
-          properties.add(name);
-        }
-      }
-
-      final methodDeclarations = _collectNamedDescendantsByType(
+      final methodDeclarations = _collectDirectChildrenByType(
         bodyNode,
         'method_declaration',
       );
       for (final methodDecl in methodDeclarations) {
         final name = _extractMemberName(methodDecl, index);
         if (name != null && name.isNotEmpty) {
-          methods.add(name);
+          final isStatic = _hasStaticModifier(methodDecl, index);
+          methods.add(ApexMemberInfo(name: name, isStatic: isStatic));
         }
       }
     }
@@ -134,9 +138,9 @@ class TreeSitterIndexer {
       name: className,
       startByte: _bindings.ts_node_start_byte(node),
       endByte: _bindings.ts_node_end_byte(node),
-      fields: fields.toList()..sort(),
-      properties: properties.toList()..sort(),
-      methods: methods.toList()..sort(),
+      fields: fields..sort((a, b) => a.name.compareTo(b.name)),
+      properties: properties..sort((a, b) => a.name.compareTo(b.name)),
+      methods: methods..sort((a, b) => a.name.compareTo(b.name)),
       superclass: superclass,
     );
   }
@@ -162,7 +166,7 @@ class TreeSitterIndexer {
     final typeName = _extractTypeName(node, index);
     if (typeName == null || typeName.isEmpty) return const [];
 
-    final declarators = _collectNamedDescendantsByType(
+    final declarators = _collectDirectChildrenByType(
       node,
       'variable_declarator',
     );
@@ -211,33 +215,37 @@ class TreeSitterIndexer {
     return utf8.decode(index.bytes.sublist(start, end));
   }
 
-  List<TSNode> _collectClassBodyFieldDeclarations(TSNode classBody) {
-    final matches = <TSNode>[];
-    final namedCount = _bindings.ts_node_named_child_count(classBody);
+  bool _hasStaticModifier(TSNode node, _MutableApexDocumentIndex index) {
+    TSNode? modifiersNode;
 
-    for (var i = 0; i < namedCount; i++) {
-      final child = _bindings.ts_node_named_child(classBody, i);
-      if (_nodeType(child) == 'field_declaration') {
-        matches.add(child);
+    final childCount = _bindings.ts_node_named_child_count(node);
+    for (var i = 0; i < childCount; i++) {
+      final child = _bindings.ts_node_named_child(node, i);
+      if (_nodeType(child) == 'modifiers') {
+        modifiersNode = child;
+        break;
       }
     }
 
-    return matches;
+    if (modifiersNode == null || _isNullNode(modifiersNode)) return false;
+
+    final count = _bindings.ts_node_named_child_count(modifiersNode);
+    for (var i = 0; i < count; i++) {
+      final child = _bindings.ts_node_named_child(modifiersNode, i);
+      final text = _nodeText(child, index);
+      if (text.toLowerCase() == 'static') return true;
+    }
+    return false;
   }
 
-  List<TSNode> _collectNamedDescendantsByType(TSNode root, String typeName) {
+  List<TSNode> _collectDirectChildrenByType(TSNode root, String typeName) {
     final matches = <TSNode>[];
-    final stack = <TSNode>[root];
+    final namedCount = _bindings.ts_node_named_child_count(root);
 
-    while (stack.isNotEmpty) {
-      final node = stack.removeLast();
-      if (_nodeType(node) == typeName) {
-        matches.add(node);
-      }
-
-      final namedCount = _bindings.ts_node_named_child_count(node);
-      for (var i = 0; i < namedCount; i++) {
-        stack.add(_bindings.ts_node_named_child(node, i));
+    for (var i = 0; i < namedCount; i++) {
+      final child = _bindings.ts_node_named_child(root, i);
+      if (_nodeType(child) == typeName) {
+        matches.add(child);
       }
     }
 
