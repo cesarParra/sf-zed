@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
+import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart' as indexed_class;
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
+import 'package:apex_lsp/lsp_out.dart';
+
+final logger = locator<LspOut>();
 
 final class CompletionAggregatorLegacy {
   // Future<CompletionCandidates> suggest({
@@ -89,10 +93,14 @@ final class CompletionAggregator implements CompletionSuggestion {
   @override
   FutureOr<List<CompletionCandidate>> suggest({
     required CompletionContext context,
-  }) {
-    // TODO: aggregation of suggestion logic
-    //throw UnimplementedError();
-    return localSuggestion.suggest(context: context);
+  }) async {
+    // TODO: Enum values are not working
+
+    final localSuggestions = await localSuggestion.suggest(context: context);
+    final indexedSuggestions = await indexedSuggestion.suggest(
+      context: context,
+    );
+    return [...localSuggestions, ...indexedSuggestions];
   }
 }
 
@@ -214,6 +222,7 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
         return [];
       }
 
+      logger.debug('member type $resolvedType and object Name $objectName');
       final memberType = resolvedType.toLowerCase() == objectName.toLowerCase()
           // If the name of the type itself matches the name of the variable
           // we resolved for, then we are dealing with a static call (e.g. Foo.b)
@@ -239,6 +248,7 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
       }).toList();
     }
 
+    logger.debug('dealing with $context');
     return switch (context) {
       CompletionContextNone() => [],
       CompletionContextMember(:final typeName, :final objectName) =>

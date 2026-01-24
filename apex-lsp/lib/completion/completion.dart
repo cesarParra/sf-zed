@@ -4,10 +4,14 @@ import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
+import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
+import 'package:apex_lsp/lsp_out.dart';
 import 'package:apex_lsp/message.dart';
+
+final logger = locator<LspOut>();
 
 // TODO: In the future, we also want to add language keywords here
 /// Represents a candidate for completion.
@@ -141,6 +145,7 @@ Future<CompletionList> onCompletion({
     text: text,
     cursorOffset: cursorOffset,
   );
+  logger.debug('context detected $context');
 
   Future<CompletionList> completeFor(String prefix) async {
     final localSuggestion = TreeSitterCompletionService(index: index);
