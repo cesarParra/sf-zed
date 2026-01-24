@@ -1,10 +1,11 @@
 import 'dart:io';
 
-import 'package:apex_lsp/completion/completion_candidates.dart';
-import 'package:test/test.dart';
-
+import 'package:apex_lsp/completion/completion.dart';
+import 'package:apex_lsp/completion/completion_aggregator.dart';
+import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
-import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
+import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
+import 'package:test/test.dart';
 
 import '../../support/lsp_test_harness.dart';
 
@@ -14,34 +15,42 @@ void main() {
   final libPath = Platform.environment['TS_SFAPEX_LIB'];
 
   group('TreeSitterCompletionService integration', () {
-    late TreeSitterCompletionService service;
+    late TreeSitterIndexer indexer;
+    late TreeSitterBindings bindings;
 
     setUp(() {
-      final bindings = TreeSitterBindings.load(path: libPath);
-      service = TreeSitterCompletionService.withBindings(bindings: bindings);
+      bindings = TreeSitterBindings.load(path: libPath);
+      indexer = TreeSitterIndexer(bindings: bindings);
     });
 
-    tearDown(() {
-      service.dispose();
-    });
+    Future<List<CompletionCandidate>> suggest({
+      required String text,
+      required int cursorOffset,
+    }) async {
+      final index = indexer.parseAndIndex(text);
+      final detector = ContextDetector(index: index);
+      final context = detector.detect(text: text, cursorOffset: cursorOffset);
+      final service = TreeSitterCompletionService(index: index);
+      return service.suggest(context: context);
+    }
 
-    test('parses class names from source', () {
+    test('parses class names from source', () async {
       final text = '''
 public class Foo {}
 public class Bar {}
 ''';
 
-      final result = service.suggest(
+      final results = await suggest(
         text: text,
         cursorOffset: text.indexOf('Fo') + 2,
       );
 
-      expect(result, isA<ClassNameOrLocalCandidates>());
-      expect(result.labels, contains('Foo'));
-      expect(result.labels, contains('Bar'));
+      final names = results.map((c) => c.name).toList();
+      expect(names, contains('Foo'));
+      expect(names, contains('Bar'));
     });
 
-    test('parses member fields for instance', () {
+    test('parses member fields for instance', () async {
       final text = '''
 public class Foo {
   public String myVar;
@@ -59,19 +68,20 @@ public class Baz {
       final cursorOffset =
           text.indexOf('myFooInstance.') + 'myFooInstance.'.length;
 
-      final result = service.suggest(text: text, cursorOffset: cursorOffset);
+      final results = await suggest(text: text, cursorOffset: cursorOffset);
 
-      expect(result, isA<MemberCandidates>());
-      expect(result.labels, containsAll(['myVar', 'other']));
-      expect(
-        result,
-        predicate<MemberCandidates>((result) {
-          return result.memberOfType == 'Foo';
-        }),
-      );
+      final names = results.map((c) => c.name).toList();
+      expect(names, containsAll(['myVar', 'other']));
+
+      final members = results.whereType<MemberCandidate>();
+      for (final member in members) {
+        if (['myVar', 'other'].contains(member.name)) {
+          expect(member.member.parentType.name, equals('Foo'));
+        }
+      }
     });
 
-    test('parses instance variables', () {
+    test('parses instance variables', () async {
       final text = '''
 public class Foo {
   public String myVar;
@@ -85,13 +95,13 @@ public class Foo {
 
       final cursorOffset = text.indexOf('return myV') + 'return myV.'.length;
 
-      final result = service.suggest(text: text, cursorOffset: cursorOffset);
+      final results = await suggest(text: text, cursorOffset: cursorOffset);
 
-      expect(result, isA<ClassNameOrLocalCandidates>());
-      expect(result.labels, containsAll(['myVar']));
+      final names = results.map((c) => c.name).toList();
+      expect(names, contains('myVar'));
     });
 
-    test('parses instance methods', () {
+    test('parses instance methods', () async {
       final text = '''
 public class Foo {
   public String concat() {
@@ -104,13 +114,13 @@ public class Foo {
 
       final cursorOffset = text.indexOf('doSom') + 'doSom'.length;
 
-      final result = service.suggest(text: text, cursorOffset: cursorOffset);
+      final results = await suggest(text: text, cursorOffset: cursorOffset);
 
-      expect(result, isA<ClassNameOrLocalCandidates>());
-      expect(result.labels, containsAll(['doSomething']));
+      final names = results.map((c) => c.name).toList();
+      expect(names, contains('doSomething'));
     });
 
-    test('filters members by prefix', () {
+    test('filters members by prefix', () async {
       final text = '''
 public class Foo {
   public String myVar;
@@ -128,16 +138,18 @@ public class Baz {
       final cursorOffset =
           text.indexOf('myFooInstance.my') + 'myFooInstance.my'.length;
 
-      final result = service.suggest(text: text, cursorOffset: cursorOffset);
+      final results = await suggest(text: text, cursorOffset: cursorOffset);
 
-      expect(result, isA<MemberCandidates>());
-      expect(result.labels, containsAll(['myVar', 'other']));
-      expect(
-        result,
-        predicate<MemberCandidates>((result) {
-          return result.memberOfType == 'Foo';
-        }),
-      );
+      final names = results.map((c) => c.name).toList();
+      // The service returns all members; filtering happens later in the pipeline
+      expect(names, containsAll(['myVar', 'other']));
+
+      final members = results.whereType<MemberCandidate>();
+      for (final member in members) {
+        if (['myVar', 'other'].contains(member.name)) {
+          expect(member.member.parentType.name, equals('Foo'));
+        }
+      }
     });
   });
 }

@@ -63,7 +63,7 @@ class TreeSitterIndexer {
         index.variables.addAll(variables);
       }
 
-      final namedCount = _bindings!.ts_node_named_child_count(node);
+      final namedCount = _bindings.ts_node_named_child_count(node);
       for (var i = 0; i < namedCount; i++) {
         stack.add(_bindings.ts_node_named_child(node, i));
       }
@@ -71,7 +71,7 @@ class TreeSitterIndexer {
   }
 
   String _nodeType(TSNode node) {
-    final ptr = _bindings!.ts_node_type(node);
+    final ptr = _bindings.ts_node_type(node);
     return ptr.toDartString();
   }
 
@@ -132,7 +132,7 @@ class TreeSitterIndexer {
 
     return ApexClassInfo(
       name: className,
-      startByte: _bindings!.ts_node_start_byte(node),
+      startByte: _bindings.ts_node_start_byte(node),
       endByte: _bindings.ts_node_end_byte(node),
       fields: fields.toList()..sort(),
       properties: properties.toList()..sort(),
@@ -176,7 +176,7 @@ class TreeSitterIndexer {
           ApexVariableInfo(
             name: name,
             typeName: typeName,
-            startByte: _bindings!.ts_node_start_byte(declarator),
+            startByte: _bindings.ts_node_start_byte(declarator),
             endByte: _bindings.ts_node_end_byte(declarator),
             kind: kind,
           ),
@@ -192,7 +192,7 @@ class TreeSitterIndexer {
         ApexVariableInfo(
           name: _nodeText(nameNode, index),
           typeName: typeName,
-          startByte: _bindings!.ts_node_start_byte(node),
+          startByte: _bindings.ts_node_start_byte(node),
           endByte: _bindings.ts_node_end_byte(node),
           kind: kind,
         ),
@@ -213,7 +213,7 @@ class TreeSitterIndexer {
 
   List<TSNode> _collectClassBodyFieldDeclarations(TSNode classBody) {
     final matches = <TSNode>[];
-    final namedCount = _bindings!.ts_node_named_child_count(classBody);
+    final namedCount = _bindings.ts_node_named_child_count(classBody);
 
     for (var i = 0; i < namedCount; i++) {
       final child = _bindings.ts_node_named_child(classBody, i);
@@ -235,7 +235,7 @@ class TreeSitterIndexer {
         matches.add(node);
       }
 
-      final namedCount = _bindings!.ts_node_named_child_count(node);
+      final namedCount = _bindings.ts_node_named_child_count(node);
       for (var i = 0; i < namedCount; i++) {
         stack.add(_bindings.ts_node_named_child(node, i));
       }
@@ -315,7 +315,7 @@ class TreeSitterIndexer {
         return current;
       }
 
-      final namedCount = _bindings!.ts_node_named_child_count(current);
+      final namedCount = _bindings.ts_node_named_child_count(current);
       for (var i = 0; i < namedCount; i++) {
         stack.add(_bindings.ts_node_named_child(current, i));
       }

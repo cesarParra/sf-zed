@@ -125,7 +125,7 @@ Future<CompletionList> onCompletion({
   required OpenDocuments openDocuments,
   required CompletionParams params,
   required TreeSitterIndexer localIndexer,
-  required IndexedClassProvider indexedClasProvider,
+  required IndexedClassProvider indexedClassProvider,
   Rank rank = rankCandidates,
 }) async {
   final text = openDocuments.get(params.textDocument.uri);
@@ -150,7 +150,7 @@ Future<CompletionList> onCompletion({
   Future<CompletionList> completeFor(String prefix) async {
     final localSuggestion = TreeSitterCompletionService(index: index);
     final indexedSuggestion = SuggestionFromIndexedFiles(
-      indexClassProvider: indexedClasProvider,
+      indexClassProvider: indexedClassProvider,
     );
 
     final aggregator = CompletionAggregator(

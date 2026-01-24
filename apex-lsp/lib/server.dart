@@ -160,7 +160,7 @@ final class Server {
       openDocuments: _openDocuments,
       params: params,
       localIndexer: localIndexer,
-      indexedClasProvider: indexedClassProvider,
+      indexedClassProvider: indexedClassProvider,
     );
     await _output.sendResponse(id: id, result: completionList.toJson());
   }
