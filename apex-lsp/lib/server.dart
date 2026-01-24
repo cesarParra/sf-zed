@@ -157,7 +157,7 @@ final class Server {
     required IndexedClassProvider indexedClassProvider,
   }) async {
     final completionList = await onCompletion(
-      openDocuments: _openDocuments,
+      text: _openDocuments.get(params.textDocument.uri),
       params: params,
       localIndexer: localIndexer,
       indexedClassProvider: indexedClassProvider,

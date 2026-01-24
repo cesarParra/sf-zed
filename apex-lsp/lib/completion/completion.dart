@@ -5,7 +5,6 @@ import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
 import 'package:apex_lsp/di.dart';
-import 'package:apex_lsp/documents/open_documents.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/lsp_out.dart';
@@ -98,7 +97,7 @@ const maxCompletionItems = 25;
 /// Handles a Language Server Protocol completion request.
 ///
 /// This function processes a completion request by retrieving
-/// the text content of the [openDocuments] at the given URI, extracting its position using
+/// the text content of the document, extracting its position using
 /// the received [params], and delegates the work to the [aggregator]. It finally ranks the completion
 /// candidates returned by the aggregator.
 ///
@@ -110,7 +109,7 @@ const maxCompletionItems = 25;
 /// Example:
 /// ```dart
 /// final completions = await onCompletion(
-///   openDocuments: openDocuments,
+///   text: documentText,
 ///   aggregator: completionAggregator,
 ///   id: requestId,
 ///   params: completionParams,
@@ -122,13 +121,12 @@ const maxCompletionItems = 25;
 ///  * [CompletionAggregator], which provides the completion candidates.
 ///  * [rankCandidates], which applies ranking to class name suggestions.
 Future<CompletionList> onCompletion({
-  required OpenDocuments openDocuments,
+  required String? text,
   required CompletionParams params,
   required TreeSitterIndexer localIndexer,
   required IndexedClassProvider indexedClassProvider,
   Rank rank = rankCandidates,
 }) async {
-  final text = openDocuments.get(params.textDocument.uri);
   if (text == null) {
     return CompletionList(isIncomplete: false, items: <CompletionItem>[]);
   }

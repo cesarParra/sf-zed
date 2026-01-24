@@ -9,50 +9,6 @@ import 'package:apex_lsp/lsp_out.dart';
 
 final logger = locator<LspOut>();
 
-final class CompletionAggregatorLegacy {
-  // Future<CompletionCandidates> suggest({
-  //   required String text,
-  //   required int cursorOffset,
-  // }) async {
-  //   final candidates = _documentService.suggestLegacy(
-  //     text: text,
-  //     cursorOffset: cursorOffset,
-  //   );
-
-  //   return switch (candidates) {
-  //     NoCandidates() => candidates,
-  //     MemberCandidates() => _mergeMemberCandidates(
-  //       text: text,
-  //       cursorOffset: cursorOffset,
-  //       candidates: candidates,
-  //     ),
-  //     ClassNameOrLocalCandidates() => _mergeClassNameCandidates(
-  //       text: text,
-  //       cursorOffset: cursorOffset,
-  //       local: candidates,
-  //     ),
-  //   };
-  // }
-
-  /// Combines labels from [local] with all class names known to the
-  /// [_indexedClassesRepository].
-  ///
-  /// - [text]: The current file content.
-  /// - [cursorOffset]: The cursor position.
-  /// - [local]: The candidates found by the document service.
-  // CompletionCandidates _mergeClassNameCandidates({
-  //   required String text,
-  //   required int cursorOffset,
-  //   required ClassNameOrLocalCandidates local,
-  // }) {
-  //   final merged = <String>{};
-  //   merged.addAll(local.labels);
-  //   merged.addAll(_indexedClassesRepository.classNames);
-
-  //   return ClassNameOrLocalCandidates(labels: merged.toList());
-  // }
-}
-
 /// Aggregates completion candidates from the open document (Tree-sitter)
 /// and workspace index (.sf-zed JSON file repository).
 ///
