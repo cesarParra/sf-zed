@@ -1,3 +1,5 @@
+import 'package:apex_lsp/completion/completion.dart';
+import 'package:apex_lsp/indexing/indexer.dart' as indexer;
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
 /// Contract for indexed classes completion data.
@@ -7,7 +9,30 @@ abstract class IndexedClassProvider {
   Future<IndexedType?> typeByNameAsync(String name);
 }
 
-enum MemberType { static, instance }
+/// Adapter to expose [ApexIndexer] as a [IndexedClassProvider].
+final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
+  ApexIndexerWorkspaceIndexAdapter(this._indexer);
+
+  final indexer.ApexIndexer _indexer;
+
+  @override
+  Iterable<String> get classNames => _indexer.indexedClassNames;
+
+  @override
+  Future<IndexedType?> typeByNameAsync(String name) async {
+    final typeMirror = await _indexer.getIndexedClassInfo(name);
+
+    return switch (typeMirror) {
+      indexer.ClassMirrorWrapper(:final typeMirror) => ClassMirrorWrapper(
+        classMirror: typeMirror,
+      ),
+      indexer.EnumMirrorWrapper(:final typeMirror) => EnumMirrorWrapper(
+        enumMirror: typeMirror,
+      ),
+      null => null,
+    };
+  }
+}
 
 abstract class IndexedType {
   List<String> get memberNames;

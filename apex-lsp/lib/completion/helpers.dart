@@ -1,5 +1,3 @@
-import 'package:apex_lsp/completion/completion_context.dart';
-
 extension IntCompletionExtension on int {
   /// Whether the character is an Apex identifier or not.
   /// An identifier matches the following rules:
@@ -47,88 +45,7 @@ extension StringCompletionExtension on String {
     return substring(start, i);
   }
 
-  CompletionContext detectContext(int cursorOffset) {
-    if (isEmpty || cursorOffset <= 0) {
-      return const CompletionContextNone();
-    }
-
-    final prefix = extractIndentifierPrefixAt(cursorOffset);
-
-    // Member access: "foo." or "foo?."
-    var dotIndex = _findMemberDotIndex(this, cursorOffset);
-
-    // If we're typing a member name (e.g., "foo.ba"), look just before the prefix
-    // to detect the member access.
-    if (dotIndex == null && prefix.isNotEmpty) {
-      final probeIndex = cursorOffset - prefix.length - 1;
-      if (probeIndex >= 0) {
-        final ch = codeUnitAt(probeIndex);
-        if (ch == 0x2E /* . */ ) {
-          dotIndex = probeIndex;
-        } else if (ch == 0x3F /* ? */ ) {
-          final next = probeIndex + 1;
-          if (next < length && codeUnitAt(next) == 0x2E /* . */ ) {
-            dotIndex = next;
-          }
-        }
-      }
-    }
-
-    if (dotIndex != null) {
-      var objectIndex = dotIndex - 1;
-      if (objectIndex >= 0 && codeUnitAt(objectIndex) == 0x3F /* ? */ ) {
-        objectIndex--;
-      }
-      final objectName = _extractIdentifierBefore(this, objectIndex);
-      return CompletionContextMember(objectName: objectName, prefix: prefix);
-    }
-
-    return CompletionContextClass(className: prefix);
+  bool startsWithIgnoreCase(String prefix) {
+    return toLowerCase().startsWith(prefix.toLowerCase());
   }
-}
-
-int? _findMemberDotIndex(String text, int cursorOffset) {
-  var i = cursorOffset - 1;
-  if (i < 0) return null;
-
-  // Skip whitespace between dot and cursor (rare but possible).
-  while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
-    i--;
-  }
-  if (i < 0) return null;
-
-  final ch = text.codeUnitAt(i);
-
-  if (ch == 0x2E /* . */ ) {
-    return i;
-  }
-
-  if (ch == 0x3F /* ? */ ) {
-    final next = i + 1;
-    if (next < text.length && text.codeUnitAt(next) == 0x2E /* . */ ) {
-      return next;
-    }
-
-    final prev = i - 1;
-    if (prev >= 0 && text.codeUnitAt(prev) == 0x2E /* . */ ) {
-      return prev;
-    }
-  }
-
-  return null;
-}
-
-String? _extractIdentifierBefore(String text, int index) {
-  var i = index;
-  while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
-    i--;
-  }
-  if (i < 0) return null;
-
-  final identifier = text.extractIndentifierPrefixAt(i + 1);
-  return identifier.isNotEmpty ? identifier : null;
-}
-
-bool _isWhitespace(int ch) {
-  return ch == 32 || ch == 9 || ch == 10 || ch == 13;
 }

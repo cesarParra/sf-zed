@@ -1,19 +1,29 @@
+import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/levenshtein_distance.dart';
 
-typedef Rank = List<String> Function(List<String> labels, String prefix);
+typedef Rank =
+    Iterable<CompletionCandidate> Function(
+      Iterable<CompletionCandidate>,
+      String prefix,
+    );
 
-List<String> rankCandidates(List<String> labels, String prefix) {
-  if (prefix.isEmpty) return List<String>.from(labels);
+Iterable<CompletionCandidate> rankCandidates(
+  Iterable<CompletionCandidate> candidates,
+  String prefix,
+) {
+  if (prefix.isEmpty) return candidates;
   final lowerPrefix = prefix.toLowerCase();
 
   final scored =
-      labels
-          .where((name) => name.toLowerCase().startsWith(lowerPrefix))
+      candidates
           .map(
-            (name) => (
-              name: name,
-              length: name.length,
-              distance: levenshteinDistance(lowerPrefix, name.toLowerCase()),
+            (candidate) => (
+              candidate: candidate,
+              length: candidate.name.length,
+              distance: levenshteinDistance(
+                lowerPrefix,
+                candidate.name.toLowerCase(),
+              ),
             ),
           )
           .toList()
@@ -24,8 +34,8 @@ List<String> rankCandidates(List<String> labels, String prefix) {
           final byLength = a.length.compareTo(b.length);
           if (byLength != 0) return byLength;
 
-          return a.name.compareTo(b.name);
+          return a.candidate.name.compareTo(b.candidate.name);
         });
 
-  return scored.map((c) => c.name).toList();
+  return scored.map((c) => c.candidate).toList();
 }

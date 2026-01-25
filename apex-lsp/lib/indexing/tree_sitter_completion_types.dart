@@ -1,43 +1,5 @@
 typedef ApexIndexBuilder = ApexDocumentIndex Function(String text);
 
-sealed class CompletionCandidates {
-  final List<String> labels;
-
-  CompletionCandidates({required this.labels});
-}
-
-final class NoCandidates extends CompletionCandidates {
-  NoCandidates() : super(labels: const []);
-}
-
-final class ClassNameOrLocalCandidates extends CompletionCandidates {
-  ClassNameOrLocalCandidates({required super.labels});
-
-  @override
-  String toString() {
-    return 'ClassNameCandidates(labels: $labels)';
-  }
-}
-
-final class MemberCandidates extends CompletionCandidates {
-  MemberCandidates({
-    required super.labels,
-    required this.memberOfType,
-    required this.objectName,
-    required this.memberTypeResolvedFromDocument,
-  });
-
-  /// The resolved type name. e.g. `Foo`.
-  final String memberOfType;
-
-  // When [kind] is [CompletionKid.member], this represents the name of the
-  // object. For example, if the user typed `foo.m`, then this is foo.
-  final String objectName;
-
-  /// True when member type resolution came from the document index.
-  final bool memberTypeResolvedFromDocument;
-}
-
 /// Public representation of a parsed Apex document index.
 final class ApexDocumentIndex {
   ApexDocumentIndex({required this.classes, required this.variables});
@@ -73,15 +35,25 @@ final class ApexClassInfo {
   final String name;
   final int startByte;
   final int endByte;
-  final List<String> fields;
-  final List<String> properties;
-  final List<String> methods;
+  final List<ApexMemberInfo> fields;
+  final List<ApexMemberInfo> properties;
+  final List<ApexMemberInfo> methods;
   final String? superclass;
 
   @override
   String toString() {
     return 'ApexClassInfo(name: $name, startByte: $startByte, endByte: $endByte, fields: $fields, properties: $properties, methods: $methods, superclass: $superclass)';
   }
+}
+
+final class ApexMemberInfo {
+  ApexMemberInfo({required this.name, required this.isStatic});
+
+  final String name;
+  final bool isStatic;
+
+  @override
+  String toString() => 'ApexMemberInfo(name: $name, isStatic: $isStatic)';
 }
 
 /// Public representation of an Apex variable in a parsed document.

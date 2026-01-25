@@ -1,15 +1,99 @@
+import 'dart:async';
+
 import 'package:apex_lsp/completion/completion_aggregator.dart';
+import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
-import 'package:apex_lsp/documents/open_documents.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/message.dart';
+
+// TODO: In the future, we also want to add language keywords here
+/// Represents a candidate for completion.
+sealed class CompletionCandidate {
+  String get name;
+}
+
+/// Represents a completion for a top level [ApexType].
+final class ApexTypeCandidate extends CompletionCandidate {
+  final ApexType type;
+
+  ApexTypeCandidate(this.type);
+
+  @override
+  String get name => type.name;
+}
+
+/// Represents a completion for a member of a type
+final class MemberCandidate extends CompletionCandidate {
+  final Member member;
+
+  MemberCandidate(this.member);
+
+  @override
+  String get name => member.name;
+}
+
+enum MemberType { static, instance }
+
+final class Member {
+  final String name;
+  final ApexType parentType;
+  final MemberType type;
+
+  Member({required this.name, required this.parentType, required this.type});
+}
+
+/// Represents a completion to a locally declared variable accessible
+/// "globally" in this file. This can happen in anonymous apex files.
+final class LocalVariableCandidate extends CompletionCandidate {
+  final String _name;
+
+  LocalVariableCandidate(String name) : _name = name;
+
+  @override
+  String get name => _name;
+}
+
+/// Represents a top-level type (class, enum, interface).
+sealed class ApexType {
+  final String name;
+
+  ApexType({required this.name});
+}
+
+/// Represents an [ApexType] that is somewhere in the index,
+/// this means it lives in a different file than the one being edited.
+final class Indexed extends ApexType {
+  Indexed({required super.name});
+}
+
+/// Represents an [ApexType] that is somewhere local but is not the
+/// type being edited. For example, this can happen when writing Anonymous Apex.
+final class Local extends ApexType {
+  Local({required super.name});
+}
+
+/// Represents the [ApexType] being edited.
+final class Self extends ApexType {
+  Self({required super.name});
+}
+
+/// Supports suggesting [CompletionCadidate]s based on the received [text],
+/// which is the full text of the open document, and an [cursorOffset],
+/// which is where the cursor is currently positioned at.
+abstract interface class CompletionSuggestion {
+  FutureOr<List<CompletionCandidate>> suggest({
+    required CompletionContext context,
+  });
+}
 
 const maxCompletionItems = 25;
 
 /// Handles a Language Server Protocol completion request.
 ///
 /// This function processes a completion request by retrieving
-/// the text content of the [openDocuments] at the given URI, extracting its position using
+/// the text content of the document, extracting its position using
 /// the received [params], and delegates the work to the [aggregator]. It finally ranks the completion
 /// candidates returned by the aggregator.
 ///
@@ -21,7 +105,7 @@ const maxCompletionItems = 25;
 /// Example:
 /// ```dart
 /// final completions = await onCompletion(
-///   openDocuments: openDocuments,
+///   text: documentText,
 ///   aggregator: completionAggregator,
 ///   id: requestId,
 ///   params: completionParams,
@@ -33,12 +117,12 @@ const maxCompletionItems = 25;
 ///  * [CompletionAggregator], which provides the completion candidates.
 ///  * [rankCandidates], which applies ranking to class name suggestions.
 Future<CompletionList> onCompletion({
-  required OpenDocuments openDocuments,
-  required CompletionAggregator aggregator,
+  required String? text,
   required CompletionParams params,
+  required TreeSitterIndexer localIndexer,
+  required IndexedClassProvider indexedClassProvider,
   Rank rank = rankCandidates,
 }) async {
-  final text = openDocuments.get(params.textDocument.uri);
   if (text == null) {
     return CompletionList(isIncomplete: false, items: <CompletionItem>[]);
   }
@@ -49,22 +133,49 @@ Future<CompletionList> onCompletion({
     character: params.position.character,
   );
 
-  final candidates = await aggregator.suggest(
+  final index = localIndexer.parseAndIndex(text);
+  final contextDetector = ContextDetector(index: index);
+  final context = contextDetector.detect(
     text: text,
     cursorOffset: cursorOffset,
   );
 
-  final sortedLabels = rank(
-    candidates.labels,
-    text.extractIndentifierPrefixAt(cursorOffset),
-  );
+  Future<CompletionList> completeFor(String prefix) async {
+    final localSuggestion = TreeSitterCompletionService(index: index);
+    final indexedSuggestion = SuggestionFromIndexedFiles(
+      indexClassProvider: indexedClassProvider,
+    );
 
-  final items = sortedLabels
-      .take(maxCompletionItems)
-      .map((label) => CompletionItem(label: label, insertText: label))
-      .toList();
+    final aggregator = CompletionAggregator(
+      localSuggestion: localSuggestion,
+      indexedSuggestion: indexedSuggestion,
+    );
+    final candidates = await aggregator.suggest(context: context);
+    final filteredCandidates = candidates.where(
+      (candidate) => potentiallyMatches(context, candidate),
+    );
+    final items = rankCandidates(filteredCandidates, prefix)
+        .take(maxCompletionItems)
+        .map(
+          (candidate) =>
+              CompletionItem(label: candidate.name, insertText: candidate.name),
+        )
+        .toList();
 
-  return CompletionList(isIncomplete: sortedLabels.length > 25, items: items);
+    return CompletionList(
+      isIncomplete: filteredCandidates.length > maxCompletionItems,
+      items: items,
+    );
+  }
+
+  return switch (context) {
+    CompletionContextNone() => CompletionList(
+      isIncomplete: false,
+      items: <CompletionItem>[],
+    ),
+    CompletionContextMember(:final prefix) ||
+    CompletionContextTopLevel(:final prefix) => completeFor(prefix),
+  };
 }
 
 /// Converts a line and character position to a byte offset within the text.
@@ -109,4 +220,25 @@ int _offsetAtPosition({
   final lineText = lines[line];
   final clamped = character.clamp(0, lineText.length).toInt();
   return offset + clamped;
+}
+
+bool potentiallyMatches(
+  CompletionContext context,
+  CompletionCandidate candidate,
+) {
+  bool candidateNameStartsWith(String prefix) {
+    return switch (candidate) {
+      ApexTypeCandidate(:final type) => type.name.startsWithIgnoreCase(prefix),
+      MemberCandidate(:final member) => member.name.startsWithIgnoreCase(
+        prefix,
+      ),
+      LocalVariableCandidate(:final name) => name.startsWithIgnoreCase(prefix),
+    };
+  }
+
+  return switch (context) {
+    CompletionContextNone() => false,
+    CompletionContextTopLevel(:final prefix) ||
+    CompletionContextMember(:final prefix) => candidateNameStartsWith(prefix),
+  };
 }

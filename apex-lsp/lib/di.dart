@@ -1,8 +1,8 @@
 import 'dart:io' as io;
 
-import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
-import 'package:apex_lsp/completion/tree_sitter_completion_service.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/lsp_out.dart';
 import 'package:file/file.dart';
 import 'package:file/local.dart';
@@ -49,8 +49,8 @@ void initializeDependencies() {
     );
   }
 
-  if (!locator.isRegistered<CompletionAggregator>()) {
-    locator.registerLazySingleton<CompletionAggregator>(() {
+  if (!locator.isRegistered<TreeSitterIndexer>()) {
+    locator.registerLazySingleton<TreeSitterIndexer>(() {
       String resolveFromCurrentDirectory(String location) {
         final fileSystem = locator<FileSystem>();
         final scriptDir = fileSystem.path.dirname(
@@ -63,16 +63,14 @@ void initializeDependencies() {
         pathResolver: resolveFromCurrentDirectory,
         path: io.Platform.environment['TS_SFAPEX_LIB'],
       );
-      final treeSitterService = TreeSitterCompletionService.withBindings(
-        bindings: bindings,
-      );
-      final completionAggregator = CompletionAggregator(
-        documentService: treeSitterService,
-        indexedClassesRepository: ApexIndexerWorkspaceIndexAdapter(
-          locator<ApexIndexer>(),
-        ),
-      );
-      return completionAggregator;
+
+      return TreeSitterIndexer(bindings: bindings);
+    });
+  }
+
+  if (!locator.isRegistered<IndexedClassProvider>()) {
+    locator.registerLazySingleton<IndexedClassProvider>(() {
+      return ApexIndexerWorkspaceIndexAdapter(locator<ApexIndexer>());
     });
   }
 
