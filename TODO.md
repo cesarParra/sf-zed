@@ -22,7 +22,7 @@
 Class
 - [x] Indexed class names appear
 - [x] Instance members of indexed classes
-- [ ] Static members of indexed classes
+- [x] Static members of indexed classes
 - [ ] Subclasses names of indexed files
 - [ ] Subclass instance members
 - [ ] Subinterface names of indexed files
@@ -34,15 +34,15 @@ Enum
 - [x] Indexed enum values appear
 
 Interface
-- [ ] Interfaces names of indexed files
-- [ ] Interface members of indexed files
+- [x] Interfaces names of indexed files
 
 #### Opened file
 Class
 - [x] Name of other classes of the opened file
 
 Enum
-- [ ] Name of other enums of the opened file
+- [x] Name of other enums of the opened file
+- [x] Member of enums of the opened file
 
 Interface
 - [ ] Name of other interfaces of the opened file

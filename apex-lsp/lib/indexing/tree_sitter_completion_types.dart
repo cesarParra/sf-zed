@@ -2,47 +2,79 @@ typedef ApexIndexBuilder = ApexDocumentIndex Function(String text);
 
 /// Public representation of a parsed Apex document index.
 final class ApexDocumentIndex {
-  ApexDocumentIndex({required this.classes, required this.variables});
+  ApexDocumentIndex({required this.types, required this.variables});
 
-  final List<ApexClassInfo> classes;
+  final List<TypeInfo> types;
   final List<ApexVariableInfo> variables;
 
-  ApexClassInfo? classByName(String name) {
-    for (final c in classes) {
-      if (c.name == name) return c;
+  TypeInfo? typeByName(String name) {
+    for (final t in types) {
+      if (t.name == name) return t;
     }
     return null;
   }
 
   @override
   String toString() {
-    return 'ApexDocumentIndex(classes: $classes, variables: $variables)';
+    return 'ApexDocumentIndex(types: $types, variables: $variables)';
+  }
+}
+
+/// Base class for top-level types (classes, enums, interfaces).
+sealed class TypeInfo {
+  String get name;
+  int get startByte;
+  int get endByte;
+  List<ApexMemberInfo> get members;
+}
+
+/// Public representation of an Apex enum in a parsed document.
+final class ApexEnumInfo implements TypeInfo {
+  ApexEnumInfo({
+    required this.name,
+    required this.startByte,
+    required this.endByte,
+    required this.members,
+  });
+
+  @override
+  final String name;
+  @override
+  final int startByte;
+  @override
+  final int endByte;
+  @override
+  final List<ApexMemberInfo> members;
+
+  @override
+  String toString() {
+    return 'ApexEnumInfo(name: $name, startByte: $startByte, endByte: $endByte, members: $members)';
   }
 }
 
 /// Public representation of an Apex class in a parsed document.
-final class ApexClassInfo {
+final class ApexClassInfo implements TypeInfo {
   ApexClassInfo({
     required this.name,
     required this.startByte,
     required this.endByte,
-    required this.fields,
-    required this.properties,
-    required this.methods,
+    required this.members,
     this.superclass,
   });
 
+  @override
   final String name;
+  @override
   final int startByte;
+  @override
   final int endByte;
-  final List<ApexMemberInfo> fields;
-  final List<ApexMemberInfo> properties;
-  final List<ApexMemberInfo> methods;
+  @override
+  final List<ApexMemberInfo> members;
   final String? superclass;
 
   @override
   String toString() {
-    return 'ApexClassInfo(name: $name, startByte: $startByte, endByte: $endByte, fields: $fields, properties: $properties, methods: $methods, superclass: $superclass)';
+    return 'ApexClassInfo(name: $name, startByte: $startByte, endByte: $endByte, members: $members, superclass: $superclass)';
   }
 }
 

@@ -151,6 +151,55 @@ public class Baz {
         }
       }
     });
+
+    test('parses enum names from source', () async {
+      final text = '''
+public enum MyEnum { A, B }
+''';
+
+      final results = await suggest(
+        text: text,
+        cursorOffset: text.indexOf('MyEn') + 4,
+      );
+
+      final names = results.map((c) => c.name).toList();
+      expect(names, contains('MyEnum'));
+    });
+
+    test('parses mixed enum and class names', () async {
+      final text = '''
+public class MyClass {}
+public enum MyEnum { A, B }
+''';
+
+      final results = await suggest(
+        text: text,
+        cursorOffset: text.indexOf('MyCl') + 2,
+      );
+
+      final names = results.map((c) => c.name).toList();
+      expect(names, contains('MyClass'));
+      expect(names, contains('MyEnum'));
+    });
+
+    test('parses enum values as static members', () async {
+      final text = '''
+public enum MyEnum { VAL1, VAL2 }
+
+public class Consumer {
+  public void test() {
+    MyEnum.
+  }
+}
+''';
+
+      final cursorOffset = text.indexOf('MyEnum.') + 'MyEnum.'.length;
+
+      final results = await suggest(text: text, cursorOffset: cursorOffset);
+
+      final names = results.map((c) => c.name).toList();
+      expect(names, containsAll(['VAL1', 'VAL2']));
+    });
   });
 
   group('Static vs Instance Integration', () {
