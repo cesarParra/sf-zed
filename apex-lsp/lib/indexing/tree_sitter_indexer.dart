@@ -61,6 +61,11 @@ class TreeSitterIndexer {
         if (enumInfo != null) {
           index.types.add(enumInfo);
         }
+      } else if (type == 'interface_declaration') {
+        final interfaceInfo = _extractInterface(node, index);
+        if (interfaceInfo != null) {
+          index.types.add(interfaceInfo);
+        }
       } else if (type == 'field_declaration' ||
           type == 'local_variable_declaration' ||
           type == 'formal_parameter') {
@@ -104,6 +109,23 @@ class TreeSitterIndexer {
       startByte: _bindings.ts_node_start_byte(node),
       endByte: _bindings.ts_node_end_byte(node),
       members: members,
+    );
+  }
+
+  ApexInterfaceInfo? _extractInterface(
+    TSNode node,
+    _MutableApexDocumentIndex index,
+  ) {
+    final nameNode = _getField(node, 'name');
+    if (_isNullNode(nameNode)) return null;
+
+    final interfaceName = _nodeText(nameNode, index);
+    if (interfaceName.isEmpty) return null;
+
+    return ApexInterfaceInfo(
+      name: interfaceName,
+      startByte: _bindings.ts_node_start_byte(node),
+      endByte: _bindings.ts_node_end_byte(node),
     );
   }
 

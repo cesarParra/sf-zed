@@ -78,6 +78,29 @@ final class ApexClassInfo implements TypeInfo {
   }
 }
 
+/// Public representation of an Apex interface in a parsed document.
+final class ApexInterfaceInfo implements TypeInfo {
+  ApexInterfaceInfo({
+    required this.name,
+    required this.startByte,
+    required this.endByte,
+  });
+
+  @override
+  final String name;
+  @override
+  final int startByte;
+  @override
+  final int endByte;
+  @override
+  final List<ApexMemberInfo> members = const [];
+
+  @override
+  String toString() {
+    return 'ApexInterfaceInfo(name: $name, startByte: $startByte, endByte: $endByte)';
+  }
+}
+
 final class ApexMemberInfo {
   ApexMemberInfo({required this.name, required this.isStatic});
 

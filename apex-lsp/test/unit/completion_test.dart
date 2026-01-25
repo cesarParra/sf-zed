@@ -159,6 +159,22 @@ void main() {
       expect(result.items.map((i) => i.label), contains('MyEnum'));
     });
 
+    test('suggests local interfaces from local indexer', () async {
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(
+          types: [
+            ApexInterfaceInfo(name: 'MyInterface', startByte: 0, endByte: 0),
+          ],
+          variables: [],
+        ),
+      );
+
+      final text = 'My';
+      final result = await complete(text, line: 0, character: 2);
+
+      expect(result.items.map((i) => i.label), contains('MyInterface'));
+    });
+
     test('filters results based on prefix', () async {
       indexedClassProvider = FakeIndexedClassProvider(
         types: {
