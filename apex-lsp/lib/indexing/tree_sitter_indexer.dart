@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
+import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 import 'package:ffi/ffi.dart';
 
@@ -33,9 +34,19 @@ class TreeSitterIndexer {
       );
 
       final root = bindings.ts_tree_root_node(tree);
-      final index = _MutableApexDocumentIndex(text: text, bytes: sourceBytes);
+      final rootScope = Scope(
+        type: ScopeType.file,
+        startByte: bindings.ts_node_start_byte(root),
+        endByte: bindings.ts_node_end_byte(root),
+      );
 
-      _collectDeclarations(root, index);
+      final index = _MutableApexDocumentIndex(
+        text: text,
+        bytes: sourceBytes,
+        rootScope: rootScope,
+      );
+
+      _visit(root, rootScope, index);
 
       bindings.ts_tree_delete(tree);
       return index.toPublicIndex();
@@ -44,39 +55,85 @@ class TreeSitterIndexer {
     }
   }
 
-  void _collectDeclarations(TSNode root, _MutableApexDocumentIndex index) {
-    final stack = <TSNode>[root];
+  void _visit(TSNode node, Scope scope, _MutableApexDocumentIndex index) {
+    final type = _nodeType(node);
 
-    while (stack.isNotEmpty) {
-      final node = stack.removeLast();
-      final type = _nodeType(node);
-
-      if (type == 'class_declaration') {
-        final classInfo = _extractClass(node, index);
-        if (classInfo != null) {
-          index.types.add(classInfo);
-        }
-      } else if (type == 'enum_declaration') {
-        final enumInfo = _extractEnum(node, index);
-        if (enumInfo != null) {
-          index.types.add(enumInfo);
-        }
-      } else if (type == 'interface_declaration') {
-        final interfaceInfo = _extractInterface(node, index);
-        if (interfaceInfo != null) {
-          index.types.add(interfaceInfo);
-        }
-      } else if (type == 'field_declaration' ||
-          type == 'local_variable_declaration' ||
-          type == 'formal_parameter') {
-        final variables = _extractVariables(node, index, kind: type);
-        index.variables.addAll(variables);
+    if (type == 'class_declaration') {
+      final info = _extractClass(node, index);
+      if (info != null) {
+        scope.definitions.add(info);
+        final classScope = Scope(
+          type: ScopeType.typeDeclaration,
+          startByte: _bindings.ts_node_start_byte(node),
+          endByte: _bindings.ts_node_end_byte(node),
+          parent: scope,
+        );
+        scope.children.add(classScope);
+        classScope.definitions.addAll(info.members);
+        _visitChildren(node, classScope, index);
       }
-
-      final namedCount = _bindings.ts_node_named_child_count(node);
-      for (var i = 0; i < namedCount; i++) {
-        stack.add(_bindings.ts_node_named_child(node, i));
+    } else if (type == 'interface_declaration') {
+      final info = _extractInterface(node, index);
+      if (info != null) {
+        scope.definitions.add(info);
+        final interfaceScope = Scope(
+          type: ScopeType.typeDeclaration,
+          startByte: _bindings.ts_node_start_byte(node),
+          endByte: _bindings.ts_node_end_byte(node),
+          parent: scope,
+        );
+        scope.children.add(interfaceScope);
+        interfaceScope.definitions.addAll(info.members);
+        _visitChildren(node, interfaceScope, index);
       }
+    } else if (type == 'enum_declaration') {
+      final info = _extractEnum(node, index);
+      if (info != null) {
+        scope.definitions.add(info);
+        // We don't recurse into enum body for scopes currently.
+      }
+    } else if (type == 'method_declaration') {
+      final methodScope = Scope(
+        type: ScopeType.methodBody,
+        startByte: _bindings.ts_node_start_byte(node),
+        endByte: _bindings.ts_node_end_byte(node),
+        parent: scope,
+        isStatic: _hasStaticModifier(node, index),
+      );
+      scope.children.add(methodScope);
+      _visitChildren(node, methodScope, index);
+    } else if (type == 'block') {
+      final blockScope = Scope(
+        type: ScopeType.localBlock,
+        startByte: _bindings.ts_node_start_byte(node),
+        endByte: _bindings.ts_node_end_byte(node),
+        parent: scope,
+      );
+      scope.children.add(blockScope);
+      _visitChildren(node, blockScope, index);
+    } else if (type == 'local_variable_declaration') {
+      final vars = _extractVariables(node, index, kind: type);
+      scope.definitions.addAll(vars);
+    } else if (type == 'formal_parameter') {
+      final vars = _extractVariables(node, index, kind: type);
+      scope.definitions.addAll(vars);
+    } else if (type == 'field_declaration') {
+      // Already handled by _extractClass/Interface for the definition.
+      // We do not recurse into field declarations.
+    } else {
+      _visitChildren(node, scope, index);
+    }
+  }
+
+  void _visitChildren(
+    TSNode node,
+    Scope scope,
+    _MutableApexDocumentIndex index,
+  ) {
+    final count = _bindings.ts_node_named_child_count(node);
+    for (var i = 0; i < count; i++) {
+      final child = _bindings.ts_node_named_child(node, i);
+      _visit(child, scope, index);
     }
   }
 
@@ -109,23 +166,6 @@ class TreeSitterIndexer {
       startByte: _bindings.ts_node_start_byte(node),
       endByte: _bindings.ts_node_end_byte(node),
       members: members,
-    );
-  }
-
-  ApexInterfaceInfo? _extractInterface(
-    TSNode node,
-    _MutableApexDocumentIndex index,
-  ) {
-    final nameNode = _getField(node, 'name');
-    if (_isNullNode(nameNode)) return null;
-
-    final interfaceName = _nodeText(nameNode, index);
-    if (interfaceName.isEmpty) return null;
-
-    return ApexInterfaceInfo(
-      name: interfaceName,
-      startByte: _bindings.ts_node_start_byte(node),
-      endByte: _bindings.ts_node_end_byte(node),
     );
   }
 
@@ -163,6 +203,18 @@ class TreeSitterIndexer {
         }
       }
 
+      final propertyDeclarations = _collectDirectChildrenByType(
+        bodyNode,
+        'property_declaration',
+      );
+      for (final propertyDecl in propertyDeclarations) {
+        final name = _extractMemberName(propertyDecl, index);
+        if (name != null && name.isNotEmpty) {
+          final isStatic = _hasStaticModifier(propertyDecl, index);
+          members.add(ApexMemberInfo(name: name, isStatic: isStatic));
+        }
+      }
+
       final methodDeclarations = _collectDirectChildrenByType(
         bodyNode,
         'method_declaration',
@@ -184,6 +236,23 @@ class TreeSitterIndexer {
       endByte: _bindings.ts_node_end_byte(node),
       members: members..sort((a, b) => a.name.compareTo(b.name)),
       superclass: superclass,
+    );
+  }
+
+  ApexInterfaceInfo? _extractInterface(
+    TSNode node,
+    _MutableApexDocumentIndex index,
+  ) {
+    final nameNode = _getField(node, 'name');
+    if (_isNullNode(nameNode)) return null;
+
+    final interfaceName = _nodeText(nameNode, index);
+    if (interfaceName.isEmpty) return null;
+
+    return ApexInterfaceInfo(
+      name: interfaceName,
+      startByte: _bindings.ts_node_start_byte(node),
+      endByte: _bindings.ts_node_end_byte(node),
     );
   }
 
@@ -376,18 +445,17 @@ class TreeSitterIndexer {
 }
 
 final class _MutableApexDocumentIndex {
-  _MutableApexDocumentIndex({required this.text, required this.bytes});
+  _MutableApexDocumentIndex({
+    required this.text,
+    required this.bytes,
+    required this.rootScope,
+  });
 
   final String text;
   final List<int> bytes;
-
-  final List<TypeInfo> types = <TypeInfo>[];
-  final List<ApexVariableInfo> variables = <ApexVariableInfo>[];
+  final Scope rootScope;
 
   ApexDocumentIndex toPublicIndex() {
-    return ApexDocumentIndex(
-      types: List<TypeInfo>.from(types),
-      variables: List<ApexVariableInfo>.from(variables),
-    );
+    return ApexDocumentIndex(rootScope: rootScope);
   }
 }

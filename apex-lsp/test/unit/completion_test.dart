@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/message.dart';
@@ -76,7 +77,9 @@ void main() {
   setUp(() {
     // Default empty indexer and provider
     localIndexer = FakeTreeSitterIndexer(
-      ApexDocumentIndex(types: [], variables: []),
+      ApexDocumentIndex(
+        rootScope: Scope(type: ScopeType.file, startByte: 0, endByte: 0),
+      ),
     );
     indexedClassProvider = FakeIndexedClassProvider();
   });
@@ -124,16 +127,20 @@ void main() {
     test('suggests local variables from local indexer', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          types: [],
-          variables: [
-            ApexVariableInfo(
-              name: 'myVar',
-              typeName: 'String',
-              startByte: 0,
-              endByte: 0,
-              kind: 'local_variable_declaration',
-            ),
-          ],
+          rootScope: Scope(
+            type: ScopeType.file,
+            startByte: 0,
+            endByte: 100,
+            definitions: [
+              ApexVariableInfo(
+                name: 'myVar',
+                typeName: 'String',
+                startByte: 0,
+                endByte: 0,
+                kind: 'local_variable_declaration',
+              ),
+            ],
+          ),
         ),
       );
 
@@ -146,10 +153,19 @@ void main() {
     test('suggests local enums from local indexer', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          types: [
-            ApexEnumInfo(name: 'MyEnum', startByte: 0, endByte: 0, members: []),
-          ],
-          variables: [],
+          rootScope: Scope(
+            type: ScopeType.file,
+            startByte: 0,
+            endByte: 100,
+            definitions: [
+              ApexEnumInfo(
+                name: 'MyEnum',
+                startByte: 0,
+                endByte: 0,
+                members: [],
+              ),
+            ],
+          ),
         ),
       );
 
@@ -162,10 +178,14 @@ void main() {
     test('suggests local interfaces from local indexer', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          types: [
-            ApexInterfaceInfo(name: 'MyInterface', startByte: 0, endByte: 0),
-          ],
-          variables: [],
+          rootScope: Scope(
+            type: ScopeType.file,
+            startByte: 0,
+            endByte: 100,
+            definitions: [
+              ApexInterfaceInfo(name: 'MyInterface', startByte: 0, endByte: 0),
+            ],
+          ),
         ),
       );
 
@@ -208,16 +228,20 @@ void main() {
       final text = 'Account acc; acc.';
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          types: [],
-          variables: [
-            ApexVariableInfo(
-              name: 'acc',
-              typeName: 'Account',
-              startByte: 8, // "acc" starts around here
-              endByte: 11,
-              kind: 'local_variable_declaration',
-            ),
-          ],
+          rootScope: Scope(
+            type: ScopeType.file,
+            startByte: 0,
+            endByte: 100,
+            definitions: [
+              ApexVariableInfo(
+                name: 'acc',
+                typeName: 'Account',
+                startByte: 8, // "acc" starts around here
+                endByte: 11,
+                kind: 'local_variable_declaration',
+              ),
+            ],
+          ),
         ),
       );
 
@@ -256,18 +280,22 @@ void main() {
     test('suggests enum values when object name matches enum name', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          types: [
-            ApexEnumInfo(
-              name: 'MyEnum',
-              startByte: 0,
-              endByte: 0,
-              members: [
-                ApexMemberInfo(name: 'VAL1', isStatic: true),
-                ApexMemberInfo(name: 'VAL2', isStatic: true),
-              ],
-            ),
-          ],
-          variables: [],
+          rootScope: Scope(
+            type: ScopeType.file,
+            startByte: 0,
+            endByte: 100,
+            definitions: [
+              ApexEnumInfo(
+                name: 'MyEnum',
+                startByte: 0,
+                endByte: 0,
+                members: [
+                  ApexMemberInfo(name: 'VAL1', isStatic: true),
+                  ApexMemberInfo(name: 'VAL2', isStatic: true),
+                ],
+              ),
+            ],
+          ),
         ),
       );
 
@@ -284,28 +312,32 @@ void main() {
     test('suggests instance members from local class definition', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          types: [
-            ApexClassInfo(
-              name: 'MyClass',
-              startByte: 0,
-              endByte: 0,
-              members: [
-                ApexMemberInfo(name: 'instanceField', isStatic: false),
-                ApexMemberInfo(name: 'staticField', isStatic: true),
-                ApexMemberInfo(name: 'instanceMethod', isStatic: false),
-                ApexMemberInfo(name: 'staticMethod', isStatic: true),
-              ],
-            ),
-          ],
-          variables: [
-            ApexVariableInfo(
-              name: 'inst',
-              typeName: 'MyClass',
-              startByte: 0,
-              endByte: 0,
-              kind: 'local_variable_declaration',
-            ),
-          ],
+          rootScope: Scope(
+            type: ScopeType.file,
+            startByte: 0,
+            endByte: 100,
+            definitions: [
+              ApexClassInfo(
+                name: 'MyClass',
+                startByte: 0,
+                endByte: 0,
+                members: [
+                  ApexMemberInfo(name: 'instanceField', isStatic: false),
+                  ApexMemberInfo(name: 'staticField', isStatic: true),
+                  ApexMemberInfo(name: 'instanceMethod', isStatic: false),
+                  ApexMemberInfo(name: 'staticMethod', isStatic: true),
+                ],
+                superclass: null,
+              ),
+              ApexVariableInfo(
+                name: 'inst',
+                typeName: 'MyClass',
+                startByte: 0,
+                endByte: 0,
+                kind: 'local_variable_declaration',
+              ),
+            ],
+          ),
         ),
       );
 
@@ -321,20 +353,25 @@ void main() {
     test('suggests static members from local class definition', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          types: [
-            ApexClassInfo(
-              name: 'MyClass',
-              startByte: 0,
-              endByte: 0,
-              members: [
-                ApexMemberInfo(name: 'instanceField', isStatic: false),
-                ApexMemberInfo(name: 'staticField', isStatic: true),
-                ApexMemberInfo(name: 'instanceMethod', isStatic: false),
-                ApexMemberInfo(name: 'staticMethod', isStatic: true),
-              ],
-            ),
-          ],
-          variables: [],
+          rootScope: Scope(
+            type: ScopeType.file,
+            startByte: 0,
+            endByte: 100,
+            definitions: [
+              ApexClassInfo(
+                name: 'MyClass',
+                startByte: 0,
+                endByte: 0,
+                members: [
+                  ApexMemberInfo(name: 'instanceField', isStatic: false),
+                  ApexMemberInfo(name: 'staticField', isStatic: true),
+                  ApexMemberInfo(name: 'instanceMethod', isStatic: false),
+                  ApexMemberInfo(name: 'staticMethod', isStatic: true),
+                ],
+                superclass: null,
+              ),
+            ],
+          ),
         ),
       );
 
@@ -345,6 +382,150 @@ void main() {
       expect(labels, containsAll(['staticField', 'staticMethod']));
       expect(labels, isNot(contains('instanceField')));
       expect(labels, isNot(contains('instanceMethod')));
+    });
+  });
+
+  group('Scoping Rules', () {
+    test('instance members are not visible in static methods', () async {
+      final methodScope = Scope(
+        type: ScopeType.methodBody,
+        startByte: 50,
+        endByte: 100,
+        isStatic: true,
+      );
+
+      final typeScope = Scope(
+        type: ScopeType.typeDeclaration,
+        startByte: 0,
+        endByte: 200,
+        definitions: [
+          ApexMemberInfo(name: 'instanceField', isStatic: false),
+          ApexMemberInfo(name: 'staticField', isStatic: true),
+        ],
+        children: [methodScope],
+      );
+      methodScope.parent = typeScope;
+
+      final rootScope = Scope(
+        type: ScopeType.file,
+        startByte: 0,
+        endByte: 200,
+        definitions: [
+          ApexClassInfo(
+            name: 'MyClass',
+            startByte: 0,
+            endByte: 200,
+            members: [
+              ApexMemberInfo(name: 'instanceField', isStatic: false),
+              ApexMemberInfo(name: 'staticField', isStatic: true),
+            ],
+          ),
+        ],
+        children: [typeScope],
+      );
+      typeScope.parent = rootScope;
+
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(rootScope: rootScope),
+      );
+
+      final result = await complete(' ' * 200, line: 0, character: 75);
+      final labels = result.items.map((i) => i.label);
+
+      expect(labels, contains('staticField'));
+      expect(labels, isNot(contains('instanceField')));
+    });
+
+    test('instance members are visible in instance methods', () async {
+      final methodScope = Scope(
+        type: ScopeType.methodBody,
+        startByte: 50,
+        endByte: 100,
+        isStatic: false,
+      );
+
+      final typeScope = Scope(
+        type: ScopeType.typeDeclaration,
+        startByte: 0,
+        endByte: 200,
+        definitions: [
+          ApexMemberInfo(name: 'instanceField', isStatic: false),
+          ApexMemberInfo(name: 'staticField', isStatic: true),
+        ],
+        children: [methodScope],
+      );
+      methodScope.parent = typeScope;
+
+      final rootScope = Scope(
+        type: ScopeType.file,
+        startByte: 0,
+        endByte: 200,
+        definitions: [
+          ApexClassInfo(
+            name: 'MyClass',
+            startByte: 0,
+            endByte: 200,
+            members: [
+              ApexMemberInfo(name: 'instanceField', isStatic: false),
+              ApexMemberInfo(name: 'staticField', isStatic: true),
+            ],
+          ),
+        ],
+        children: [typeScope],
+      );
+      typeScope.parent = rootScope;
+
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(rootScope: rootScope),
+      );
+
+      final result = await complete(' ' * 200, line: 0, character: 75);
+      final labels = result.items.map((i) => i.label);
+
+      expect(labels, contains('staticField'));
+      expect(labels, contains('instanceField'));
+    });
+
+    test('local variables declared after cursor are not visible', () async {
+      final methodScope = Scope(
+        type: ScopeType.methodBody,
+        startByte: 0,
+        endByte: 100,
+        definitions: [
+          ApexVariableInfo(
+            name: 'visibleVar',
+            typeName: 'String',
+            startByte: 10,
+            endByte: 20,
+            kind: 'local_variable_declaration',
+          ),
+          ApexVariableInfo(
+            name: 'futureVar',
+            typeName: 'String',
+            startByte: 80,
+            endByte: 90,
+            kind: 'local_variable_declaration',
+          ),
+        ],
+      );
+
+      final rootScope = Scope(
+        type: ScopeType.file,
+        startByte: 0,
+        endByte: 100,
+        children: [methodScope],
+      );
+      methodScope.parent = rootScope;
+
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(rootScope: rootScope),
+      );
+
+      final result = await complete(' ' * 100, line: 0, character: 50);
+      final labels = result.items.map((i) => i.label);
+
+      expect(labels, contains('visibleVar'));
+      expect(labels, isNot(contains('futureVar')));
     });
   });
 

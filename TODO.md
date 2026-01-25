@@ -45,7 +45,7 @@ Enum
 - [x] Member of enums of the opened file
 
 Interface
-- [ ] Name of other interfaces of the opened file
+- [x] Name of other interfaces of the opened file
 
 Scoped blocks
 - [ ] Static members of the class being modified
