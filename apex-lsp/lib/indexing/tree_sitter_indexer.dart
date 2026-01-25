@@ -54,7 +54,12 @@ class TreeSitterIndexer {
       if (type == 'class_declaration') {
         final classInfo = _extractClass(node, index);
         if (classInfo != null) {
-          index.classes.add(classInfo);
+          index.types.add(classInfo);
+        }
+      } else if (type == 'enum_declaration') {
+        final enumInfo = _extractEnum(node, index);
+        if (enumInfo != null) {
+          index.types.add(enumInfo);
         }
       } else if (type == 'field_declaration' ||
           type == 'local_variable_declaration' ||
@@ -75,6 +80,33 @@ class TreeSitterIndexer {
     return ptr.toDartString();
   }
 
+  ApexEnumInfo? _extractEnum(TSNode node, _MutableApexDocumentIndex index) {
+    final nameNode = _getField(node, 'name');
+    if (_isNullNode(nameNode)) return null;
+
+    final enumName = _nodeText(nameNode, index);
+    if (enumName.isEmpty) return null;
+
+    final members = <ApexMemberInfo>[];
+    final bodyNode = _getField(node, 'body');
+    if (!_isNullNode(bodyNode)) {
+      final constants = _collectDirectChildrenByType(bodyNode, 'enum_constant');
+      for (final constant in constants) {
+        final name = _nodeText(constant, index);
+        if (name.isNotEmpty) {
+          members.add(ApexMemberInfo(name: name, isStatic: true));
+        }
+      }
+    }
+
+    return ApexEnumInfo(
+      name: enumName,
+      startByte: _bindings.ts_node_start_byte(node),
+      endByte: _bindings.ts_node_end_byte(node),
+      members: members,
+    );
+  }
+
   ApexClassInfo? _extractClass(TSNode node, _MutableApexDocumentIndex index) {
     final nameNode = _getField(node, 'name');
     if (_isNullNode(nameNode)) return null;
@@ -83,9 +115,7 @@ class TreeSitterIndexer {
     if (className.isEmpty) return null;
 
     final bodyNode = _getField(node, 'body');
-    final fields = <ApexMemberInfo>[];
-    final properties = <ApexMemberInfo>[];
-    final methods = <ApexMemberInfo>[];
+    final members = <ApexMemberInfo>[];
 
     if (!_isNullNode(bodyNode)) {
       final fieldDeclarations = _collectDirectChildrenByType(
@@ -97,10 +127,6 @@ class TreeSitterIndexer {
         if (typeName == null || typeName.isEmpty) continue;
 
         final isStatic = _hasStaticModifier(fieldDecl, index);
-        final isProperty = _collectDirectChildrenByType(
-          fieldDecl,
-          'accessor_list',
-        ).isNotEmpty;
 
         final declarators = _collectDirectChildrenByType(
           fieldDecl,
@@ -110,11 +136,7 @@ class TreeSitterIndexer {
           final varName = _extractDeclaratorName(declarator, index);
           if (varName != null && varName.isNotEmpty) {
             final member = ApexMemberInfo(name: varName, isStatic: isStatic);
-            if (isProperty) {
-              properties.add(member);
-            } else {
-              fields.add(member);
-            }
+            members.add(member);
           }
         }
       }
@@ -127,7 +149,7 @@ class TreeSitterIndexer {
         final name = _extractMemberName(methodDecl, index);
         if (name != null && name.isNotEmpty) {
           final isStatic = _hasStaticModifier(methodDecl, index);
-          methods.add(ApexMemberInfo(name: name, isStatic: isStatic));
+          members.add(ApexMemberInfo(name: name, isStatic: isStatic));
         }
       }
     }
@@ -138,9 +160,7 @@ class TreeSitterIndexer {
       name: className,
       startByte: _bindings.ts_node_start_byte(node),
       endByte: _bindings.ts_node_end_byte(node),
-      fields: fields..sort((a, b) => a.name.compareTo(b.name)),
-      properties: properties..sort((a, b) => a.name.compareTo(b.name)),
-      methods: methods..sort((a, b) => a.name.compareTo(b.name)),
+      members: members..sort((a, b) => a.name.compareTo(b.name)),
       superclass: superclass,
     );
   }
@@ -339,12 +359,12 @@ final class _MutableApexDocumentIndex {
   final String text;
   final List<int> bytes;
 
-  final List<ApexClassInfo> classes = <ApexClassInfo>[];
+  final List<TypeInfo> types = <TypeInfo>[];
   final List<ApexVariableInfo> variables = <ApexVariableInfo>[];
 
   ApexDocumentIndex toPublicIndex() {
     return ApexDocumentIndex(
-      classes: List<ApexClassInfo>.from(classes),
+      types: List<TypeInfo>.from(types),
       variables: List<ApexVariableInfo>.from(variables),
     );
   }

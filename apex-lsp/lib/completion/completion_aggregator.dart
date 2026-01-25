@@ -73,26 +73,21 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
         return [];
       }
 
-      final classInfo = _index.classByName(typeName);
-      if (classInfo == null) {
+      final typeInfo = _index.typeByName(typeName);
+      if (typeInfo == null) {
         return [];
       }
 
-      final memberType = typeName.toLowerCase() == objectName.toLowerCase()
+      final isStaticAccess = typeName.toLowerCase() == objectName.toLowerCase();
+      final targetMemberType = isStaticAccess
           ? MemberType.static
           : MemberType.instance;
 
-      final apexType = Local(name: classInfo.name);
-      final memberList = <ApexMemberInfo>[
-        ...classInfo.fields,
-        ...classInfo.properties,
-        ...classInfo.methods,
-      ];
-
+      final apexType = Local(name: typeInfo.name);
       final members = membersFromMemberInfo(
-        memberList,
+        typeInfo.members,
         apexType,
-      ).where((m) => m.type == memberType);
+      ).where((m) => m.type == targetMemberType);
 
       return members.map(MemberCandidate.new).toList();
     }
@@ -116,21 +111,17 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
       // we can have more than one class declaration per file)
       // Eventually we want this to be only for types of "Self"
       final localMembers = [
-        ..._index.classes.expand(
-          (c) => [
-            ...membersFromMemberInfo(c.fields, Local(name: c.name)),
-            ...membersFromMemberInfo(c.properties, Local(name: c.name)),
-            ...membersFromMemberInfo(c.methods, Local(name: c.name)),
-          ],
+        ..._index.types.expand(
+          (t) => membersFromMemberInfo(t.members, Local(name: t.name)),
         ),
       ].map(MemberCandidate.new);
 
-      // The name of the declared class (or classes in case of anon-apex) itself.
-      final localClasses = _index.classes
-          .map((c) => Local(name: c.name))
+      // The name of the declared types (classes or enums) itself.
+      final localTypes = _index.types
+          .map((t) => Local(name: t.name))
           .map(ApexTypeCandidate.new);
 
-      return [...topLevelVariables, ...localMembers, ...localClasses];
+      return [...topLevelVariables, ...localMembers, ...localTypes];
     }
 
     return switch (context) {

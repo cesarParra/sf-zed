@@ -170,12 +170,15 @@ final class ContextDetector {
     required int cursorByteOffset,
   }) {
     if (objectName == 'this') {
-      final containing = _findClassAtOffset(_index, cursorByteOffset);
+      final containing = _findTypeAtOffset(_index, cursorByteOffset);
       return containing?.name;
     }
     if (objectName == 'super') {
-      final containing = _findClassAtOffset(_index, cursorByteOffset);
-      return containing?.superclass ?? containing?.name;
+      final containing = _findTypeAtOffset(_index, cursorByteOffset);
+      if (containing is ApexClassInfo) {
+        return containing.superclass ?? containing.name;
+      }
+      return containing?.name;
     }
 
     final variable = _resolveVariable(_index, objectName, cursorByteOffset);
@@ -184,9 +187,9 @@ final class ContextDetector {
     }
 
     // If the object name itself is a class name, treat as that type.
-    final classInfo = _index.classByName(objectName);
-    if (classInfo != null) {
-      return classInfo.name;
+    final typeInfo = _index.typeByName(objectName);
+    if (typeInfo != null) {
+      return typeInfo.name;
     }
 
     return null;
@@ -200,10 +203,10 @@ final class ContextDetector {
     return utf8.encode(text.substring(0, codeUnitOffset)).length;
   }
 
-  ApexClassInfo? _findClassAtOffset(ApexDocumentIndex index, int offset) {
-    for (final c in index.classes) {
-      if (offset >= c.startByte && offset <= c.endByte) {
-        return c;
+  TypeInfo? _findTypeAtOffset(ApexDocumentIndex index, int offset) {
+    for (final t in index.types) {
+      if (offset >= t.startByte && offset <= t.endByte) {
+        return t;
       }
     }
     return null;

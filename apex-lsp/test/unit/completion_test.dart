@@ -76,7 +76,7 @@ void main() {
   setUp(() {
     // Default empty indexer and provider
     localIndexer = FakeTreeSitterIndexer(
-      ApexDocumentIndex(classes: [], variables: []),
+      ApexDocumentIndex(types: [], variables: []),
     );
     indexedClassProvider = FakeIndexedClassProvider();
   });
@@ -124,7 +124,7 @@ void main() {
     test('suggests local variables from local indexer', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          classes: [],
+          types: [],
           variables: [
             ApexVariableInfo(
               name: 'myVar',
@@ -141,6 +141,22 @@ void main() {
       final result = await complete(text, line: 0, character: 2);
 
       expect(result.items.map((i) => i.label), contains('myVar'));
+    });
+
+    test('suggests local enums from local indexer', () async {
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(
+          types: [
+            ApexEnumInfo(name: 'MyEnum', startByte: 0, endByte: 0, members: []),
+          ],
+          variables: [],
+        ),
+      );
+
+      final text = 'My';
+      final result = await complete(text, line: 0, character: 2);
+
+      expect(result.items.map((i) => i.label), contains('MyEnum'));
     });
 
     test('filters results based on prefix', () async {
@@ -176,7 +192,7 @@ void main() {
       final text = 'Account acc; acc.';
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          classes: [],
+          types: [],
           variables: [
             ApexVariableInfo(
               name: 'acc',
@@ -220,23 +236,46 @@ void main() {
         expect(labels, isNot(contains('clone')));
       },
     );
+
+    test('suggests enum values when object name matches enum name', () async {
+      localIndexer = FakeTreeSitterIndexer(
+        ApexDocumentIndex(
+          types: [
+            ApexEnumInfo(
+              name: 'MyEnum',
+              startByte: 0,
+              endByte: 0,
+              members: [
+                ApexMemberInfo(name: 'VAL1', isStatic: true),
+                ApexMemberInfo(name: 'VAL2', isStatic: true),
+              ],
+            ),
+          ],
+          variables: [],
+        ),
+      );
+
+      final text = 'MyEnum.';
+
+      final result = await complete(text, line: 0, character: text.length);
+
+      final labels = result.items.map((i) => i.label);
+      expect(labels, containsAll(['VAL1', 'VAL2']));
+    });
   });
 
   group('Local Member Completion', () {
     test('suggests instance members from local class definition', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          classes: [
+          types: [
             ApexClassInfo(
               name: 'MyClass',
               startByte: 0,
               endByte: 0,
-              fields: [
+              members: [
                 ApexMemberInfo(name: 'instanceField', isStatic: false),
                 ApexMemberInfo(name: 'staticField', isStatic: true),
-              ],
-              properties: [],
-              methods: [
                 ApexMemberInfo(name: 'instanceMethod', isStatic: false),
                 ApexMemberInfo(name: 'staticMethod', isStatic: true),
               ],
@@ -266,17 +305,14 @@ void main() {
     test('suggests static members from local class definition', () async {
       localIndexer = FakeTreeSitterIndexer(
         ApexDocumentIndex(
-          classes: [
+          types: [
             ApexClassInfo(
               name: 'MyClass',
               startByte: 0,
               endByte: 0,
-              fields: [
+              members: [
                 ApexMemberInfo(name: 'instanceField', isStatic: false),
                 ApexMemberInfo(name: 'staticField', isStatic: true),
-              ],
-              properties: [],
-              methods: [
                 ApexMemberInfo(name: 'instanceMethod', isStatic: false),
                 ApexMemberInfo(name: 'staticMethod', isStatic: true),
               ],
