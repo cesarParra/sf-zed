@@ -18,7 +18,6 @@ import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 /// final aggregator = CompletionAggregator(
 ///   documentService: myTreeSitterService,
 ///   indexedClassesRepository: myIndexerAdapter,
-/// );
 ///
 /// final candidates = await aggregator.suggest(
 ///   text: 'Account a; a.',
@@ -180,7 +179,6 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
         return [];
       }
 
-      logger.debug('member type $resolvedType and object Name $objectName');
       final memberType = resolvedType.toLowerCase() == objectName.toLowerCase()
           // If the name of the type itself matches the name of the variable
           // we resolved for, then we are dealing with a static call (e.g. Foo.b)
@@ -206,7 +204,6 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
       }).toList();
     }
 
-    logger.debug('dealing with $context');
     return switch (context) {
       CompletionContextNone() => [],
       CompletionContextMember(:final typeName, :final objectName) =>
