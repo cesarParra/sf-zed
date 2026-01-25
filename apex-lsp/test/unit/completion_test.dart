@@ -82,7 +82,7 @@ void main() {
   });
 
   Future<CompletionList> complete(
-    String text, {
+    String? text, {
     int line = 0,
     int character = 0,
   }) {
@@ -98,15 +98,7 @@ void main() {
   }
 
   test('returns empty list if document is not found (text is null)', () async {
-    final result = await onCompletion(
-      text: null,
-      params: CompletionParams(
-        textDocument: TextDocumentIdentifierWithUri(uri: uri),
-        position: Position(line: 0, character: 0),
-      ),
-      localIndexer: localIndexer,
-      indexedClassProvider: indexedClassProvider,
-    );
+    final result = await complete(null);
 
     expect(result.isIncomplete, isFalse);
     expect(result.items, isEmpty);
@@ -206,28 +198,28 @@ void main() {
   });
 
   group('Member Completion (Static)', () {
-    test('suggests static members when object name matches class name', () async {
-      indexedClassProvider = FakeIndexedClassProvider(
-        types: {
-          'System': InMemoryIndexedType(
-            name: 'System',
-            staticMembers: ['debug', 'now'],
-            instanceMembers: ['clone'],
-          ),
-        },
-      );
+    test(
+      'suggests static members when object name matches class name',
+      () async {
+        indexedClassProvider = FakeIndexedClassProvider(
+          types: {
+            'System': InMemoryIndexedType(
+              name: 'System',
+              staticMembers: ['debug', 'now'],
+              instanceMembers: ['clone'],
+            ),
+          },
+        );
 
-      final text = 'System.';
-      // ContextDetector resolves typeName to 'System' (the object name itself)
-      // because _resolveTypeForObject defaults to objectName if it can't resolve otherwise.
-      // Then SuggestionFromIndexedFiles checks resolvesType == objectName -> static.
+        final text = 'System.';
 
-      final result = await complete(text, line: 0, character: text.length);
+        final result = await complete(text, line: 0, character: text.length);
 
-      final labels = result.items.map((i) => i.label);
-      expect(labels, containsAll(['debug', 'now']));
-      expect(labels, isNot(contains('clone')));
-    });
+        final labels = result.items.map((i) => i.label);
+        expect(labels, containsAll(['debug', 'now']));
+        expect(labels, isNot(contains('clone')));
+      },
+    );
   });
 
   group('Local Member Completion', () {
