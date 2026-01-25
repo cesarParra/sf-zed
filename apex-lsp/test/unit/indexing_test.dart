@@ -63,7 +63,8 @@ void main() {
         WorkspaceFolder(workspaceUri.toString(), 'repo'),
       ]);
 
-      final progressEvents = await indexer.index(params).toList();
+      final token = ProgressToken.string('test-token');
+      final progressEvents = await indexer.index(params, token: token).toList();
 
       // 3. Verify progress notifications
       expect(progressEvents, isNotEmpty);
@@ -116,6 +117,7 @@ void main() {
               InitializedParams([
                 WorkspaceFolder(workspaceUri.toString(), 'repo'),
               ]),
+              token: ProgressToken.string('test-token'),
             )
             .drain<void>();
 
@@ -151,7 +153,9 @@ void main() {
         WorkspaceFolder(uri2.toString(), 'r2'),
       ]);
 
-      await indexer.index(params).drain<void>();
+      await indexer
+          .index(params, token: ProgressToken.string('test-token'))
+          .drain<void>();
 
       // Verify both are tracked
       // We check this indirectly via indexedClassNames which scans all roots
@@ -163,7 +167,9 @@ void main() {
 
     test('skips indexing if no workspace folders provided', () async {
       final params = InitializedParams(null);
-      final events = await indexer.index(params).toList();
+      final events = await indexer
+          .index(params, token: ProgressToken.string('test-token'))
+          .toList();
       expect(events, isEmpty);
     });
   });

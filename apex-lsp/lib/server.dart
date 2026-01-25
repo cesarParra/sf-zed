@@ -98,7 +98,16 @@ final class Server {
         switch (note) {
           case InitializedMessage():
             await logMessage(MessageType.info, 'Apex LSP initialized');
-            await for (final value in _apexIndexer.index(params)) {
+
+            final token = ProgressToken.string(
+              'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
+            );
+            await _output.workDoneProgressCreate(token: token);
+
+            await for (final value in _apexIndexer.index(
+              params,
+              token: token,
+            )) {
               _output.progress(params: value);
             }
 

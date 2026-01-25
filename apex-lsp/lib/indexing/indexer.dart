@@ -58,7 +58,10 @@ final class ApexIndexer {
   final _indexedClassByNameCache = <String, TypeMirrorWrapper>{};
   final Set<String> _workspaceClassNotFound = <String>{};
 
-  Stream<WorkDoneProgressParams> index(InitializedParams params) async* {
+  Stream<WorkDoneProgressParams> index(
+    InitializedParams params, {
+    required ProgressToken token,
+  }) async* {
     final folders = params.workspaceFolders;
     if (folders == null || folders.isEmpty) return;
 
@@ -73,9 +76,7 @@ final class ApexIndexer {
     // Load SFDX project configs (if present) and compute package directory roots.
     final packageDirectoryUris = await _sfdxWorkspaceLocator
         .packageDirectoryScopeForWorkspaces(_workspaceRootUris);
-    final token = _generateProgressToken(
-      packageDirectoryUris: packageDirectoryUris,
-    );
+
     yield WorkDoneProgressParams(
       token: token,
       value: const WorkDoneProgressBegin(
@@ -88,14 +89,6 @@ final class ApexIndexer {
     yield* _indexInBackground(
       packageDirectoryUris: packageDirectoryUris,
       token: token,
-    );
-  }
-
-  ProgressToken _generateProgressToken({
-    required List<Uri> packageDirectoryUris,
-  }) {
-    return ProgressToken.string(
-      'apex-lsp-indexing-${DateTime.now().millisecondsSinceEpoch}',
     );
   }
 
