@@ -2,12 +2,8 @@ import 'dart:async';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
-import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart' as indexed_class;
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
-import 'package:apex_lsp/lsp_out.dart';
-
-final logger = locator<LspOut>();
 
 /// Aggregates completion candidates from the open document (Tree-sitter)
 /// and workspace index (.sf-zed JSON file repository).
@@ -50,8 +46,6 @@ final class CompletionAggregator implements CompletionSuggestion {
   FutureOr<List<CompletionCandidate>> suggest({
     required CompletionContext context,
   }) async {
-    // TODO: Enum values are not working
-
     final localSuggestions = await localSuggestion.suggest(context: context);
     final indexedSuggestions = await indexedSuggestion.suggest(
       context: context,
@@ -119,7 +113,8 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
 
       // For the declared class, expands all local members.
       // TODO: This is a naive implementation that does't work for anon-apex,
-      // since it doesn't care from which class the member came from.
+      // since it doesn't care from which class the member came from (in anon-apex
+      // we can have more than one class declaration per file)
       // Eventually we want this to be only for types of "Self"
       final localMembers = [
         ..._index.classes.expand(

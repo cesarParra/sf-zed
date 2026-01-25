@@ -1,11 +1,7 @@
 import 'dart:convert';
 
 import 'package:apex_lsp/completion/helpers.dart';
-import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
-import 'package:apex_lsp/lsp_out.dart';
-
-final logger = locator<LspOut>();
 
 sealed class CompletionContext {
   const CompletionContext();
