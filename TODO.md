@@ -48,14 +48,14 @@ Interface
 - [x] Name of other interfaces of the opened file
 
 Scoped blocks
-- [ ] Static members of the class being modified
-- [ ] Instance members of the class being modified
+- [x] Static members of the class being modified
+- [x] Instance members of the class being modified
 - [ ] Static members of the superclass(es) (?)
 - [ ] Instance member ofthe superclass(es)
 - [ ] `this`
 - [ ] `super`
-- [ ] Local declaration of the current block
-- [ ] Scoped params of the current block
+- [x] Local declaration of the current block
+- [ ] Scoped params of the current block (missing, autocompleting members of passed params)
 
 Block support notes
 * When in a static block, can only call into static members

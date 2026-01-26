@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
+import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart' as indexed_class;
 import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
+import 'package:apex_lsp/lsp_out.dart';
+
+final logger = locator<LspOut>();
 
 /// Aggregates completion candidates from the open document (Tree-sitter)
 /// and workspace index (.sf-zed JSON file repository).
@@ -65,11 +69,15 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
     required String? objectName,
     required String? typeName,
   }) {
+    logger.debug(
+      'Completing member. Object name: $objectName, Type name: $typeName',
+    );
     if (typeName == null || objectName == null) {
       return [];
     }
 
     final typeInfo = _index.typeByName(typeName);
+    logger.debug('Found type info $typeInfo');
     if (typeInfo == null) {
       return [];
     }

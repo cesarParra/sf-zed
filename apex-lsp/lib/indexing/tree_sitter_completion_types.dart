@@ -88,6 +88,7 @@ final class ApexClassInfo implements TypeInfo {
 final class ApexInterfaceInfo implements TypeInfo {
   ApexInterfaceInfo({
     required this.name,
+    required this.members,
     required this.startByte,
     required this.endByte,
   });
@@ -99,11 +100,13 @@ final class ApexInterfaceInfo implements TypeInfo {
   @override
   final int endByte;
   @override
-  final List<ApexMemberInfo> members = const [];
+  final List<ApexMemberInfo> members;
+
+  // TODO: In Apex, interfaces can have super classes.
 
   @override
   String toString() {
-    return 'ApexInterfaceInfo(name: $name, startByte: $startByte, endByte: $endByte)';
+    return 'ApexInterfaceInfo(name: $name, startByte: $startByte, endByte: $endByte, members: $members)';
   }
 }
 

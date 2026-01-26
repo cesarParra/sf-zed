@@ -183,7 +183,12 @@ void main() {
             startByte: 0,
             endByte: 100,
             definitions: [
-              ApexInterfaceInfo(name: 'MyInterface', startByte: 0, endByte: 0),
+              ApexInterfaceInfo(
+                name: 'MyInterface',
+                startByte: 0,
+                endByte: 0,
+                members: [],
+              ),
             ],
           ),
         ),

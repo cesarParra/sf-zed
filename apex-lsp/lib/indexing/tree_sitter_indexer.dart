@@ -249,10 +249,28 @@ class TreeSitterIndexer {
     final interfaceName = _nodeText(nameNode, index);
     if (interfaceName.isEmpty) return null;
 
+    final bodyNode = _getField(node, 'body');
+    final members = <ApexMemberInfo>[];
+
+    if (!_isNullNode(bodyNode)) {
+      final methodDeclarations = _collectDirectChildrenByType(
+        bodyNode,
+        'method_declaration',
+      );
+      for (final methodDecl in methodDeclarations) {
+        final name = _extractMemberName(methodDecl, index);
+        if (name != null && name.isNotEmpty) {
+          final isStatic = _hasStaticModifier(methodDecl, index);
+          members.add(ApexMemberInfo(name: name, isStatic: isStatic));
+        }
+      }
+    }
+
     return ApexInterfaceInfo(
       name: interfaceName,
       startByte: _bindings.ts_node_start_byte(node),
       endByte: _bindings.ts_node_end_byte(node),
+      members: members,
     );
   }
 
