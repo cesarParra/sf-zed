@@ -170,11 +170,11 @@ final class ContextDetector {
     required String objectName,
     required int cursorByteOffset,
   }) {
-    if (objectName == 'this') {
+    if (objectName.toLowerCase() == 'this') {
       final containing = _findTypeAtOffset(_index, cursorByteOffset);
       return containing?.name;
     }
-    if (objectName == 'super') {
+    if (objectName.toLowerCase() == 'super') {
       final containing = _findTypeAtOffset(_index, cursorByteOffset);
       if (containing is ApexClassInfo) {
         return containing.superclass ?? containing.name;
@@ -205,9 +205,9 @@ final class ContextDetector {
   }
 
   TypeInfo? _findTypeAtOffset(ApexDocumentIndex index, int offset) {
-    for (final t in index.rootScope.definitions.whereType<TypeInfo>()) {
-      if (offset >= t.startByte && offset <= t.endByte) {
-        return t;
+    for (final typeInfo in index.rootScope.definitions.whereType<TypeInfo>()) {
+      if (offset >= typeInfo.startByte && offset <= typeInfo.endByte) {
+        return typeInfo;
       }
     }
     return null;

@@ -120,7 +120,6 @@ class InterfaceMirrorWrapper implements IndexedType {
 
   final apex_reflection.InterfaceMirror interfaceMirror;
 
-  /// Combined member list.
   @override
   List<String> get memberNames {
     final all = <String>{...interfaceMirror.methods.map((m) => m.name)};
@@ -135,7 +134,6 @@ class InterfaceMirrorWrapper implements IndexedType {
     };
   }
 
-  /// Returns true if any member matches [prefix] (case-insensitive).
   @override
   bool hasMemberPrefix(String prefix) {
     final lower = prefix.toLowerCase();

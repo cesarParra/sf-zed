@@ -35,6 +35,8 @@ Enum
 
 Interface
 - [x] Interfaces names of indexed files
+- [x] Interface members
+- [ ] Interface superclasses (members inherited from the superclass)
 
 #### Opened file
 Class
@@ -46,6 +48,8 @@ Enum
 
 Interface
 - [x] Name of other interfaces of the opened file
+- [x] Interface members
+- [ ] Interface superclasses (members inherited from the superclass)
 
 Scoped blocks
 - [x] Static members of the class being modified

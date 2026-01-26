@@ -2,13 +2,9 @@ import 'dart:async';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
-import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart' as indexed_class;
 import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
-import 'package:apex_lsp/lsp_out.dart';
-
-final logger = locator<LspOut>();
 
 /// Aggregates completion candidates from the open document (Tree-sitter)
 /// and workspace index (.sf-zed JSON file repository).
@@ -69,25 +65,16 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
     required String? objectName,
     required String? typeName,
   }) {
-    logger.debug(
-      'Completing member. Object name: $objectName, Type name: $typeName',
-    );
     if (typeName == null || objectName == null) {
       return [];
     }
 
     final typeInfo = _index.typeByName(typeName);
-    logger.debug('Found type info $typeInfo');
     if (typeInfo == null) {
       return [];
     }
 
     final isStaticAccess = typeName.toLowerCase() == objectName.toLowerCase();
-
-    // If it is an Enum, we only allow static access.
-    if (typeInfo is ApexEnumInfo && !isStaticAccess) {
-      return [];
-    }
 
     final targetMemberType = isStaticAccess
         ? MemberType.static
@@ -119,8 +106,8 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
           currentScope.type == ScopeType.methodBody ||
           currentScope.type == ScopeType.localBlock;
 
-      for (final def in currentScope.definitions) {
-        switch (def) {
+      for (final definition in currentScope.definitions) {
+        switch (definition) {
           case ApexVariableInfo variable:
             // Local variables must be declared before use (endByte < cursorOffset)
             if (isLocalScope) {
@@ -211,9 +198,6 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
       String? resolvedType,
       String? objectName,
     ) async {
-      logger.debug(
-        'from index:: getting members for Type $resolvedType and object $objectName',
-      );
       if (resolvedType == null || resolvedType.isEmpty || objectName == null) {
         return [];
       }
