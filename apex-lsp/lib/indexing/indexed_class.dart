@@ -29,6 +29,8 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
       indexer.EnumMirrorWrapper(:final typeMirror) => EnumMirrorWrapper(
         enumMirror: typeMirror,
       ),
+      indexer.InterfaceMirrorWrapper(:final typeMirror) =>
+        InterfaceMirrorWrapper(interfaceMirror: typeMirror),
       null => null,
     };
   }
@@ -100,6 +102,36 @@ class EnumMirrorWrapper implements IndexedType {
     return switch (type) {
       .static => [...enumMirror.values.map((v) => v.name)],
       .instance => [],
+    };
+  }
+
+  /// Returns true if any member matches [prefix] (case-insensitive).
+  @override
+  bool hasMemberPrefix(String prefix) {
+    final lower = prefix.toLowerCase();
+    return memberNames.any(
+      (current) => current.toLowerCase().startsWith(lower),
+    );
+  }
+}
+
+class InterfaceMirrorWrapper implements IndexedType {
+  InterfaceMirrorWrapper({required this.interfaceMirror});
+
+  final apex_reflection.InterfaceMirror interfaceMirror;
+
+  /// Combined member list.
+  @override
+  List<String> get memberNames {
+    final all = <String>{...interfaceMirror.methods.map((m) => m.name)};
+    return all.toList();
+  }
+
+  @override
+  List<String> memberNamesByType(MemberType type) {
+    return switch (type) {
+      .static => [],
+      .instance => [...interfaceMirror.methods.map((m) => m.name)],
     };
   }
 

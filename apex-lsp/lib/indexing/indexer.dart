@@ -25,6 +25,11 @@ final class EnumMirrorWrapper
   const EnumMirrorWrapper(super.typeMirror);
 }
 
+final class InterfaceMirrorWrapper
+    extends TypeMirrorWrapper<apex_reflection.InterfaceMirror> {
+  const InterfaceMirrorWrapper(super.typeMirror);
+}
+
 /// Indexes Apex `.cls` files under a set of package directories and writes JSON
 /// metadata files into a hidden `.sf-zed` folder at each workspace root.
 final class ApexIndexer {
@@ -242,6 +247,9 @@ final class ApexIndexer {
       ),
       'class' => ClassMirrorWrapper(
         apex_reflection.ClassMirror.fromJson(typeMirrorJson),
+      ),
+      'interface' => InterfaceMirrorWrapper(
+        apex_reflection.InterfaceMirror.fromJson(typeMirrorJson),
       ),
       _ => null,
     };

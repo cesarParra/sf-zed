@@ -211,6 +211,9 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
       String? resolvedType,
       String? objectName,
     ) async {
+      logger.debug(
+        'from index:: getting members for Type $resolvedType and object $objectName',
+      );
       if (resolvedType == null || resolvedType.isEmpty || objectName == null) {
         return [];
       }
