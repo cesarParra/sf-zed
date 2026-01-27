@@ -46,8 +46,8 @@ Class
 - [x] Subenums (top level names)
 - [x] Subinterfaces (top level names)
 - [x] Members of subclasses
-- [ ] Members of subinterfaces
-- [ ] Members of subenums
+- [x] Members of subinterfaces
+- [x] Members of subenums
 
 Enum
 - [x] Name of other enums of the opened file
