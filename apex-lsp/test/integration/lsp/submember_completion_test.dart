@@ -107,5 +107,31 @@ public class CollectionUtils {
         expect(names, contains('MyInnerEnum'));
       },
     );
+
+    test(
+      'suggests members of inner classes when accessed via qualified type name',
+      () async {
+        final text = '''
+public with sharing class CollectionUtils {
+    public Integer sum(AnotherClass.MySubClass supporter, Int b) {
+        supporter. // cursor here
+    }
+}
+
+public class AnotherClass {
+    private static String something;
+    public class MySubClass {
+        public String somethingElse;
+    }
+}
+''';
+
+        final cursorOffset = text.indexOf('supporter.') + 'supporter.'.length;
+        final results = await suggest(text: text, cursorOffset: cursorOffset);
+        final names = results.map((c) => c.name).toList();
+
+        expect(names, contains('somethingElse'));
+      },
+    );
   });
 }

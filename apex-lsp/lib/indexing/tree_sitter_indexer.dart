@@ -69,7 +69,11 @@ class TreeSitterIndexer {
           parent: scope,
         );
         scope.children.add(classScope);
-        classScope.definitions.addAll(info.members);
+        for (final member in info.members) {
+          if (member is! NestedTypeMember) {
+            classScope.definitions.add(member);
+          }
+        }
         _visitChildren(node, classScope, index);
       }
     } else if (type == 'interface_declaration') {
@@ -83,7 +87,11 @@ class TreeSitterIndexer {
           parent: scope,
         );
         scope.children.add(interfaceScope);
-        interfaceScope.definitions.addAll(info.members);
+        for (final member in info.members) {
+          if (member is! NestedTypeMember) {
+            interfaceScope.definitions.add(member);
+          }
+        }
         _visitChildren(node, interfaceScope, index);
       }
     } else if (type == 'enum_declaration') {
@@ -197,7 +205,11 @@ class TreeSitterIndexer {
         for (final declarator in declarators) {
           final varName = _extractDeclaratorName(declarator, index);
           if (varName != null && varName.isNotEmpty) {
-            final member = ApexMemberInfo(name: varName, isStatic: isStatic);
+            final member = ApexMemberInfo(
+              name: varName,
+              isStatic: isStatic,
+              typeName: typeName,
+            );
             members.add(member);
           }
         }
@@ -211,7 +223,10 @@ class TreeSitterIndexer {
         final name = _extractMemberName(propertyDecl, index);
         if (name != null && name.isNotEmpty) {
           final isStatic = _hasStaticModifier(propertyDecl, index);
-          members.add(ApexMemberInfo(name: name, isStatic: isStatic));
+          final typeName = _extractTypeName(propertyDecl, index);
+          members.add(
+            ApexMemberInfo(name: name, isStatic: isStatic, typeName: typeName),
+          );
         }
       }
 
@@ -223,7 +238,10 @@ class TreeSitterIndexer {
         final name = _extractMemberName(methodDecl, index);
         if (name != null && name.isNotEmpty) {
           final isStatic = _hasStaticModifier(methodDecl, index);
-          members.add(ApexMemberInfo(name: name, isStatic: isStatic));
+          final typeName = _extractTypeName(methodDecl, index);
+          members.add(
+            ApexMemberInfo(name: name, isStatic: isStatic, typeName: typeName),
+          );
         }
       }
 
@@ -232,12 +250,9 @@ class TreeSitterIndexer {
         'class_declaration',
       );
       for (final innerClass in innerClasses) {
-        final nameNode = _getField(innerClass, 'name');
-        if (!_isNullNode(nameNode)) {
-          final name = _nodeText(nameNode, index);
-          if (name.isNotEmpty) {
-            members.add(ApexMemberInfo(name: name, isStatic: true));
-          }
+        final info = _extractClass(innerClass, index);
+        if (info != null) {
+          members.add(NestedTypeMember(typeInfo: info));
         }
       }
 
@@ -246,12 +261,9 @@ class TreeSitterIndexer {
         'interface_declaration',
       );
       for (final innerInterface in innerInterfaces) {
-        final nameNode = _getField(innerInterface, 'name');
-        if (!_isNullNode(nameNode)) {
-          final name = _nodeText(nameNode, index);
-          if (name.isNotEmpty) {
-            members.add(ApexMemberInfo(name: name, isStatic: true));
-          }
+        final info = _extractInterface(innerInterface, index);
+        if (info != null) {
+          members.add(NestedTypeMember(typeInfo: info));
         }
       }
 
@@ -260,12 +272,9 @@ class TreeSitterIndexer {
         'enum_declaration',
       );
       for (final innerEnum in innerEnums) {
-        final nameNode = _getField(innerEnum, 'name');
-        if (!_isNullNode(nameNode)) {
-          final name = _nodeText(nameNode, index);
-          if (name.isNotEmpty) {
-            members.add(ApexMemberInfo(name: name, isStatic: true));
-          }
+        final info = _extractEnum(innerEnum, index);
+        if (info != null) {
+          members.add(NestedTypeMember(typeInfo: info));
         }
       }
     }
@@ -303,7 +312,43 @@ class TreeSitterIndexer {
         final name = _extractMemberName(methodDecl, index);
         if (name != null && name.isNotEmpty) {
           final isStatic = _hasStaticModifier(methodDecl, index);
-          members.add(ApexMemberInfo(name: name, isStatic: isStatic));
+          final typeName = _extractTypeName(methodDecl, index);
+          members.add(
+            ApexMemberInfo(name: name, isStatic: isStatic, typeName: typeName),
+          );
+        }
+      }
+
+      final innerClasses = _collectDirectChildrenByType(
+        bodyNode,
+        'class_declaration',
+      );
+      for (final innerClass in innerClasses) {
+        final info = _extractClass(innerClass, index);
+        if (info != null) {
+          members.add(NestedTypeMember(typeInfo: info));
+        }
+      }
+
+      final innerInterfaces = _collectDirectChildrenByType(
+        bodyNode,
+        'interface_declaration',
+      );
+      for (final innerInterface in innerInterfaces) {
+        final info = _extractInterface(innerInterface, index);
+        if (info != null) {
+          members.add(NestedTypeMember(typeInfo: info));
+        }
+      }
+
+      final innerEnums = _collectDirectChildrenByType(
+        bodyNode,
+        'enum_declaration',
+      );
+      for (final innerEnum in innerEnums) {
+        final info = _extractEnum(innerEnum, index);
+        if (info != null) {
+          members.add(NestedTypeMember(typeInfo: info));
         }
       }
     }
@@ -436,6 +481,15 @@ class TreeSitterIndexer {
   String? _extractTypeName(TSNode node, _MutableApexDocumentIndex index) {
     final typeNode = _getField(node, 'type');
     final candidate = _isNullNode(typeNode) ? node : typeNode;
+
+    final scopedTypeIdentifier = _findFirstNamedDescendantOfType(
+      candidate,
+      'scoped_type_identifier',
+    );
+
+    if (scopedTypeIdentifier != null && !_isNullNode(scopedTypeIdentifier)) {
+      return _nodeText(scopedTypeIdentifier, index);
+    }
 
     final typeIdentifier = _findFirstNamedDescendantOfType(
       candidate,
