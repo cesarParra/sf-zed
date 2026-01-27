@@ -226,6 +226,48 @@ class TreeSitterIndexer {
           members.add(ApexMemberInfo(name: name, isStatic: isStatic));
         }
       }
+
+      final innerClasses = _collectDirectChildrenByType(
+        bodyNode,
+        'class_declaration',
+      );
+      for (final innerClass in innerClasses) {
+        final nameNode = _getField(innerClass, 'name');
+        if (!_isNullNode(nameNode)) {
+          final name = _nodeText(nameNode, index);
+          if (name.isNotEmpty) {
+            members.add(ApexMemberInfo(name: name, isStatic: true));
+          }
+        }
+      }
+
+      final innerInterfaces = _collectDirectChildrenByType(
+        bodyNode,
+        'interface_declaration',
+      );
+      for (final innerInterface in innerInterfaces) {
+        final nameNode = _getField(innerInterface, 'name');
+        if (!_isNullNode(nameNode)) {
+          final name = _nodeText(nameNode, index);
+          if (name.isNotEmpty) {
+            members.add(ApexMemberInfo(name: name, isStatic: true));
+          }
+        }
+      }
+
+      final innerEnums = _collectDirectChildrenByType(
+        bodyNode,
+        'enum_declaration',
+      );
+      for (final innerEnum in innerEnums) {
+        final nameNode = _getField(innerEnum, 'name');
+        if (!_isNullNode(nameNode)) {
+          final name = _nodeText(nameNode, index);
+          if (name.isNotEmpty) {
+            members.add(ApexMemberInfo(name: name, isStatic: true));
+          }
+        }
+      }
     }
 
     final superclass = _extractSuperclass(node, index);
