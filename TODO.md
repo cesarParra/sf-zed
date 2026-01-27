@@ -41,11 +41,11 @@ Interface
 #### Opened file
 Class
 - [x] Name of other classes of the opened file
-- [ ] Instance members
-- [ ] Subclasses (top level names)
-- [ ] Subenums (top level names)
-- [ ] Subinterfaces (top level names)
-- [ ] Members of subclasses
+- [x] Instance members
+- [x] Subclasses (top level names)
+- [x] Subenums (top level names)
+- [x] Subinterfaces (top level names)
+- [x] Members of subclasses
 - [ ] Members of subinterfaces
 - [ ] Members of subenums
 

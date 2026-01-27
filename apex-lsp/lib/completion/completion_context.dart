@@ -162,7 +162,19 @@ final class ContextDetector {
     }
     if (i < 0) return null;
 
-    final identifier = text.extractIndentifierPrefixAt(i + 1);
+    // Search backwards to include qualified names (e.g. A.B)
+    final end = i + 1;
+    while (i >= 0) {
+      final ch = text.codeUnitAt(i);
+      if (ch == 0x2E || ch.isIdentifierChar) {
+        i--;
+      } else {
+        break;
+      }
+    }
+
+    final start = i + 1;
+    final identifier = text.substring(start, end).trim();
     return identifier.isNotEmpty ? identifier : null;
   }
 
@@ -190,7 +202,8 @@ final class ContextDetector {
     // If the object name itself is a class name, treat as that type.
     final typeInfo = _index.typeByName(objectName);
     if (typeInfo != null) {
-      return typeInfo.name;
+      // Return the qualified name to ensure it can be resolved again later.
+      return objectName;
     }
 
     return null;

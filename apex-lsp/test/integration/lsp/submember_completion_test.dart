@@ -133,5 +133,55 @@ public class AnotherClass {
         expect(names, contains('somethingElse'));
       },
     );
+
+    test(
+      'suggests members of inner interfaces when accessed via qualified type name',
+      () async {
+        final text = '''
+public class CollectionUtils {
+    public void test(AnotherClass.MySubInterface supporter) {
+        supporter.
+    }
+}
+
+public class AnotherClass {
+    public interface MySubInterface {
+        void interfaceMethod();
+    }
+}
+''';
+
+        final cursorOffset = text.indexOf('supporter.') + 'supporter.'.length;
+        final results = await suggest(text: text, cursorOffset: cursorOffset);
+        final names = results.map((c) => c.name).toList();
+
+        expect(names, contains('interfaceMethod'));
+      },
+    );
+
+    test(
+      'suggests values of inner enums when accessed via qualified type name',
+      () async {
+        final text = '''
+public class CollectionUtils {
+    public void test() {
+        AnotherClass.MySubEnum.
+    }
+}
+
+public class AnotherClass {
+    public enum MySubEnum { VAL1, VAL2 }
+}
+''';
+
+        final cursorOffset =
+            text.indexOf('AnotherClass.MySubEnum.') +
+            'AnotherClass.MySubEnum.'.length;
+        final results = await suggest(text: text, cursorOffset: cursorOffset);
+        final names = results.map((c) => c.name).toList();
+
+        expect(names, containsAll(['VAL1', 'VAL2']));
+      },
+    );
   });
 }
