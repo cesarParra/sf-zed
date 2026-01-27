@@ -200,6 +200,20 @@ public class Consumer {
       final names = results.map((c) => c.name).toList();
       expect(names, containsAll(['VAL1', 'VAL2']));
     });
+
+    test('parses interface names from source', () async {
+      final text = '''
+public interface MyInterface {}
+''';
+
+      final results = await suggest(
+        text: text,
+        cursorOffset: text.indexOf('MyInt') + 5,
+      );
+
+      final names = results.map((c) => c.name).toList();
+      expect(names, contains('MyInterface'));
+    });
   });
 
   group('Static vs Instance Integration', () {

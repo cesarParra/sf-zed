@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:apex_lsp/completion/helpers.dart';
+import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 
 sealed class CompletionContext {
@@ -169,11 +170,11 @@ final class ContextDetector {
     required String objectName,
     required int cursorByteOffset,
   }) {
-    if (objectName == 'this') {
+    if (objectName.toLowerCase() == 'this') {
       final containing = _findTypeAtOffset(_index, cursorByteOffset);
       return containing?.name;
     }
-    if (objectName == 'super') {
+    if (objectName.toLowerCase() == 'super') {
       final containing = _findTypeAtOffset(_index, cursorByteOffset);
       if (containing is ApexClassInfo) {
         return containing.superclass ?? containing.name;
@@ -204,9 +205,9 @@ final class ContextDetector {
   }
 
   TypeInfo? _findTypeAtOffset(ApexDocumentIndex index, int offset) {
-    for (final t in index.types) {
-      if (offset >= t.startByte && offset <= t.endByte) {
-        return t;
+    for (final typeInfo in index.rootScope.definitions.whereType<TypeInfo>()) {
+      if (offset >= typeInfo.startByte && offset <= typeInfo.endByte) {
+        return typeInfo;
       }
     }
     return null;
@@ -217,15 +218,30 @@ final class ContextDetector {
     String name,
     int cursorByteOffset,
   ) {
-    ApexVariableInfo? best;
-    for (final v in index.variables) {
-      if (v.name != name) continue;
-      if (v.startByte > cursorByteOffset) continue;
-
-      if (best == null || v.startByte > best.startByte) {
-        best = v;
+    var scope = _findScope(index.rootScope, cursorByteOffset);
+    while (scope != null) {
+      for (final def in scope.definitions) {
+        if (def is ApexVariableInfo && def.name == name) {
+          if (def.startByte < cursorByteOffset) {
+            return def;
+          }
+        }
       }
+      scope = scope.parent;
     }
-    return best;
+    return null;
+  }
+
+  Scope? _findScope(Scope scope, int offset) {
+    if (offset < scope.startByte || offset > scope.endByte) {
+      return null;
+    }
+
+    for (final child in scope.children) {
+      final result = _findScope(child, offset);
+      if (result != null) return result;
+    }
+
+    return scope;
   }
 }

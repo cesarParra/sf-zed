@@ -1,27 +1,33 @@
+import 'package:apex_lsp/indexing/scope.dart';
+
 typedef ApexIndexBuilder = ApexDocumentIndex Function(String text);
+
+/// Represents any named entity in Apex (Class, Interface, Enum, Method, Variable, etc.)
+sealed class ApexEntity {}
 
 /// Public representation of a parsed Apex document index.
 final class ApexDocumentIndex {
-  ApexDocumentIndex({required this.types, required this.variables});
+  ApexDocumentIndex({required this.rootScope});
 
-  final List<TypeInfo> types;
-  final List<ApexVariableInfo> variables;
+  final Scope rootScope;
 
   TypeInfo? typeByName(String name) {
-    for (final t in types) {
-      if (t.name == name) return t;
+    for (final entity in rootScope.definitions) {
+      if (entity is TypeInfo && entity.name == name) {
+        return entity;
+      }
     }
     return null;
   }
 
   @override
   String toString() {
-    return 'ApexDocumentIndex(types: $types, variables: $variables)';
+    return 'ApexDocumentIndex(rootScope: $rootScope)';
   }
 }
 
 /// Base class for top-level types (classes, enums, interfaces).
-sealed class TypeInfo {
+sealed class TypeInfo implements ApexEntity {
   String get name;
   int get startByte;
   int get endByte;
@@ -78,7 +84,33 @@ final class ApexClassInfo implements TypeInfo {
   }
 }
 
-final class ApexMemberInfo {
+/// Public representation of an Apex interface in a parsed document.
+final class ApexInterfaceInfo implements TypeInfo {
+  ApexInterfaceInfo({
+    required this.name,
+    required this.members,
+    required this.startByte,
+    required this.endByte,
+  });
+
+  @override
+  final String name;
+  @override
+  final int startByte;
+  @override
+  final int endByte;
+  @override
+  final List<ApexMemberInfo> members;
+
+  // TODO: In Apex, interfaces can have super classes.
+
+  @override
+  String toString() {
+    return 'ApexInterfaceInfo(name: $name, startByte: $startByte, endByte: $endByte, members: $members)';
+  }
+}
+
+final class ApexMemberInfo implements ApexEntity {
   ApexMemberInfo({required this.name, required this.isStatic});
 
   final String name;
@@ -89,7 +121,7 @@ final class ApexMemberInfo {
 }
 
 /// Public representation of an Apex variable in a parsed document.
-final class ApexVariableInfo {
+final class ApexVariableInfo implements ApexEntity {
   ApexVariableInfo({
     required this.name,
     required this.typeName,
