@@ -57,7 +57,6 @@ public class Consumer {
         final results = await suggest(text: text, cursorOffset: cursorOffset);
         final names = results.map((c) => c.name).toList();
 
-        // Currently expected to fail as these are not yet indexed as members
         expect(names, contains('MySubClass'));
         expect(names, contains('MySubInterface'));
         expect(names, contains('MySubEnum'));
