@@ -31,7 +31,20 @@ class FakeIndexedClassProvider implements IndexedClassProvider {
 
   @override
   Future<IndexedType?> typeByNameAsync(String name) async {
-    return types[name];
+    final parts = name.split('.');
+    if (parts.isEmpty) return null;
+
+    // Look up the top-level type
+    IndexedType? current = types[parts[0]];
+    if (current == null) return null;
+
+    // Traverse nested types for qualified names
+    for (var i = 1; i < parts.length; i++) {
+      current = current?.nestedTypeByName(parts[i]);
+      if (current == null) return null;
+    }
+
+    return current;
   }
 }
 
@@ -40,11 +53,13 @@ class InMemoryIndexedType implements IndexedType {
     required this.name,
     this.staticMembers = const [],
     this.instanceMembers = const [],
+    this.nestedTypes = const {},
   });
 
   final String name;
   final List<String> staticMembers;
   final List<String> instanceMembers;
+  final Map<String, IndexedType> nestedTypes;
 
   @override
   List<String> get memberNames =>
@@ -53,7 +68,7 @@ class InMemoryIndexedType implements IndexedType {
   @override
   List<String> memberNamesByType(MemberType type) {
     return switch (type) {
-      MemberType.static => staticMembers,
+      MemberType.static => [...staticMembers, ...nestedTypeNames],
       MemberType.instance => instanceMembers,
     };
   }
@@ -63,6 +78,20 @@ class InMemoryIndexedType implements IndexedType {
     return memberNames.any(
       (m) => m.toLowerCase().startsWith(prefix.toLowerCase()),
     );
+  }
+
+  @override
+  List<String> get nestedTypeNames => nestedTypes.keys.toList();
+
+  @override
+  IndexedType? nestedTypeByName(String name) {
+    final lowerName = name.toLowerCase();
+    for (final entry in nestedTypes.entries) {
+      if (entry.key.toLowerCase() == lowerName) {
+        return entry.value;
+      }
+    }
+    return null;
   }
 }
 
@@ -567,5 +596,137 @@ void main() {
       expect(result.items.length, 10);
       expect(result.isIncomplete, isFalse);
     });
+  });
+
+  group('Indexed File Submember Completion', () {
+    test(
+      'suggests inner classes, interfaces, and enums as static members',
+      () async {
+        indexedClassProvider = FakeIndexedClassProvider(
+          types: {
+            'OuterClass': InMemoryIndexedType(
+              name: 'OuterClass',
+              staticMembers: ['staticField'],
+              instanceMembers: ['instanceField'],
+              nestedTypes: {
+                'InnerClass': InMemoryIndexedType(name: 'InnerClass'),
+                'InnerInterface': InMemoryIndexedType(name: 'InnerInterface'),
+                'InnerEnum': InMemoryIndexedType(name: 'InnerEnum'),
+              },
+            ),
+          },
+        );
+
+        final text = 'OuterClass.';
+        final result = await complete(text, line: 0, character: text.length);
+
+        final labels = result.items.map((i) => i.label);
+        expect(labels, contains('InnerClass'));
+        expect(labels, contains('InnerInterface'));
+        expect(labels, contains('InnerEnum'));
+        expect(labels, contains('staticField'));
+        expect(labels, isNot(contains('instanceField')));
+      },
+    );
+
+    test(
+      'suggests members of inner classes when accessed via qualified name',
+      () async {
+        indexedClassProvider = FakeIndexedClassProvider(
+          types: {
+            'OuterClass': InMemoryIndexedType(
+              name: 'OuterClass',
+              nestedTypes: {
+                'InnerClass': InMemoryIndexedType(
+                  name: 'InnerClass',
+                  staticMembers: ['innerStaticField'],
+                  instanceMembers: ['innerInstanceField'],
+                ),
+              },
+            ),
+          },
+        );
+
+        // Simulates: OuterClass.InnerClass.
+        final text = 'OuterClass.InnerClass.';
+        final result = await complete(text, line: 0, character: text.length);
+
+        final labels = result.items.map((i) => i.label);
+        expect(labels, contains('innerStaticField'));
+        expect(labels, isNot(contains('innerInstanceField')));
+      },
+    );
+
+    test(
+      'suggests values of inner enums when accessed via qualified name',
+      () async {
+        indexedClassProvider = FakeIndexedClassProvider(
+          types: {
+            'OuterClass': InMemoryIndexedType(
+              name: 'OuterClass',
+              nestedTypes: {
+                'InnerEnum': InMemoryIndexedType(
+                  name: 'InnerEnum',
+                  staticMembers: ['VAL1', 'VAL2'],
+                ),
+              },
+            ),
+          },
+        );
+
+        final text = 'OuterClass.InnerEnum.';
+        final result = await complete(text, line: 0, character: text.length);
+
+        final labels = result.items.map((i) => i.label);
+        expect(labels, containsAll(['VAL1', 'VAL2']));
+      },
+    );
+
+    test(
+      'suggests instance members when variable type is a qualified inner type',
+      () async {
+        indexedClassProvider = FakeIndexedClassProvider(
+          types: {
+            'OuterClass': InMemoryIndexedType(
+              name: 'OuterClass',
+              nestedTypes: {
+                'InnerClass': InMemoryIndexedType(
+                  name: 'InnerClass',
+                  staticMembers: ['innerStaticField'],
+                  instanceMembers: ['innerInstanceField'],
+                ),
+              },
+            ),
+          },
+        );
+
+        // Local variable with type OuterClass.InnerClass
+        localIndexer = FakeTreeSitterIndexer(
+          ApexDocumentIndex(
+            rootScope: Scope(
+              type: ScopeType.file,
+              startByte: 0,
+              endByte: 100,
+              definitions: [
+                ApexVariableInfo(
+                  name: 'myVar',
+                  typeName: 'OuterClass.InnerClass',
+                  startByte: 0,
+                  endByte: 10,
+                  kind: 'local_variable_declaration',
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final text = 'OuterClass.InnerClass myVar; myVar.';
+        final result = await complete(text, line: 0, character: text.length);
+
+        final labels = result.items.map((i) => i.label);
+        expect(labels, contains('innerInstanceField'));
+        expect(labels, isNot(contains('innerStaticField')));
+      },
+    );
   });
 }

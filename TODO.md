@@ -23,11 +23,11 @@ Class
 - [x] Indexed class names appear
 - [x] Instance members of indexed classes
 - [x] Static members of indexed classes
-- [ ] Subclasses names of indexed files
-- [ ] Subclass instance members
-- [ ] Subinterface names of indexed files
-- [ ] Subenum names of indexed files
-- [ ] Subenum values of indexed files
+- [x] Subclasses names of indexed files
+- [x] Subclass instance members
+- [x] Subinterface names of indexed files
+- [x] Subenum names of indexed files
+- [x] Subenum values of indexed files
 
 Enum
 - [x] Indexed enum names appear
