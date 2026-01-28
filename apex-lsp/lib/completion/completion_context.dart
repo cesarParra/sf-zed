@@ -162,19 +162,7 @@ final class ContextDetector {
     }
     if (i < 0) return null;
 
-    // Search backwards to include qualified names (e.g. A.B)
-    final end = i + 1;
-    while (i >= 0) {
-      final ch = text.codeUnitAt(i);
-      if (ch == 0x2E || ch.isIdentifierChar) {
-        i--;
-      } else {
-        break;
-      }
-    }
-
-    final start = i + 1;
-    final identifier = text.substring(start, end).trim();
+    final identifier = text.extractQualifiedIdentifierAt(i + 1);
     return identifier.isNotEmpty ? identifier : null;
   }
 
