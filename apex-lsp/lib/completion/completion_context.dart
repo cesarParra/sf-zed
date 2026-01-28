@@ -162,7 +162,7 @@ final class ContextDetector {
     }
     if (i < 0) return null;
 
-    final identifier = text.extractIndentifierPrefixAt(i + 1);
+    final identifier = text.extractQualifiedIdentifierAt(i + 1);
     return identifier.isNotEmpty ? identifier : null;
   }
 
@@ -190,7 +190,8 @@ final class ContextDetector {
     // If the object name itself is a class name, treat as that type.
     final typeInfo = _index.typeByName(objectName);
     if (typeInfo != null) {
-      return typeInfo.name;
+      // Return the qualified name to ensure it can be resolved again later.
+      return objectName;
     }
 
     return null;

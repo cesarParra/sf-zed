@@ -12,12 +12,37 @@ final class ApexDocumentIndex {
   final Scope rootScope;
 
   TypeInfo? typeByName(String name) {
+    final parts = name.split('.');
+    TypeInfo? current;
+
     for (final entity in rootScope.definitions) {
-      if (entity is TypeInfo && entity.name == name) {
-        return entity;
+      if (entity is TypeInfo &&
+          // TODO: "Name" should not be a string, it should be a custom type with
+          // an "equals" override that doesn't care about lowercases
+          entity.name.toLowerCase() == parts[0].toLowerCase()) {
+        current = entity;
+        break;
       }
     }
-    return null;
+
+    if (current == null || parts.length == 1) return current;
+
+    for (var i = 1; i < parts.length; i++) {
+      final part = parts[i];
+      TypeInfo? next;
+      final TypeInfo nonNullCurrent = current!;
+      for (final member in nonNullCurrent.members) {
+        if (member is NestedTypeMember &&
+            member.name.toLowerCase() == part.toLowerCase()) {
+          next = member.typeInfo;
+          break;
+        }
+      }
+      if (next == null) return null;
+      current = next;
+    }
+
+    return current;
   }
 
   @override
@@ -111,13 +136,25 @@ final class ApexInterfaceInfo implements TypeInfo {
 }
 
 final class ApexMemberInfo implements ApexEntity {
-  ApexMemberInfo({required this.name, required this.isStatic});
+  ApexMemberInfo({required this.name, required this.isStatic, this.typeName});
 
   final String name;
   final bool isStatic;
+  final String? typeName;
 
   @override
-  String toString() => 'ApexMemberInfo(name: $name, isStatic: $isStatic)';
+  String toString() =>
+      'ApexMemberInfo(name: $name, isStatic: $isStatic, typeName: $typeName)';
+}
+
+final class NestedTypeMember extends ApexMemberInfo {
+  NestedTypeMember({required this.typeInfo})
+    : super(name: typeInfo.name, isStatic: true);
+
+  final TypeInfo typeInfo;
+
+  @override
+  String toString() => 'NestedTypeMember(name: $name, typeInfo: $typeInfo)';
 }
 
 /// Public representation of an Apex variable in a parsed document.

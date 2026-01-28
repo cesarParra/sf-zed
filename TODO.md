@@ -23,11 +23,11 @@ Class
 - [x] Indexed class names appear
 - [x] Instance members of indexed classes
 - [x] Static members of indexed classes
-- [ ] Subclasses names of indexed files
-- [ ] Subclass instance members
-- [ ] Subinterface names of indexed files
-- [ ] Subenum names of indexed files
-- [ ] Subenum values of indexed files
+- [x] Subclasses names of indexed files
+- [x] Subclass instance members
+- [x] Subinterface names of indexed files
+- [x] Subenum names of indexed files
+- [x] Subenum values of indexed files
 
 Enum
 - [x] Indexed enum names appear
@@ -41,6 +41,13 @@ Interface
 #### Opened file
 Class
 - [x] Name of other classes of the opened file
+- [x] Instance members
+- [x] Subclasses (top level names)
+- [x] Subenums (top level names)
+- [x] Subinterfaces (top level names)
+- [x] Members of subclasses
+- [x] Members of subinterfaces
+- [x] Members of subenums
 
 Enum
 - [x] Name of other enums of the opened file

@@ -20,9 +20,14 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
 
   @override
   Future<IndexedType?> typeByNameAsync(String name) async {
-    final typeMirror = await _indexer.getIndexedClassInfo(name);
+    final parts = name.split('.');
+    if (parts.isEmpty) return null;
 
-    return switch (typeMirror) {
+    // Load the top-level type
+    final topLevelTypeMirror = await _indexer.getIndexedClassInfo(parts[0]);
+    if (topLevelTypeMirror == null) return null;
+
+    IndexedType? current = switch (topLevelTypeMirror) {
       indexer.ClassMirrorWrapper(:final typeMirror) => ClassMirrorWrapper(
         classMirror: typeMirror,
       ),
@@ -31,8 +36,15 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
       ),
       indexer.InterfaceMirrorWrapper(:final typeMirror) =>
         InterfaceMirrorWrapper(interfaceMirror: typeMirror),
-      null => null,
     };
+
+    // Traverse nested types for qualified names (e.g. OuterClass.InnerClass)
+    for (var i = 1; i < parts.length; i++) {
+      if (current == null) return null;
+      current = current.nestedTypeByName(parts[i]);
+    }
+
+    return current;
   }
 }
 
@@ -40,6 +52,12 @@ abstract class IndexedType {
   List<String> get memberNames;
   List<String> memberNamesByType(MemberType type);
   bool hasMemberPrefix(String prefix);
+
+  /// Returns the names of nested types (inner classes, interfaces, enums).
+  List<String> get nestedTypeNames;
+
+  /// Returns a nested type by name, or null if not found.
+  IndexedType? nestedTypeByName(String name);
 }
 
 /// Represents an indexed class.
@@ -66,6 +84,7 @@ class ClassMirrorWrapper implements IndexedType {
         ...classMirror.fields.where((f) => f.isStatic).map((f) => f.name),
         ...classMirror.properties.where((f) => f.isStatic).map((f) => f.name),
         ...classMirror.methods.where((f) => f.isStatic).map((f) => f.name),
+        ...nestedTypeNames,
       ],
       .instance => [
         ...classMirror.fields.where((f) => !f.isStatic).map((f) => f.name),
@@ -82,6 +101,34 @@ class ClassMirrorWrapper implements IndexedType {
     return memberNames.any(
       (current) => current.toLowerCase().startsWith(lower),
     );
+  }
+
+  @override
+  List<String> get nestedTypeNames => [
+    ...classMirror.classes.map((c) => c.name),
+    ...classMirror.interfaces.map((i) => i.name),
+    ...classMirror.enums.map((e) => e.name),
+  ];
+
+  @override
+  IndexedType? nestedTypeByName(String name) {
+    final lowerName = name.toLowerCase();
+    for (final c in classMirror.classes) {
+      if (c.name.toLowerCase() == lowerName) {
+        return ClassMirrorWrapper(classMirror: c);
+      }
+    }
+    for (final i in classMirror.interfaces) {
+      if (i.name.toLowerCase() == lowerName) {
+        return InterfaceMirrorWrapper(interfaceMirror: i);
+      }
+    }
+    for (final e in classMirror.enums) {
+      if (e.name.toLowerCase() == lowerName) {
+        return EnumMirrorWrapper(enumMirror: e);
+      }
+    }
+    return null;
   }
 }
 
@@ -113,6 +160,12 @@ class EnumMirrorWrapper implements IndexedType {
       (current) => current.toLowerCase().startsWith(lower),
     );
   }
+
+  @override
+  List<String> get nestedTypeNames => const [];
+
+  @override
+  IndexedType? nestedTypeByName(String name) => null;
 }
 
 class InterfaceMirrorWrapper implements IndexedType {
@@ -141,6 +194,12 @@ class InterfaceMirrorWrapper implements IndexedType {
       (current) => current.toLowerCase().startsWith(lower),
     );
   }
+
+  @override
+  List<String> get nestedTypeNames => const [];
+
+  @override
+  IndexedType? nestedTypeByName(String name) => null;
 }
 
 extension on apex_reflection.MemberModifiersAwareness {
