@@ -27,7 +27,7 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
     final topLevelTypeMirror = await _indexer.getIndexedClassInfo(parts[0]);
     if (topLevelTypeMirror == null) return null;
 
-    IndexedType? current = switch (topLevelTypeMirror) {
+    IndexedType current = switch (topLevelTypeMirror) {
       indexer.ClassMirrorWrapper(:final typeMirror) => ClassMirrorWrapper(
         classMirror: typeMirror,
       ),
@@ -38,13 +38,14 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
         InterfaceMirrorWrapper(interfaceMirror: typeMirror),
     };
 
-    // Traverse nested types for qualified names (e.g. OuterClass.InnerClass)
-    for (var i = 1; i < parts.length; i++) {
-      if (current == null) return null;
-      current = current.nestedTypeByName(parts[i]);
+    if (parts.length == 1) {
+      return current;
     }
 
-    return current;
+    // Apex only supports up to one level of indexing, so we asume
+    // that we can only take the second part when dealing with an inner
+    // type.
+    return current.nestedTypeByName(parts[1]);
   }
 }
 

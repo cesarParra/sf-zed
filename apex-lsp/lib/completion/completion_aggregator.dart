@@ -121,36 +121,45 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
             }
 
           case ApexMemberInfo member:
-            // Members (Fields/Properties/Methods) are visible if we are in a class body.
-            // If we are inside a static context, we can only see static members.
-            if (!insideStaticContext || member.isStatic) {
-              // Try to find enclosing type name from parent scope for "Self"
-              String typeName = 'Self';
-              final parent = currentScope.parent;
-              if (parent != null) {
-                // The TypeInfo entity lives in the parent scope of the Class Body Scope
-                // matching the range of the class body scope.
-                for (final parentDef in parent.definitions) {
-                  if (parentDef is TypeInfo &&
-                      parentDef.startByte == currentScope.startByte &&
-                      parentDef.endByte == currentScope.endByte) {
-                    typeName = parentDef.name;
-                    break;
+            // Members can be:
+            // 1. Root-level methods (file scope)
+            // 2. Class/interface members (type declaration scope)
+
+            if (currentScope.type == ScopeType.file) {
+              // Root-level methods are treated as local variables for completion
+              candidates.add(LocalVariableCandidate(member.name));
+            } else {
+              // Members (Fields/Properties/Methods) are visible if we are in a class body.
+              // If we are inside a static context, we can only see static members.
+              if (!insideStaticContext || member.isStatic) {
+                // Try to find enclosing type name from parent scope for "Self"
+                String typeName = 'Self';
+                final parent = currentScope.parent;
+                if (parent != null) {
+                  // The TypeInfo entity lives in the parent scope of the Class Body Scope
+                  // matching the range of the class body scope.
+                  for (final parentDef in parent.definitions) {
+                    if (parentDef is TypeInfo &&
+                        parentDef.startByte == currentScope.startByte &&
+                        parentDef.endByte == currentScope.endByte) {
+                      typeName = parentDef.name;
+                      break;
+                    }
                   }
                 }
-              }
 
-              candidates.add(
-                MemberCandidate(
-                  Member(
-                    name: member.name,
-                    parentType: Self(name: typeName),
-                    type: member.isStatic
-                        ? MemberType.static
-                        : MemberType.instance,
+                candidates.add(
+                  MemberCandidate(
+                    Member(
+                      name: member.name,
+                      parentType: Self(name: typeName),
+                      type: member.isStatic
+                          ? MemberType.static
+                          : MemberType.instance,
+                    ),
                   ),
-                ),
-              );
+                );
+              }
             }
 
           case TypeInfo type:

@@ -101,6 +101,18 @@ class TreeSitterIndexer {
         // We don't recurse into enum body for scopes currently.
       }
     } else if (type == 'method_declaration') {
+      // If this is a root-level method (scope is file-level), add it as a member
+      if (scope.type == ScopeType.file) {
+        final name = _extractMemberName(node, index);
+        if (name != null && name.isNotEmpty) {
+          final isStatic = _hasStaticModifier(node, index);
+          final typeName = _extractTypeName(node, index);
+          scope.definitions.add(
+            ApexMemberInfo(name: name, isStatic: isStatic, typeName: typeName),
+          );
+        }
+      }
+
       final methodScope = Scope(
         type: ScopeType.methodBody,
         startByte: _bindings.ts_node_start_byte(node),

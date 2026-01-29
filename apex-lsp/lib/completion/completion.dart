@@ -118,7 +118,7 @@ const maxCompletionItems = 25;
 ///  * [rankCandidates], which applies ranking to class name suggestions.
 Future<CompletionList> onCompletion({
   required String? text,
-  required CompletionParams params,
+  required Position position,
   required TreeSitterIndexer localIndexer,
   required IndexedClassProvider indexedClassProvider,
   Rank rank = rankCandidates,
@@ -129,8 +129,8 @@ Future<CompletionList> onCompletion({
 
   final cursorOffset = _offsetAtPosition(
     text: text,
-    line: params.position.line,
-    character: params.position.character,
+    line: position.line,
+    character: position.character,
   );
 
   final index = localIndexer.parseAndIndex(text);

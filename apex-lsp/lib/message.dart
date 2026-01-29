@@ -92,6 +92,11 @@ final class CompletionItem {
   const CompletionItem({required this.label, this.insertText});
 
   Map<String, Object?> toJson() => _$CompletionItemToJson(this);
+
+  @override
+  String toString() {
+    return 'CompletionItem{label: $label, insertText: $insertText}';
+  }
 }
 
 @JsonSerializable(createFactory: false)
@@ -102,6 +107,11 @@ final class CompletionList {
   const CompletionList({required this.isIncomplete, required this.items});
 
   Map<String, Object?> toJson() => _$CompletionListToJson(this);
+
+  @override
+  String toString() {
+    return 'CompletionList{isIncomplete: $isIncomplete, items: $items}';
+  }
 }
 
 final class InitializeRequest

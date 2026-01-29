@@ -7,7 +7,7 @@ import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:test/test.dart';
 
-import '../../support/lsp_test_harness.dart';
+import '../support/lsp_test_harness.dart';
 
 void main() {
   setUpAll(setupTestLocator);

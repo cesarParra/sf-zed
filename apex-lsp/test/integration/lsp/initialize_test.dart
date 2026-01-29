@@ -17,7 +17,7 @@ final class _ExitCalled implements Exception {
 }
 
 void main() {
-  group('LSP integration', () {
+  group('LSP Initialization', () {
     late Directory workspaceDir;
     late Uri workspaceUri;
 
@@ -72,6 +72,38 @@ void main() {
       await locator.reset(dispose: true);
     });
 
+    test('client can initialize', () async {
+      final serverTask = server.run();
+
+      input.addFrame(
+        jsonRpcInitialize(
+          id: 1,
+          workspaceFolders: <Map<String, String>>[
+            <String, String>{
+              'uri': workspaceUri.toString(),
+              'name': 'workspace',
+            },
+          ],
+        ),
+      );
+
+      final initResponse = await _waitForResponse(
+        sink: sink,
+        id: 1,
+        timeout: const Duration(seconds: 2),
+      );
+
+      expect(initResponse['jsonrpc'], equals('2.0'));
+      expect(initResponse['id'], equals(1));
+      expect(initResponse['result'], isA<Map<String, Object?>>());
+
+      final result = initResponse['result'] as Map<String, Object?>;
+      expect(result['capabilities'], isA<Map<String, Object?>>());
+
+      await input.close();
+      await serverTask.timeout(const Duration(seconds: 2));
+    });
+
     test(
       'fails with error response when request sent before initialize',
       () async {
@@ -111,38 +143,6 @@ void main() {
       },
       timeout: const Timeout(Duration(seconds: 5)),
     );
-
-    test('client can initialize', () async {
-      final serverTask = server.run();
-
-      input.addFrame(
-        jsonRpcInitialize(
-          id: 1,
-          workspaceFolders: <Map<String, String>>[
-            <String, String>{
-              'uri': workspaceUri.toString(),
-              'name': 'workspace',
-            },
-          ],
-        ),
-      );
-
-      final initResponse = await _waitForResponse(
-        sink: sink,
-        id: 1,
-        timeout: const Duration(seconds: 2),
-      );
-
-      expect(initResponse['jsonrpc'], equals('2.0'));
-      expect(initResponse['id'], equals(1));
-      expect(initResponse['result'], isA<Map<String, Object?>>());
-
-      final result = initResponse['result'] as Map<String, Object?>;
-      expect(result['capabilities'], isA<Map<String, Object?>>());
-
-      await input.close();
-      await serverTask.timeout(const Duration(seconds: 2));
-    });
 
     test('receives indexing updates after initialization', () async {
       final serverTask = server.run();
@@ -185,70 +185,6 @@ void main() {
         timeout: const Duration(seconds: 5),
       );
       expect(endProgress, isNotNull);
-
-      await input.close();
-      await serverTask.timeout(const Duration(seconds: 2));
-    });
-
-    test('completion includes indexed class name', () async {
-      final serverTask = server.run();
-
-      // 1) initialize
-      input.addFrame(
-        jsonRpcInitialize(
-          id: 1,
-          workspaceFolders: <Map<String, String>>[
-            <String, String>{
-              'uri': workspaceUri.toString(),
-              'name': 'workspace',
-            },
-          ],
-        ),
-      );
-      await _waitForResponse(
-        sink: sink,
-        id: 1,
-        timeout: const Duration(seconds: 2),
-      );
-
-      // 2) initialized notification
-      input.addFrame(jsonRpcNotification(method: 'initialized'));
-
-      // 3) Open a document with a prefix to complete.
-      final docUri = workspaceUri
-          .resolve('force-app/main/default/classes/SomeFile.cls')
-          .toString();
-
-      input.addFrame(
-        jsonRpcNotification(
-          method: 'textDocument/didOpen',
-          params: <String, Object?>{
-            'textDocument': <String, Object?>{
-              'uri': docUri,
-              'text': 'public class SomeFile { void m(){ Fo } }',
-            },
-          },
-        ),
-      );
-
-      // 4) Poll completion until "Foo" (from indexing) is present.
-      final completionResponse = await _pollCompletionUntilContains(
-        input: input,
-        sink: sink,
-        docUri: docUri,
-        expectedLabel: 'Foo',
-        timeout: const Duration(seconds: 6),
-      );
-
-      expect(completionResponse['result'], isA<Map<String, Object?>>());
-      final completionResult =
-          completionResponse['result'] as Map<String, Object?>;
-      final items = (completionResult['items'] as List<Object?>)
-          .whereType<Map<Object?, Object?>>()
-          .map((m) => m.cast<String, Object?>())
-          .toList();
-
-      expect(items.any((i) => i['label'] == 'Foo'), isTrue);
 
       await input.close();
       await serverTask.timeout(const Duration(seconds: 2));
@@ -320,59 +256,5 @@ Future<Map<String, Object?>> _waitForNotification({
       return params is Map && predicate(params.cast<String, Object?>());
     },
     timeoutMessage: 'Timed out waiting for notification $method',
-  );
-}
-
-/// Continuously sends completion requests and waits for a response that contains
-/// [expectedLabel].
-///
-/// This is more robust than waiting on a single completion response because
-/// indexing happens in the background and there is no guarantee the first
-/// completion request will be answered after indexing completes.
-///
-/// NOTE: Each completion request uses a *new* request id. We accept whichever
-/// id yields the expected label.
-Future<Map<String, Object?>> _pollCompletionUntilContains({
-  required InMemoryLspInput input,
-  required InMemoryByteSink sink,
-  required String docUri,
-  required String expectedLabel,
-  required Duration timeout,
-}) async {
-  var requestId = 2;
-
-  return _pollFrames(
-    sink: sink,
-    timeout: timeout,
-    predicate: (frame) {
-      // Ignore any non-completion frames and unrelated responses.
-      if (frame['id'] is! int) return false;
-      if ((frame['id'] as int) < 2) return false;
-
-      final result = frame['result'];
-      if (result is Map) {
-        final items = result['items'];
-        if (items is List) {
-          return items.any((it) => it is Map && it['label'] == expectedLabel);
-        }
-      }
-      return false;
-    },
-    onTick: () async {
-      // Send another completion request with a new ID.
-      requestId++;
-      input.addFrame(
-        jsonRpcRequest(
-          id: requestId,
-          method: 'textDocument/completion',
-          params: <String, Object?>{
-            'textDocument': <String, Object?>{'uri': docUri},
-            'position': <String, Object?>{'line': 0, 'character': 36},
-          },
-        ),
-      );
-    },
-    timeoutMessage:
-        'Timed out waiting for completion containing label=$expectedLabel',
   );
 }

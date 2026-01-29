@@ -167,7 +167,7 @@ final class Server {
   }) async {
     final completionList = await onCompletion(
       text: _openDocuments.get(params.textDocument.uri),
-      params: params,
+      position: params.position,
       localIndexer: localIndexer,
       indexedClassProvider: indexedClassProvider,
     );
