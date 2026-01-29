@@ -7,8 +7,6 @@
 import 'dart:io';
 
 import 'package:apex_lsp/completion/completion.dart';
-import 'package:apex_lsp/completion/completion_aggregator.dart';
-import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
@@ -18,10 +16,6 @@ import 'package:test/test.dart';
 import '../../support/lsp_test_harness.dart';
 
 // Use cases:
-// top level class from root
-// top level enum from root
-// top level interface from root
-// top level variable froom root
 // all top levels from inner block
 //
 // Members - static
@@ -64,7 +58,7 @@ void main() {
 
   final libPath = Platform.environment['TS_SFAPEX_LIB'];
 
-  group('local declarations', () {
+  group('root scope', () {
     late TreeSitterIndexer indexer;
 
     setUp(() {
@@ -151,9 +145,19 @@ d
         expect(results.items.first.label, 'doSomething');
       });
     });
-
-    // locally declared methods
   });
+
+  group('class scope', () {
+    // TODO: can see things declared in root
+    // TODO: can see any other member declared at the class level
+  });
+
+  // TODO: static block
+  // TODO: constructor
+  // TODO: instance method
+  // TODO: static method
+  // TODO: from inner/nested class
+  // TODO: all of the above but for members (e.g. foo.bar)
 }
 
 //     test('parses class names from source', () async {
