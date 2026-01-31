@@ -385,11 +385,14 @@ class TreeSitterIndexer {
       }
     }
 
+    final superclass = _extractSuperclass(node, index);
+
     return ApexInterfaceInfo(
       name: interfaceName,
       startByte: _bindings.ts_node_start_byte(node),
       endByte: _bindings.ts_node_end_byte(node),
       members: members,
+      superclass: superclass,
     );
   }
 

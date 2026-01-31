@@ -582,6 +582,40 @@ class OuterClass {
     });
   });
 
+  group('member access', () {
+    // TODO: super keyword completion not yet implemented
+    // See NEXT_STEPS_SUPER_KEYWORD.md for details and implementation plan
+
+    test(
+      'suggests parent interface members when accessing interface variable',
+      () async {
+        final text = '''
+interface ParentInterface {
+  void parentMethod();
+}
+
+interface ChildInterface extends ParentInterface {
+  void childMethod();
+}
+
+class Implementation {
+  public void method(ChildInterface ch) {
+    ch.
+  }
+
+  public void parentMethod() {}
+  public void childMethod() {}
+}
+      ''';
+
+        final results = await complete(text, line: 11, character: 7);
+
+        expect(results.items.map((i) => i.label), contains('parentMethod'));
+        expect(results.items.map((i) => i.label), contains('childMethod'));
+      },
+    );
+  });
+
   group('inner block', () {
     test('suggests variables from parent method scope in for loop', () async {
       final text = '''

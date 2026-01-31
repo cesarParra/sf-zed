@@ -59,6 +59,21 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
     };
   }
 
+  List<ApexMemberInfo> _collectInterfaceHierarchyMembers(TypeInfo typeInfo) {
+    final allMembers = <ApexMemberInfo>[];
+
+    allMembers.addAll(typeInfo.members);
+
+    if (typeInfo is ApexInterfaceInfo && typeInfo.superclass != null) {
+      final parentType = _index.typeByName(typeInfo.superclass!);
+      if (parentType != null) {
+        allMembers.addAll(_collectInterfaceHierarchyMembers(parentType));
+      }
+    }
+
+    return allMembers;
+  }
+
   List<CompletionCandidate> _completeMembers({
     required String text,
     required int cursorOffset,
@@ -81,8 +96,13 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
         : MemberType.instance;
 
     final apexType = Local(name: typeInfo.name);
+
+    final membersToFilter = typeInfo is ApexInterfaceInfo
+        ? _collectInterfaceHierarchyMembers(typeInfo)
+        : typeInfo.members;
+
     final members = membersFromMemberInfo(
-      typeInfo.members,
+      membersToFilter,
       apexType,
     ).where((m) => m.type == targetMemberType);
 
