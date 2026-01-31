@@ -134,7 +134,10 @@ Future<CompletionList> onCompletion({
   );
 
   final index = localIndexer.parseAndIndex(text);
-  final contextDetector = ContextDetector(index: index);
+  final contextDetector = ContextDetector(
+    index: index,
+    indexedClassProvider: indexedClassProvider,
+  );
   final context = contextDetector.detect(
     text: text,
     cursorOffset: cursorOffset,

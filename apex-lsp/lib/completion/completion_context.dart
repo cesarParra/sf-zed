@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:apex_lsp/completion/helpers.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 
@@ -56,9 +57,14 @@ final class CompletionContextMember extends CompletionContext {
 }
 
 final class ContextDetector {
-  ContextDetector({required ApexDocumentIndex index}) : _index = index;
+  ContextDetector({
+    required ApexDocumentIndex index,
+    required IndexedClassProvider indexedClassProvider,
+  }) : _index = index,
+       _indexedClassProvider = indexedClassProvider;
 
   final ApexDocumentIndex _index;
+  final IndexedClassProvider _indexedClassProvider;
 
   CompletionContext detect({required String text, required int cursorOffset}) {
     if (text.isEmpty || cursorOffset <= 0) {
@@ -191,6 +197,13 @@ final class ContextDetector {
     final typeInfo = _index.typeByName(objectName);
     if (typeInfo != null) {
       // Return the qualified name to ensure it can be resolved again later.
+      return objectName;
+    }
+
+    // Check if the object name is an indexed class name
+    if (_indexedClassProvider.classNames.any(
+      (name) => name.toLowerCase() == objectName.toLowerCase(),
+    )) {
       return objectName;
     }
 

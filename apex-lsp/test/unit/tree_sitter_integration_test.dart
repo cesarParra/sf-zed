@@ -4,6 +4,7 @@ import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
+import 'package:apex_lsp/indexing/indexed_class.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:test/test.dart';
 
@@ -28,7 +29,10 @@ void main() {
       required int cursorOffset,
     }) async {
       final index = indexer.parseAndIndex(text);
-      final detector = ContextDetector(index: index);
+      final detector = ContextDetector(
+        index: index,
+        indexedClassProvider: FakeIndexedClassProvider(),
+      );
       final context = detector.detect(text: text, cursorOffset: cursorOffset);
       final service = TreeSitterCompletionService(index: index);
       return service.suggest(context: context);
@@ -230,7 +234,10 @@ public interface MyInterface {}
       required int cursorOffset,
     }) async {
       final index = indexer.parseAndIndex(text);
-      final detector = ContextDetector(index: index);
+      final detector = ContextDetector(
+        index: index,
+        indexedClassProvider: FakeIndexedClassProvider(),
+      );
       final context = detector.detect(text: text, cursorOffset: cursorOffset);
       final service = TreeSitterCompletionService(index: index);
       return service.suggest(context: context);
@@ -307,4 +314,12 @@ public class Consumer {
       expect(names, isNot(contains('sum')));
     });
   });
+}
+
+class FakeIndexedClassProvider implements IndexedClassProvider {
+  @override
+  Iterable<String> get classNames => const [];
+
+  @override
+  Future<IndexedType?> typeByNameAsync(String name) async => null;
 }
