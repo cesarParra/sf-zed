@@ -122,6 +122,26 @@ class TreeSitterIndexer {
       );
       scope.children.add(methodScope);
       _visitChildren(node, methodScope, index);
+    } else if (type == 'constructor_declaration') {
+      final methodScope = Scope(
+        type: ScopeType.methodBody,
+        startByte: _bindings.ts_node_start_byte(node),
+        endByte: _bindings.ts_node_end_byte(node),
+        parent: scope,
+        isStatic: false,
+      );
+      scope.children.add(methodScope);
+      _visitChildren(node, methodScope, index);
+    } else if (type == 'static_initializer') {
+      final blockScope = Scope(
+        type: ScopeType.localBlock,
+        startByte: _bindings.ts_node_start_byte(node),
+        endByte: _bindings.ts_node_end_byte(node),
+        parent: scope,
+        isStatic: true,
+      );
+      scope.children.add(blockScope);
+      _visitChildren(node, blockScope, index);
     } else if (type == 'block') {
       final blockScope = Scope(
         type: ScopeType.localBlock,

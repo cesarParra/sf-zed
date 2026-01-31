@@ -98,7 +98,9 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
     var insideStaticContext = false;
 
     while (currentScope != null) {
-      if (currentScope.type == ScopeType.methodBody && currentScope.isStatic) {
+      if ((currentScope.type == ScopeType.methodBody ||
+              currentScope.type == ScopeType.localBlock) &&
+          currentScope.isStatic) {
         insideStaticContext = true;
       }
 

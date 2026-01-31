@@ -35,8 +35,6 @@ import '../../support/lsp_test_harness.dart';
 // referencing from inner block (for loop)
 // referencing from static method
 //
-// From indexed files
-// All of the above
 
 /// IndexedClassProvider with no indexed files.
 class FakeIndexedClassProvider implements IndexedClassProvider {
@@ -58,27 +56,27 @@ void main() {
 
   final libPath = Platform.environment['TS_SFAPEX_LIB'];
 
+  late TreeSitterIndexer indexer;
+
+  setUp(() {
+    final bindings = TreeSitterBindings.load(path: libPath);
+    indexer = TreeSitterIndexer(bindings: bindings);
+  });
+
+  Future<CompletionList> complete(
+    String? text, {
+    int line = 0,
+    int character = 0,
+  }) {
+    return onCompletion(
+      text: text,
+      position: Position(line: line, character: character),
+      localIndexer: indexer,
+      indexedClassProvider: FakeIndexedClassProvider(),
+    );
+  }
+
   group('root scope', () {
-    late TreeSitterIndexer indexer;
-
-    setUp(() {
-      final bindings = TreeSitterBindings.load(path: libPath);
-      indexer = TreeSitterIndexer(bindings: bindings);
-    });
-
-    Future<CompletionList> complete(
-      String? text, {
-      int line = 0,
-      int character = 0,
-    }) {
-      return onCompletion(
-        text: text,
-        position: Position(line: line, character: character),
-        localIndexer: indexer,
-        indexedClassProvider: FakeIndexedClassProvider(),
-      );
-    }
-
     group('at the root level', () {
       test('suggests local variables', () async {
         final text = '''
@@ -148,288 +146,500 @@ d
   });
 
   group('class scope', () {
-    // TODO: can see things declared in root
-    // TODO: can see any other member declared at the class level
+    test('suggests root declarations', () async {
+      final text = '''
+String myVar;
+class SomeClass {
+m
+}
+    ''';
+
+      final results = await complete(text, line: 3, character: 1);
+
+      expect(results.items, isNotEmpty);
+      expect(results.items.length, 2);
+      expect(results.items.map((i) => i.label), contains('myVar'));
+    });
+
+    test('suggests other class members', () async {
+      final text = '''
+String myVar;
+class SomeClass {
+  String classInstanceVar;
+  cl
+}
+    ''';
+
+      final results = await complete(text, line: 4, character: 4);
+
+      expect(results.items, isNotEmpty);
+      expect(results.items.length, 3);
+      expect(results.items.map((i) => i.label), contains('classInstanceVar'));
+    });
   });
 
-  // TODO: static block
-  // TODO: constructor
-  // TODO: instance method
-  // TODO: static method
-  // TODO: from inner/nested class
-  // TODO: all of the above but for members (e.g. foo.bar)
+  group('static block', () {
+    test('suggests root declarations from static block', () async {
+      final text = '''
+String rootVar;
+class MyClass {
+  static {
+    r
+  }
 }
+      ''';
 
-//     test('parses class names from source', () async {
-//       final text = '''
-// public class Foo {}
-// public class Bar {}
-// ''';
+      final results = await complete(text, line: 3, character: 5);
 
-//       final results = await suggest(
-//         text: text,
-//         cursorOffset: text.indexOf('Fo') + 2,
-//       );
+      expect(results.items.map((i) => i.label), contains('rootVar'));
+    });
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, contains('Foo'));
-//       expect(names, contains('Bar'));
-//     });
+    test('suggests static members from static block', () async {
+      final text = '''
+class MyClass {
+  static String staticField;
+  String instanceField;
 
-//     test('parses member fields for instance', () async {
-//       final text = '''
-// public class Foo {
-//   public String myVar;
-//   public Integer other;
-// }
+  static {
+    st
+  }
+}
+      ''';
 
-// public class Baz {
-//   public void demo() {
-//     Foo myFooInstance = new Foo();
-//     myFooInstance.
-//   }
-// }
-// ''';
+      final results = await complete(text, line: 5, character: 6);
 
-//       final cursorOffset =
-//           text.indexOf('myFooInstance.') + 'myFooInstance.'.length;
+      expect(results.items.map((i) => i.label), contains('staticField'));
+      expect(
+        results.items.map((i) => i.label),
+        isNot(contains('instanceField')),
+      );
+    });
 
-//       final results = await suggest(text: text, cursorOffset: cursorOffset);
+    test('does NOT suggest instance members from static block', () async {
+      final text = '''
+class MyClass {
+  static String staticField;
+  String instanceField;
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, containsAll(['myVar', 'other']));
+  static {
+    in
+  }
+}
+      ''';
 
-//       final members = results.whereType<MemberCandidate>();
-//       for (final member in members) {
-//         if (['myVar', 'other'].contains(member.name)) {
-//           expect(member.member.parentType.name, equals('Foo'));
-//         }
-//       }
-//     });
+      final results = await complete(text, line: 5, character: 6);
 
-//     test('parses instance variables', () async {
-//       final text = '''
-// public class Foo {
-//   public String myVar;
-//   public Integer other;
+      expect(
+        results.items.map((i) => i.label),
+        isNot(contains('instanceField')),
+      );
+    });
 
-//   public String concat() {
-//     return myV
-//   }
-// }
-// ''';
+    test(
+      'suggests local variables declared before cursor in static block',
+      () async {
+        final text = '''
+class MyClass {
+  static {
+    String localVar;
+    lo
+  }
+}
+      ''';
 
-//       final cursorOffset = text.indexOf('return myV') + 'return myV.'.length;
+        final results = await complete(text, line: 3, character: 6);
 
-//       final results = await suggest(text: text, cursorOffset: cursorOffset);
+        expect(results.items.map((i) => i.label), contains('localVar'));
+      },
+    );
+  });
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, contains('myVar'));
-//     });
+  group('constructor', () {
+    test('suggests root declarations from constructor', () async {
+      final text = '''
+String rootVar;
+class MyClass {
+  public MyClass() {
+    r
+  }
+}
+      ''';
 
-//     test('parses instance methods', () async {
-//       final text = '''
-// public class Foo {
-//   public String concat() {
-//     doSom
-//   }
+      final results = await complete(text, line: 3, character: 5);
 
-//   public void doSomething() {}
-// }
-// ''';
+      expect(results.items.map((i) => i.label), contains('rootVar'));
+    });
 
-//       final cursorOffset = text.indexOf('doSom') + 'doSom'.length;
+    test(
+      'suggests both static and instance members from constructor',
+      () async {
+        final text = '''
+class MyClass {
+  static String staticField;
+  String instanceField;
 
-//       final results = await suggest(text: text, cursorOffset: cursorOffset);
+  public MyClass() {
+    s
+  }
+}
+      ''';
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, contains('doSomething'));
-//     });
+        final results = await complete(text, line: 6, character: 5);
 
-//     test('filters members by prefix', () async {
-//       final text = '''
-// public class Foo {
-//   public String myVar;
-//   public Integer other;
-// }
+        expect(results.items.map((i) => i.label), contains('instanceField'));
+        expect(results.items.map((i) => i.label), contains('staticField'));
+      },
+    );
 
-// public class Baz {
-//   public void demo() {
-//     Foo myFooInstance = new Foo();
-//     myFooInstance.my
-//   }
-// }
-// ''';
+    test('suggests local variables from constructor', () async {
+      final text = '''
+class MyClass {
+  public MyClass() {
+    String localVar;
+    lo
+  }
+}
+      ''';
 
-//       final cursorOffset =
-//           text.indexOf('myFooInstance.my') + 'myFooInstance.my'.length;
+      final results = await complete(text, line: 3, character: 6);
 
-//       final results = await suggest(text: text, cursorOffset: cursorOffset);
+      expect(results.items.map((i) => i.label), contains('localVar'));
+    });
 
-//       final names = results.map((c) => c.name).toList();
-//       // The service returns all members; filtering happens later in the pipeline
-//       expect(names, containsAll(['myVar', 'other']));
+    test('suggests constructor parameters', () async {
+      final text = '''
+class MyClass {
+  public MyClass(String paramVar) {
+    pa
+  }
+}
+      ''';
 
-//       final members = results.whereType<MemberCandidate>();
-//       for (final member in members) {
-//         if (['myVar', 'other'].contains(member.name)) {
-//           expect(member.member.parentType.name, equals('Foo'));
-//         }
-//       }
-//     });
+      final results = await complete(text, line: 2, character: 6);
 
-//     test('parses enum names from source', () async {
-//       final text = '''
-// public enum MyEnum { A, B }
-// ''';
+      expect(results.items.map((i) => i.label), contains('paramVar'));
+    });
 
-//       final results = await suggest(
-//         text: text,
-//         cursorOffset: text.indexOf('MyEn') + 4,
-//       );
+    test('suggests constructor parameters with multiple arguments', () async {
+      final text = '''
+class MyClass {
+  public MyClass(String firstParam, Integer secondParam, Boolean thirdParam) {
+    p
+  }
+}
+      ''';
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, contains('MyEnum'));
-//     });
+      final results = await complete(text, line: 3, character: 5);
 
-//     test('parses mixed enum and class names', () async {
-//       final text = '''
-// public class MyClass {}
-// public enum MyEnum { A, B }
-// ''';
+      expect(results.items.map((i) => i.label), contains('secondParam'));
+      expect(results.items.map((i) => i.label), contains('firstParam'));
+      expect(results.items.map((i) => i.label), contains('thirdParam'));
+    });
+  });
 
-//       final results = await suggest(
-//         text: text,
-//         cursorOffset: text.indexOf('MyCl') + 2,
-//       );
+  group('instance method', () {
+    test('suggests root declarations from instance method', () async {
+      final text = '''
+String rootVar;
+class MyClass {
+  public void doSomething() {
+    r
+  }
+}
+      ''';
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, contains('MyClass'));
-//       expect(names, contains('MyEnum'));
-//     });
+      final results = await complete(text, line: 3, character: 5);
 
-//     test('parses enum values as static members', () async {
-//       final text = '''
-// public enum MyEnum { VAL1, VAL2 }
+      expect(results.items.map((i) => i.label), contains('rootVar'));
+    });
 
-// public class Consumer {
-//   public void test() {
-//     MyEnum.
-//   }
-// }
-// ''';
+    test(
+      'suggests both static and instance members from instance method',
+      () async {
+        final text = '''
+class MyClass {
+  static String staticField;
+  String instanceField;
 
-//       final cursorOffset = text.indexOf('MyEnum.') + 'MyEnum.'.length;
+  public void doSomething() {
+    f
+  }
+}
+      ''';
 
-//       final results = await suggest(text: text, cursorOffset: cursorOffset);
+        final results = await complete(text, line: 6, character: 5);
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, containsAll(['VAL1', 'VAL2']));
-//     });
+        expect(results.items.map((i) => i.label), contains('instanceField'));
+        expect(results.items.map((i) => i.label), contains('staticField'));
+      },
+    );
 
-//     test('parses interface names from source', () async {
-//       final text = '''
-// public interface MyInterface {}
-// ''';
+    test('suggests local variables from instance method', () async {
+      final text = '''
+class MyClass {
+  public void doSomething() {
+    String localVar;
+    lo
+  }
+}
+      ''';
 
-//       final results = await suggest(
-//         text: text,
-//         cursorOffset: text.indexOf('MyInt') + 5,
-//       );
+      final results = await complete(text, line: 3, character: 6);
 
-//       final names = results.map((c) => c.name).toList();
-//       expect(names, contains('MyInterface'));
-//     });
-//   });
+      expect(results.items.map((i) => i.label), contains('localVar'));
+    });
 
-//   group('Static vs Instance Integration', () {
-//     late TreeSitterIndexer indexer;
-//     late TreeSitterBindings bindings;
+    test('suggests method parameters', () async {
+      final text = '''
+class MyClass {
+  public void doSomething(String paramVar) {
+    pa
+  }
+}
+      ''';
 
-//     setUp(() {
-//       bindings = TreeSitterBindings.load(path: libPath);
-//       indexer = TreeSitterIndexer(bindings: bindings);
-//     });
+      final results = await complete(text, line: 2, character: 6);
 
-//     Future<List<CompletionCandidate>> suggest({
-//       required String text,
-//       required int cursorOffset,
-//     }) async {
-//       final index = indexer.parseAndIndex(text);
-//       final detector = ContextDetector(index: index);
-//       final context = detector.detect(text: text, cursorOffset: cursorOffset);
-//       final service = TreeSitterCompletionService(index: index);
-//       return service.suggest(context: context);
-//     }
+      expect(results.items.map((i) => i.label), contains('paramVar'));
+    });
 
-//     test('CollectionUtils static access', () async {
-//       final text = '''
-// public with sharing class CollectionUtils {
-//     public String myVar;
+    test('suggests multiple method parameters', () async {
+      final text = '''
+class MyClass {
+  public void doSomething(String firstParam, Integer secondParam) {
+    p
+  }
+}
+      ''';
 
-//     public static List<Object> toObjectList(Iterable<Object> values) {
-//         List<Object> objects = new List<Object>();
-//         for (Object s : values) {
-//             objects.add(s);
-//         }
+      final results = await complete(text, line: 3, character: 5);
 
-//         return objects;
-//     }
+      expect(results.items.map((i) => i.label), contains('firstParam'));
+      expect(results.items.map((i) => i.label), contains('secondParam'));
+    });
+  });
 
-//     public static Integer sum(Int a, Int b) {
-//         return a + b;
-//     }
-// }
+  group('static method', () {
+    test('suggests root declarations from static method', () async {
+      final text = '''
+String rootVar;
+class MyClass {
+  public static void doSomething() {
+    r
+  }
+}
+      ''';
 
-// public class Consumer {
-//     public void test() {
-//         CollectionUtils.
-//     }
-// }
-// ''';
+      final results = await complete(text, line: 3, character: 5);
 
-//       final cursorOffset =
-//           text.indexOf('CollectionUtils.') + 'CollectionUtils.'.length;
-//       final results = await suggest(text: text, cursorOffset: cursorOffset);
-//       final names = results.map((c) => c.name).toList();
+      expect(results.items.map((i) => i.label), contains('rootVar'));
+    });
 
-//       expect(names, containsAll(['toObjectList', 'sum']));
-//       expect(names, isNot(contains('myVar')));
-//     });
+    test('suggests static members from static method', () async {
+      final text = '''
+class MyClass {
+  static String staticField;
+  String instanceField;
 
-//     test('CollectionUtils instance access', () async {
-//       final text = '''
-// public with sharing class CollectionUtils {
-//     public String myVar;
+  public static void doSomething() {
+    s
+  }
+}
+      ''';
 
-//     public static List<Object> toObjectList(Iterable<Object> values) {
-//         List<Object> objects = new List<Object>();
-//         for (Object s : values) {
-//             objects.add(s);
-//         }
+      final results = await complete(text, line: 5, character: 5);
 
-//         return objects;
-//     }
+      expect(results.items.map((i) => i.label), contains('staticField'));
+      expect(
+        results.items.map((i) => i.label),
+        isNot(contains('instanceField')),
+      );
+    });
 
-//     public static Integer sum(Int a, Int b) {
-//         return a + b;
-//     }
-// }
+    test('does NOT suggest instance members from static method', () async {
+      final text = '''
+class MyClass {
+  static String staticField;
+  String instanceField;
 
-// public class Consumer {
-//     public void test() {
-//         CollectionUtils utils = new CollectionUtils();
-//         utils.
-//     }
-// }
-// ''';
+  public static void doSomething() {
+    in
+  }
+}
+      ''';
 
-//       final cursorOffset = text.indexOf('utils.') + 'utils.'.length;
-//       final results = await suggest(text: text, cursorOffset: cursorOffset);
-//       final names = results.map((c) => c.name).toList();
+      final results = await complete(text, line: 5, character: 6);
 
-//       expect(names, contains('myVar'));
-//       expect(names, isNot(contains('toObjectList')));
-//       expect(names, isNot(contains('sum')));
-//     });
-//   });
+      expect(
+        results.items.map((i) => i.label),
+        isNot(contains('instanceField')),
+      );
+    });
+
+    test('suggests local variables from static method', () async {
+      final text = '''
+class MyClass {
+  public static void doSomething() {
+    String localVar;
+    lo
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 3, character: 6);
+
+      expect(results.items.map((i) => i.label), contains('localVar'));
+    });
+
+    test('suggests static method parameters', () async {
+      final text = '''
+class MyClass {
+  public static void doSomething(String paramVar) {
+    pa
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 2, character: 6);
+
+      expect(results.items.map((i) => i.label), contains('paramVar'));
+    });
+  });
+
+  group('nested class', () {
+    test('suggests inner class from outer class scope', () async {
+      final text = '''
+class OuterClass {
+  private class InnerClass {}
+
+  public void method() {
+    In
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 4, character: 6);
+
+      expect(results.items.map((i) => i.label), contains('InnerClass'));
+    });
+
+    test('suggests outer class members from inner class', () async {
+      final text = '''
+class OuterClass {
+  private String outerField;
+
+  private class InnerClass {
+    public void method() {
+      ou
+    }
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 5, character: 8);
+
+      expect(results.items.map((i) => i.label), contains('outerField'));
+    });
+
+    test('suggests root declarations from inner class', () async {
+      final text = '''
+String rootVar;
+class OuterClass {
+  private class InnerClass {
+    public void method() {
+      r
+    }
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 4, character: 7);
+
+      expect(results.items.map((i) => i.label), contains('rootVar'));
+    });
+
+    test('respects static context in inner class static methods', () async {
+      final text = '''
+class OuterClass {
+  private class InnerClass {
+    String innerInstanceField;
+    static String innerStaticField;
+
+    public static void staticMethod() {
+      in
+    }
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 6, character: 8);
+
+      expect(results.items.map((i) => i.label), contains('innerStaticField'));
+      expect(
+        results.items.map((i) => i.label),
+        isNot(contains('innerInstanceField')),
+      );
+    });
+  });
+
+  group('inner block', () {
+    test('suggests variables from parent method scope in for loop', () async {
+      final text = '''
+class MyClass {
+  public void method() {
+    String methodVar;
+    for (Integer i = 0; i < 10; i++) {
+      me
+    }
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 4, character: 8);
+
+      expect(results.items.map((i) => i.label), contains('methodVar'));
+    });
+
+    test('suggests loop variable in for loop body', () async {
+      final text = '''
+class MyClass {
+  public void method() {
+    for (Integer i = 0; i < 10; i++) {
+      i
+    }
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 3, character: 7);
+
+      expect(results.items.map((i) => i.label), contains('i'));
+    });
+
+    test(
+      'respects static context in nested block within static method',
+      () async {
+        final text = '''
+class MyClass {
+  String instanceField;
+  static String staticField;
+
+  public static void method() {
+    if (true) {
+      st
+    }
+  }
+}
+      ''';
+
+        final results = await complete(text, line: 6, character: 8);
+
+        expect(results.items.map((i) => i.label), contains('staticField'));
+        expect(
+          results.items.map((i) => i.label),
+          isNot(contains('instanceField')),
+        );
+      },
+    );
+  });
+}
