@@ -583,8 +583,55 @@ class OuterClass {
   });
 
   group('member access', () {
-    // TODO: super keyword completion not yet implemented
-    // See NEXT_STEPS_SUPER_KEYWORD.md for details and implementation plan
+    test('suggests parent members when a class is extending another', () async {
+      final text = '''
+class ParentClass {
+  public String parentField;
+  public void parentMethod() {}
+}
+
+class ChildClass extends ParentClass {
+  public void method() {
+    super.
+  }
+}
+      ''';
+
+      final results = await complete(text, line: 7, character: 10);
+
+      expect(results.items.map((i) => i.label), contains('parentMethod'));
+    });
+
+    test(
+      'suggests grandparent members in multi-level class hierarchy',
+      () async {
+        final text = '''
+class GrandParentClass {
+  public void grandParentMethod() {}
+  public String grandParentField;
+}
+
+class ParentClass extends GrandParentClass {
+  public void parentMethod() {}
+}
+
+class ChildClass extends ParentClass {
+  public void method() {
+    super.
+  }
+}
+      ''';
+
+        final results = await complete(text, line: 11, character: 10);
+
+        expect(results.items.map((i) => i.label), contains('parentMethod'));
+        expect(
+          results.items.map((i) => i.label),
+          contains('grandParentMethod'),
+        );
+        expect(results.items.map((i) => i.label), contains('grandParentField'));
+      },
+    );
 
     test(
       'suggests parent interface members when accessing interface variable',
