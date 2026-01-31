@@ -51,7 +51,10 @@ final class ApexIndexerWorkspaceIndexAdapter implements IndexedClassProvider {
 
 abstract class IndexedType {
   List<String> get memberNames;
-  List<String> memberNamesByType(MemberType type);
+  Future<List<String>> memberNamesByTypeAsync(
+    MemberType type,
+    IndexedClassProvider provider,
+  );
   bool hasMemberPrefix(String prefix);
 
   /// Returns the names of nested types (inner classes, interfaces, enums).
@@ -79,8 +82,11 @@ class ClassMirrorWrapper implements IndexedType {
   }
 
   @override
-  List<String> memberNamesByType(MemberType type) {
-    return switch (type) {
+  Future<List<String>> memberNamesByTypeAsync(
+    MemberType type,
+    IndexedClassProvider provider,
+  ) async {
+    final ownMembers = switch (type) {
       .static => [
         ...classMirror.fields.where((f) => f.isStatic).map((f) => f.name),
         ...classMirror.properties.where((f) => f.isStatic).map((f) => f.name),
@@ -93,6 +99,39 @@ class ClassMirrorWrapper implements IndexedType {
         ...classMirror.methods.where((f) => !f.isStatic).map((f) => f.name),
       ],
     };
+
+    // Collect parent members
+    final allMembers = <String>{...ownMembers};
+
+    // Add members from parent class
+    if (classMirror.extendedClass != null) {
+      final parentType = await provider.typeByNameAsync(
+        classMirror.extendedClass!,
+      );
+      if (parentType != null) {
+        final parentMembers = await parentType.memberNamesByTypeAsync(
+          type,
+          provider,
+        );
+        allMembers.addAll(parentMembers);
+      }
+    }
+
+    // Add members from implemented interfaces (instance members only)
+    if (type == MemberType.instance) {
+      for (final interfaceName in classMirror.implementedInterfaces) {
+        final interfaceType = await provider.typeByNameAsync(interfaceName);
+        if (interfaceType != null) {
+          final interfaceMembers = await interfaceType.memberNamesByTypeAsync(
+            type,
+            provider,
+          );
+          allMembers.addAll(interfaceMembers);
+        }
+      }
+    }
+
+    return allMembers.toList();
   }
 
   /// Returns true if any member matches [prefix] (case-insensitive).
@@ -146,7 +185,10 @@ class EnumMirrorWrapper implements IndexedType {
   }
 
   @override
-  List<String> memberNamesByType(MemberType type) {
+  Future<List<String>> memberNamesByTypeAsync(
+    MemberType type,
+    IndexedClassProvider provider,
+  ) async {
     return switch (type) {
       .static => [...enumMirror.values.map((v) => v.name)],
       .instance => [],
@@ -181,7 +223,10 @@ class InterfaceMirrorWrapper implements IndexedType {
   }
 
   @override
-  List<String> memberNamesByType(MemberType type) {
+  Future<List<String>> memberNamesByTypeAsync(
+    MemberType type,
+    IndexedClassProvider provider,
+  ) async {
     return switch (type) {
       .static => [],
       .instance => [...interfaceMirror.methods.map((m) => m.name)],
