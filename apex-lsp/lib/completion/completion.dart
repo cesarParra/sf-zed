@@ -4,7 +4,7 @@ import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
-import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/message.dart';
 
@@ -120,7 +120,7 @@ Future<CompletionList> onCompletion({
   required String? text,
   required Position position,
   required TreeSitterIndexer localIndexer,
-  required IndexedClassProvider indexedClassProvider,
+  required IndexLoader indexLoader,
   Rank rank = rankCandidates,
 }) async {
   if (text == null) {
@@ -136,9 +136,9 @@ Future<CompletionList> onCompletion({
   final index = localIndexer.parseAndIndex(text);
   final contextDetector = ContextDetector(
     index: index,
-    indexedClassProvider: indexedClassProvider,
+    indexLoader: indexLoader,
   );
-  final context = contextDetector.detect(
+  final context = await contextDetector.detect(
     text: text,
     cursorOffset: cursorOffset,
   );
@@ -146,7 +146,7 @@ Future<CompletionList> onCompletion({
   Future<CompletionList> completeFor(String prefix) async {
     final localSuggestion = TreeSitterCompletionService(index: index);
     final indexedSuggestion = SuggestionFromIndexedFiles(
-      indexClassProvider: indexedClassProvider,
+      indexLoader: indexLoader,
     );
 
     final aggregator = CompletionAggregator(

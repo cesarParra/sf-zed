@@ -2,6 +2,7 @@ import 'dart:io' as io;
 
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/lsp_out.dart';
 import 'package:file/file.dart';
@@ -39,9 +40,9 @@ void initializeDependencies() {
     );
   }
 
-  if (!locator.isRegistered<ApexIndexer>()) {
-    locator.registerSingleton<ApexIndexer>(
-      ApexIndexer(
+  if (!locator.isRegistered<Indexer>()) {
+    locator.registerSingleton<Indexer>(
+      Indexer(
         sfdxWorkspaceLocator: locator<SfdxWorkspaceLocator>(),
         fileSystem: locator<FileSystem>(),
         platform: locator<LspPlatform>(),

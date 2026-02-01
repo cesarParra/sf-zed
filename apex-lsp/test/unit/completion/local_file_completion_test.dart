@@ -72,7 +72,7 @@ void main() {
       text: text,
       position: Position(line: line, character: character),
       localIndexer: indexer,
-      indexedClassProvider: FakeIndexedClassProvider(),
+      indexLoader: FakeIndexedClassProvider(),
     );
   }
 

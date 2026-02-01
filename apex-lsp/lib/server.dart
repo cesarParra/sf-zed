@@ -3,12 +3,13 @@ import 'dart:io';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
-import 'package:apex_lsp/indexing/indexed_class.dart';
+//import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/initialization_status.dart';
 import 'package:get_it/get_it.dart';
 
-import 'indexing/indexer.dart';
+//import 'indexing/indexer.dart';
 import 'lsp_out.dart';
 import 'message.dart';
 import 'message_reader.dart';
@@ -24,18 +25,16 @@ final class Server {
       _reader = MessageReader(input),
       _exitFn = locator<ExitFn>(),
       _openDocuments = OpenDocuments(),
-      _apexIndexer = locator<ApexIndexer>(),
-      _localIndexer = locator<TreeSitterIndexer>(),
-      _indexedClassProvider = locator<IndexedClassProvider>();
+      _apexIndexer = locator<Indexer>(),
+      _localIndexer = locator<TreeSitterIndexer>();
 
   final LspOut _output;
   final MessageReader _reader;
   final ExitFn _exitFn;
 
   final OpenDocuments _openDocuments;
-  final ApexIndexer _apexIndexer;
+  final Indexer _apexIndexer;
   final TreeSitterIndexer _localIndexer;
-  final IndexedClassProvider _indexedClassProvider;
 
   InitializationStatus _initializationStatus = NotInitialized();
   bool _shutdownRequested = false;
@@ -87,7 +86,7 @@ final class Server {
           id: id,
           params: params,
           localIndexer: _localIndexer,
-          indexedClassProvider: _indexedClassProvider,
+          indexedClassProvider: _apexIndexer.getIndexLoader(),
         );
     }
   }
@@ -163,13 +162,13 @@ final class Server {
     required Object id,
     required CompletionParams params,
     required TreeSitterIndexer localIndexer,
-    required IndexedClassProvider indexedClassProvider,
+    required IndexLoader indexedClassProvider,
   }) async {
     final completionList = await onCompletion(
       text: _openDocuments.get(params.textDocument.uri),
       position: params.position,
       localIndexer: localIndexer,
-      indexedClassProvider: indexedClassProvider,
+      indexLoader: indexedClassProvider,
     );
     await _output.sendResponse(id: id, result: completionList.toJson());
   }

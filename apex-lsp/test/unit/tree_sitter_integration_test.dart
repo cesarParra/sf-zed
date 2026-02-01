@@ -31,7 +31,7 @@ void main() {
       final index = indexer.parseAndIndex(text);
       final detector = ContextDetector(
         index: index,
-        indexedClassProvider: FakeIndexedClassProvider(),
+        indexLoader: FakeIndexedClassProvider(),
       );
       final context = detector.detect(text: text, cursorOffset: cursorOffset);
       final service = TreeSitterCompletionService(index: index);
@@ -236,7 +236,7 @@ public interface MyInterface {}
       final index = indexer.parseAndIndex(text);
       final detector = ContextDetector(
         index: index,
-        indexedClassProvider: FakeIndexedClassProvider(),
+        indexLoader: FakeIndexedClassProvider(),
       );
       final context = detector.detect(text: text, cursorOffset: cursorOffset);
       final service = TreeSitterCompletionService(index: index);

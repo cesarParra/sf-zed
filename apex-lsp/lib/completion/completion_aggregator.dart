@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
-import 'package:apex_lsp/indexing/indexed_class.dart' as indexed_class;
+import 'package:apex_lsp/di.dart';
+import 'package:apex_lsp/indexing/revamped.dart' hide Member;
 import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
+import 'package:apex_lsp/lsp_out.dart';
+
+final logger = locator<LspOut>();
 
 /// Aggregates completion candidates from the open document (Tree-sitter)
 /// and workspace index (.sf-zed JSON file repository).
@@ -232,11 +236,10 @@ final class TreeSitterCompletionService implements CompletionSuggestion {
 }
 
 final class SuggestionFromIndexedFiles implements CompletionSuggestion {
-  final indexed_class.IndexedClassProvider _indexClassProvider;
+  final IndexLoader _indexLoader;
 
-  SuggestionFromIndexedFiles({
-    required indexed_class.IndexedClassProvider indexClassProvider,
-  }) : _indexClassProvider = indexClassProvider;
+  SuggestionFromIndexedFiles({required IndexLoader indexLoader})
+    : _indexLoader = indexLoader;
 
   @override
   FutureOr<List<CompletionCandidate>> suggest({
@@ -250,11 +253,9 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
         return [];
       }
 
-      final workspaceClass = await _indexClassProvider.typeByNameAsync(
-        resolvedType,
-      );
+      final workspaceType = await _indexLoader.getIndexedType(resolvedType);
 
-      if (workspaceClass == null) {
+      if (workspaceType == null) {
         return [];
       }
 
@@ -264,9 +265,10 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
           ? MemberType.static
           : MemberType.instance;
 
-      final memberNamesForType = await workspaceClass.memberNamesByTypeAsync(
+      final memberNamesForType = await getMemberNamesByType(
+        workspaceType,
         memberType,
-        _indexClassProvider,
+        _indexLoader,
       );
 
       return memberNamesForType.map((memberName) {
@@ -281,8 +283,8 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
     }
 
     Future<List<CompletionCandidate>> completeTypesFromIndex() async {
-      return _indexClassProvider.classNames.map((classInfo) {
-        return ApexTypeCandidate(Indexed(name: classInfo));
+      return (await _indexLoader.getTypeNames()).map((typeName) {
+        return ApexTypeCandidate(Indexed(name: typeName));
       }).toList();
     }
 

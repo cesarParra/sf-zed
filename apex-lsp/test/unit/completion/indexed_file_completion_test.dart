@@ -111,7 +111,7 @@ void main() {
         text: text,
         position: Position(line: line, character: character),
         localIndexer: indexer,
-        indexedClassProvider: indexedClassProvider,
+        indexLoader: indexedClassProvider,
       );
     }
 
@@ -630,31 +630,31 @@ void main() {
         expect(results.items.map((i) => i.label), contains('LocalHelper'));
       });
 
-      // TODO
-      // test('indexed parent, local child', () async {
-      //   await addIndexedClass('IndexedParent', '''
-      //     public class IndexedParent {
-      //       public void parentMethod() {}
-      //     }
-      //     ''');
+      test('indexed parent, local child', () async {
+        await addIndexedClass('IndexedParent', '''
+          public class IndexedParent {
+            public void parentMethod() {}
+          }
+          ''');
 
-      //   final text = '''
-      //     public class LocalChild extends IndexedParent {
-      //       public void childMethod() {}
-      //     }
-      //     public class TestClass {
-      //       void m() {
-      //         LocalChild obj;
-      //         obj.parent
-      //       }
-      //     }
-      //     ''';
-      //   final cursorOffset = text.indexOf('obj.parent') + 'obj.parent'.length;
+        final text = '''
+          public class LocalChild extends IndexedParent {
+            public void childMethod() {}
+          }
+          public class TestClass {
+            void m() {
+              LocalChild obj;
+              obj.parent
+            }
+          }
+          ''';
+        final cursorOffset = text.indexOf('obj.parent') + 'obj.parent'.length;
 
-      //   final results = await complete(text, line: 9, character: cursorOffset);
+        // TODO: This should probably be line 5.
+        final results = await complete(text, line: 9, character: cursorOffset);
 
-      //   expect(results.items.map((i) => i.label), contains('parentMethod'));
-      // });
+        expect(results.items.map((i) => i.label), contains('parentMethod'));
+      });
 
       test('local variable of indexed type', () async {
         await addIndexedClass('IndexedService', '''

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:apex_lsp/completion/helpers.dart';
-import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 
@@ -59,14 +59,17 @@ final class CompletionContextMember extends CompletionContext {
 final class ContextDetector {
   ContextDetector({
     required ApexDocumentIndex index,
-    required IndexedClassProvider indexedClassProvider,
+    required IndexLoader indexLoader,
   }) : _index = index,
-       _indexedClassProvider = indexedClassProvider;
+       _indexLoader = indexLoader;
 
   final ApexDocumentIndex _index;
-  final IndexedClassProvider _indexedClassProvider;
+  final IndexLoader _indexLoader;
 
-  CompletionContext detect({required String text, required int cursorOffset}) {
+  Future<CompletionContext> detect({
+    required String text,
+    required int cursorOffset,
+  }) async {
     if (text.isEmpty || cursorOffset <= 0) {
       return const CompletionContextNone();
     }
@@ -105,10 +108,10 @@ final class ContextDetector {
 
       final cursorByteOffset = _byteOffset(text, cursorOffset);
       final typeName =
-          _resolveTypeForObject(
+          (await _resolveTypeForObject(
             objectName: objectName,
             cursorByteOffset: cursorByteOffset,
-          ) ??
+          )) ??
           objectName;
       return CompletionContextMember(
         typeName: typeName,
@@ -172,10 +175,10 @@ final class ContextDetector {
     return identifier.isNotEmpty ? identifier : null;
   }
 
-  String? _resolveTypeForObject({
+  Future<String?> _resolveTypeForObject({
     required String objectName,
     required int cursorByteOffset,
-  }) {
+  }) async {
     if (objectName.toLowerCase() == 'this') {
       final containing = _findTypeAtOffset(_index, cursorByteOffset);
       return containing?.name;
@@ -200,10 +203,8 @@ final class ContextDetector {
       return objectName;
     }
 
-    // Check if the object name is an indexed class name
-    if (_indexedClassProvider.classNames.any(
-      (name) => name.toLowerCase() == objectName.toLowerCase(),
-    )) {
+    final indexedType = await _indexLoader.getIndexedType(objectName);
+    if (indexedType != null) {
       return objectName;
     }
 
