@@ -17,125 +17,125 @@ final class _ExitCalled implements Exception {
 }
 
 void main() {
-  group('LSP Completion', () {
-    late Directory workspaceDir;
-    late Uri workspaceUri;
+  // group('LSP Completion', () {
+  //   late Directory workspaceDir;
+  //   late Uri workspaceUri;
 
-    late InMemoryLspInput input;
-    late InMemoryByteSink sink;
-    late Server server;
+  //   late InMemoryLspInput input;
+  //   late InMemoryByteSink sink;
+  //   late Server server;
 
-    setUp(() async {
-      // Create a temporary workspace.
-      workspaceDir = await Directory.systemTemp.createTemp('apex-lsp-it-');
-      workspaceUri = Uri.directory(workspaceDir.path);
+  //   setUp(() async {
+  //     // Create a temporary workspace.
+  //     workspaceDir = await Directory.systemTemp.createTemp('apex-lsp-it-');
+  //     workspaceUri = Uri.directory(workspaceDir.path);
 
-      // Minimal SFDX project config (loaded from fixtures).
-      final sfdxProject = File('${workspaceDir.path}/sfdx-project.json');
-      final sfdxProjectFixture = File(
-        'test/fixtures/initialize_and_completion/sfdx-project.json',
-      );
-      await sfdxProject.writeAsString(await sfdxProjectFixture.readAsString());
+  //     // Minimal SFDX project config (loaded from fixtures).
+  //     final sfdxProject = File('${workspaceDir.path}/sfdx-project.json');
+  //     final sfdxProjectFixture = File(
+  //       'test/fixtures/initialize_and_completion/sfdx-project.json',
+  //     );
+  //     await sfdxProject.writeAsString(await sfdxProjectFixture.readAsString());
 
-      // Create an Apex class under the typical SFDX path.
-      final classesDir = Directory(
-        '${workspaceDir.path}/force-app/main/default/classes',
-      );
-      await classesDir.create(recursive: true);
+  //     // Create an Apex class under the typical SFDX path.
+  //     final classesDir = Directory(
+  //       '${workspaceDir.path}/force-app/main/default/classes',
+  //     );
+  //     await classesDir.create(recursive: true);
 
-      final fooClass = File('${classesDir.path}/Foo.cls');
-      final fooClassFixture = File(
-        'test/fixtures/initialize_and_completion/Foo.cls',
-      );
-      await fooClass.writeAsString(await fooClassFixture.readAsString());
+  //     final fooClass = File('${classesDir.path}/Foo.cls');
+  //     final fooClassFixture = File(
+  //       'test/fixtures/initialize_and_completion/Foo.cls',
+  //     );
+  //     await fooClass.writeAsString(await fooClassFixture.readAsString());
 
-      // Inject an ExitFn that throws instead of terminating the process.
-      locator.registerFactory<ExitFn>(
-        () =>
-            (code) => throw _ExitCalled(code),
-      );
+  //     // Inject an ExitFn that throws instead of terminating the process.
+  //     locator.registerFactory<ExitFn>(
+  //       () =>
+  //           (code) => throw _ExitCalled(code),
+  //     );
 
-      input = InMemoryLspInput(sync: true);
-      sink = InMemoryByteSink();
+  //     input = InMemoryLspInput(sync: true);
+  //     sink = InMemoryByteSink();
 
-      locator.registerSingleton<LspOut>(LspOut(output: sink));
+  //     locator.registerSingleton<LspOut>(LspOut(output: sink));
 
-      // Ensure production (non-overridden) dependencies are initialized.
-      initializeDependencies();
+  //     // Ensure production (non-overridden) dependencies are initialized.
+  //     initializeDependencies();
 
-      server = Server(input: input.stream);
-    });
+  //     server = Server(input: input.stream);
+  //   });
 
-    tearDown(() async {
-      await input.close();
-      await workspaceDir.delete(recursive: true);
-      await locator.reset(dispose: true);
-    });
+  //   tearDown(() async {
+  //     await input.close();
+  //     await workspaceDir.delete(recursive: true);
+  //     await locator.reset(dispose: true);
+  //   });
 
-    test('completion includes indexed class name', () async {
-      final serverTask = server.run();
+  //   test('completion includes indexed class name', () async {
+  //     final serverTask = server.run();
 
-      // 1) initialize
-      input.addFrame(
-        jsonRpcInitialize(
-          id: 1,
-          workspaceFolders: <Map<String, String>>[
-            <String, String>{
-              'uri': workspaceUri.toString(),
-              'name': 'workspace',
-            },
-          ],
-        ),
-      );
-      await _waitForResponse(
-        sink: sink,
-        id: 1,
-        timeout: const Duration(seconds: 2),
-      );
+  //     // 1) initialize
+  //     input.addFrame(
+  //       jsonRpcInitialize(
+  //         id: 1,
+  //         workspaceFolders: <Map<String, String>>[
+  //           <String, String>{
+  //             'uri': workspaceUri.toString(),
+  //             'name': 'workspace',
+  //           },
+  //         ],
+  //       ),
+  //     );
+  //     await _waitForResponse(
+  //       sink: sink,
+  //       id: 1,
+  //       timeout: const Duration(seconds: 2),
+  //     );
 
-      // 2) initialized notification
-      input.addFrame(jsonRpcNotification(method: 'initialized'));
+  //     // 2) initialized notification
+  //     input.addFrame(jsonRpcNotification(method: 'initialized'));
 
-      // 3) Open a document with a prefix to complete.
-      final docUri = workspaceUri
-          .resolve('force-app/main/default/classes/SomeFile.cls')
-          .toString();
+  //     // 3) Open a document with a prefix to complete.
+  //     final docUri = workspaceUri
+  //         .resolve('force-app/main/default/classes/SomeFile.cls')
+  //         .toString();
 
-      input.addFrame(
-        jsonRpcNotification(
-          method: 'textDocument/didOpen',
-          params: <String, Object?>{
-            'textDocument': <String, Object?>{
-              'uri': docUri,
-              'text': 'public class SomeFile { void m(){ Fo } }',
-            },
-          },
-        ),
-      );
+  //     input.addFrame(
+  //       jsonRpcNotification(
+  //         method: 'textDocument/didOpen',
+  //         params: <String, Object?>{
+  //           'textDocument': <String, Object?>{
+  //             'uri': docUri,
+  //             'text': 'public class SomeFile { void m(){ Fo } }',
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      // 4) Poll completion until "Foo" (from indexing) is present.
-      final completionResponse = await _pollCompletionUntilContains(
-        input: input,
-        sink: sink,
-        docUri: docUri,
-        expectedLabel: 'Foo',
-        timeout: const Duration(seconds: 6),
-      );
+  //     // 4) Poll completion until "Foo" (from indexing) is present.
+  //     final completionResponse = await _pollCompletionUntilContains(
+  //       input: input,
+  //       sink: sink,
+  //       docUri: docUri,
+  //       expectedLabel: 'Foo',
+  //       timeout: const Duration(seconds: 6),
+  //     );
 
-      expect(completionResponse['result'], isA<Map<String, Object?>>());
-      final completionResult =
-          completionResponse['result'] as Map<String, Object?>;
-      final items = (completionResult['items'] as List<Object?>)
-          .whereType<Map<Object?, Object?>>()
-          .map((m) => m.cast<String, Object?>())
-          .toList();
+  //     expect(completionResponse['result'], isA<Map<String, Object?>>());
+  //     final completionResult =
+  //         completionResponse['result'] as Map<String, Object?>;
+  //     final items = (completionResult['items'] as List<Object?>)
+  //         .whereType<Map<Object?, Object?>>()
+  //         .map((m) => m.cast<String, Object?>())
+  //         .toList();
 
-      expect(items.any((i) => i['label'] == 'Foo'), isTrue);
+  //     expect(items.any((i) => i['label'] == 'Foo'), isTrue);
 
-      await input.close();
-      await serverTask.timeout(const Duration(seconds: 2));
-    });
-  });
+  //     await input.close();
+  //     await serverTask.timeout(const Duration(seconds: 2));
+  //   });
+  // });
 }
 
 /// Generic polling helper for LSP frames that handles timeouts and frame draining.

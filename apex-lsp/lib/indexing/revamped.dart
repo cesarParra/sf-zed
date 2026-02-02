@@ -15,21 +15,21 @@ import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 import 'package:file/file.dart';
 
-
-
+typedef Location = (int startByte, int endByte);
 
 sealed class Member {
   final String name;
+  final Location? location;
   bool get isStatic;
 
-  Member(this.name);
+  Member(this.name, {this.location});
 }
 
 sealed class IndexedType extends Member {
   @override
   bool get isStatic => true;
 
-  IndexedType(super.name);
+  IndexedType(super.name, {super.location});
 }
 
 final class IndexedClass extends IndexedType {
@@ -55,7 +55,7 @@ final class IndexedInterface extends IndexedType {
 final class IndexedEnum extends IndexedType {
   final List<EnumValueMember> values;
 
-  IndexedEnum(super.name, {required this.values});
+  IndexedEnum(super.name, {required this.values, super.location});
 }
 
 final class FieldMember extends Member {
