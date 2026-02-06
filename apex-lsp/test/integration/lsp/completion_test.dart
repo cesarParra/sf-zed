@@ -22,9 +22,12 @@ final class _ExitCalled implements Exception {
 }
 
 void main() {
-  final libPath = Platform.environment['TS_SFAPEX_LIB'];
+  late Directory workspaceDir;
+  late Uri workspaceUri;
 
-  final bindings = TreeSitterBindings.load(path: libPath);
+  late Server server;
+  late InMemoryByteSink sink;
+  late InMemoryLspInput input;
 
   // group('LSP Completion', () {
   //   late Directory workspaceDir;
