@@ -1,8 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/di.dart';
+import 'package:apex_lsp/documents/open_documents.dart';
+import 'package:apex_lsp/indexing/indexer.dart';
+import 'package:apex_lsp/indexing/local_indexer.dart';
 import 'package:apex_lsp/lsp_out.dart';
+import 'package:apex_lsp/message_reader.dart';
 import 'package:apex_lsp/server.dart';
 import 'package:test/test.dart';
 
@@ -17,6 +22,10 @@ final class _ExitCalled implements Exception {
 }
 
 void main() {
+  final libPath = Platform.environment['TS_SFAPEX_LIB'];
+
+  final bindings = TreeSitterBindings.load(path: libPath);
+
   // group('LSP Completion', () {
   //   late Directory workspaceDir;
   //   late Uri workspaceUri;
@@ -49,25 +58,19 @@ void main() {
   //     );
   //     await fooClass.writeAsString(await fooClassFixture.readAsString());
 
-  //     // Inject an ExitFn that throws instead of terminating the process.
-  //     locator.registerFactory<ExitFn>(
-  //       () =>
-  //           (code) => throw _ExitCalled(code),
+  //     server = Server(
+  //       output: LspOut(output: InMemoryByteSink()),
+  //       reader: MessageReader(InMemoryLspInput(sync: true).stream),
+  //       exitFn: (code) => throw _ExitCalled(code),
+  //       openDocuments: OpenDocuments(),
+  //       localIndexer: LocalIndexer(bindings: bindings),
+  //       workspaceIndexer: ApexIndexer(
+  //         sfdxWorkspaceLocator:
+  //       )
   //     );
-
-  //     input = InMemoryLspInput(sync: true);
-  //     sink = InMemoryByteSink();
-
-  //     locator.registerSingleton<LspOut>(LspOut(output: sink));
-
-  //     // Ensure production (non-overridden) dependencies are initialized.
-  //     initializeDependencies();
-
-  //     server = Server(input: input.stream);
   //   });
 
   //   tearDown(() async {
-  //     await input.close();
   //     await workspaceDir.delete(recursive: true);
   //     await locator.reset(dispose: true);
   //   });

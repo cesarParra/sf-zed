@@ -15,16 +15,6 @@ import 'package:test/test.dart';
 
 import '../../support/lsp_test_harness.dart';
 
-final class FakeLspPlatform implements LspPlatform {
-  FakeLspPlatform({this.isWindows = false, this.pathSeparator = '/'});
-
-  @override
-  final bool isWindows;
-
-  @override
-  final String pathSeparator;
-}
-
 /// Tests for completion suggestions when using indexed files (types from other files).
 /// This mirrors the scenarios in local_file_completion_test.dart but for indexed types.
 void main() {

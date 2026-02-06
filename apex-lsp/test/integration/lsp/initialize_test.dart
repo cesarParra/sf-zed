@@ -1,29 +1,20 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:apex_lsp/di.dart';
-import 'package:apex_lsp/lsp_out.dart';
 import 'package:apex_lsp/server.dart';
 import 'package:test/test.dart';
 
 import '../../support/lsp_test_harness.dart';
-
-final class _ExitCalled implements Exception {
-  _ExitCalled(this.code);
-  final int code;
-
-  @override
-  String toString() => '_ExitCalled(code=$code)';
-}
+import '../integration_server.dart';
 
 void main() {
   group('LSP Initialization', () {
     late Directory workspaceDir;
     late Uri workspaceUri;
 
-    late InMemoryLspInput input;
-    late InMemoryByteSink sink;
     late Server server;
+    late InMemoryByteSink sink;
+    late InMemoryLspInput input;
 
     setUp(() async {
       // Create a temporary workspace.
@@ -49,27 +40,12 @@ void main() {
       );
       await fooClass.writeAsString(await fooClassFixture.readAsString());
 
-      // Inject an ExitFn that throws instead of terminating the process.
-      locator.registerFactory<ExitFn>(
-        () =>
-            (code) => throw _ExitCalled(code),
-      );
-
-      input = InMemoryLspInput(sync: true);
-      sink = InMemoryByteSink();
-
-      locator.registerSingleton<LspOut>(LspOut(output: sink));
-
-      // Ensure production (non-overridden) dependencies are initialized.
-      initializeDependencies();
-
-      server = Server(input: input.stream);
+      (:server, :sink, :input) = createIntegrationData();
     });
 
     tearDown(() async {
       await input.close();
       await workspaceDir.delete(recursive: true);
-      await locator.reset(dispose: true);
     });
 
     test('client can initialize', () async {
@@ -177,7 +153,6 @@ void main() {
         timeout: const Duration(seconds: 2),
       );
       expect(beginProgress, isNotNull);
-
       final endProgress = await _waitForNotification(
         sink: sink,
         method: r'$/progress',

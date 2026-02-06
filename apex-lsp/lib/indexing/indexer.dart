@@ -33,13 +33,13 @@ final class InterfaceMirrorWrapper
 /// Indexes Apex `.cls` files under a set of package directories and writes JSON
 /// metadata files into a hidden `.sf-zed` folder at each workspace root.
 final class ApexIndexer {
-  ApexIndexer({
-    required SfdxWorkspaceLocator sfdxWorkspaceLocator,
-    required FileSystem fileSystem,
-    required LspPlatform platform,
-  }) : _sfdxWorkspaceLocator = sfdxWorkspaceLocator,
-       _fileSystem = fileSystem,
-       _platform = platform;
+  ApexIndexer({required FileSystem fileSystem, required LspPlatform platform})
+    : _sfdxWorkspaceLocator = SfdxWorkspaceLocator(
+        fileSystem: fileSystem,
+        platform: platform,
+      ),
+      _fileSystem = fileSystem,
+      _platform = platform;
 
   static const String indexFolderName = '.sf-zed';
 

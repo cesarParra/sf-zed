@@ -3,13 +3,13 @@ import 'dart:io';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
-//import 'package:apex_lsp/indexing/indexed_class.dart';
+import 'package:apex_lsp/indexing/indexer.dart';
+import 'package:apex_lsp/indexing/local_indexer.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/initialization_status.dart';
 import 'package:get_it/get_it.dart';
 
-//import 'indexing/indexer.dart';
 import 'lsp_out.dart';
 import 'message.dart';
 import 'message_reader.dart';
@@ -17,24 +17,27 @@ import 'message_reader.dart';
 typedef ExitFn = Never Function(int exitCode);
 
 final class Server {
-  factory Server({required Stream<List<int>> input}) =>
-      Server._(input: input, locator: GetIt.I);
-
-  Server._({required Stream<List<int>> input, required GetIt locator})
-    : _output = locator<LspOut>(),
-      _reader = MessageReader(input),
-      _exitFn = locator<ExitFn>(),
-      _openDocuments = OpenDocuments(),
-      _apexIndexer = locator<Indexer>(),
-      _localIndexer = locator<TreeSitterIndexer>();
+  Server({
+    required LspOut output,
+    required MessageReader reader,
+    required ExitFn exitFn,
+    required OpenDocuments openDocuments,
+    required LocalIndexer localIndexer,
+    required ApexIndexer workspaceIndexer,
+  }) : _output = output,
+       _reader = reader,
+       _exitFn = exitFn,
+       _openDocuments = openDocuments,
+       _localIndexer = localIndexer,
+       _workspaceIndexer = workspaceIndexer;
 
   final LspOut _output;
   final MessageReader _reader;
   final ExitFn _exitFn;
 
   final OpenDocuments _openDocuments;
-  final Indexer _apexIndexer;
-  final TreeSitterIndexer _localIndexer;
+  final LocalIndexer _localIndexer;
+  final ApexIndexer _workspaceIndexer;
 
   InitializationStatus _initializationStatus = NotInitialized();
   bool _shutdownRequested = false;
@@ -86,7 +89,6 @@ final class Server {
           id: id,
           params: params,
           localIndexer: _localIndexer,
-          indexedClassProvider: _apexIndexer.getIndexLoader(),
         );
     }
   }
@@ -103,7 +105,7 @@ final class Server {
             );
             await _output.workDoneProgressCreate(token: token);
 
-            await for (final value in _apexIndexer.index(
+            await for (final value in _workspaceIndexer.index(
               params,
               token: token,
             )) {
@@ -161,14 +163,12 @@ final class Server {
   Future<void> _onCompletion({
     required Object id,
     required CompletionParams params,
-    required TreeSitterIndexer localIndexer,
-    required IndexLoader indexedClassProvider,
+    required LocalIndexer localIndexer,
   }) async {
     final completionList = await onCompletion(
       text: _openDocuments.get(params.textDocument.uri),
       position: params.position,
       localIndexer: localIndexer,
-      indexLoader: indexedClassProvider,
     );
     await _output.sendResponse(id: id, result: completionList.toJson());
   }

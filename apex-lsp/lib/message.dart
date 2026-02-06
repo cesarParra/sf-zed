@@ -479,6 +479,11 @@ final class WorkDoneProgressParams {
   const WorkDoneProgressParams({required this.token, required this.value});
 
   Map<String, Object?> toJson() => _$WorkDoneProgressParamsToJson(this);
+
+  @override
+  String toString() {
+    return 'WorkDoneProgressParams{token: $token, value: $value}';
+  }
 }
 
 sealed class WorkDoneProgressValue {
@@ -504,6 +509,11 @@ final class WorkDoneProgressBegin extends WorkDoneProgressValue {
 
   @override
   Map<String, Object?> toJson() => _$WorkDoneProgressBeginToJson(this);
+
+  @override
+  String toString() {
+    return 'WorkDoneProgressBegin{kind: $kind, title: $title, cancellable: $cancellable, message: $message, percentage: $percentage}';
+  }
 }
 
 @JsonSerializable(createFactory: false)
@@ -521,6 +531,11 @@ final class WorkDoneProgressReport extends WorkDoneProgressValue {
 
   @override
   Map<String, Object?> toJson() => _$WorkDoneProgressReportToJson(this);
+
+  @override
+  String toString() {
+    return 'WorkDoneProgressReport{kind: $kind, cancellable: $cancellable, message: $message, percentage: $percentage}';
+  }
 }
 
 @JsonSerializable(createFactory: false)
@@ -532,4 +547,9 @@ final class WorkDoneProgressEnd extends WorkDoneProgressValue {
 
   @override
   Map<String, Object?> toJson() => _$WorkDoneProgressEndToJson(this);
+
+  @override
+  String toString() {
+    return 'WorkDoneProgressEnd{kind: $kind, message: $message}';
+  }
 }

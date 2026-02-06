@@ -4,8 +4,7 @@ import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
-import 'package:apex_lsp/indexing/revamped.dart';
-import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
+import 'package:apex_lsp/indexing/local_indexer.dart';
 import 'package:apex_lsp/message.dart';
 
 // TODO: In the future, we also want to add language keywords here
@@ -119,66 +118,69 @@ const maxCompletionItems = 25;
 Future<CompletionList> onCompletion({
   required String? text,
   required Position position,
-  required TreeSitterIndexer localIndexer,
-  required IndexLoader indexLoader,
-  Rank rank = rankCandidates,
+  required LocalIndexer localIndexer,
+  //Rank rank = rankCandidates,
 }) async {
-  if (text == null) {
-    return CompletionList(isIncomplete: false, items: <CompletionItem>[]);
-  }
-
-  final cursorOffset = _offsetAtPosition(
-    text: text,
-    line: position.line,
-    character: position.character,
+  return CompletionList(
+    isIncomplete: false,
+    items: [CompletionItem(label: 'Foo')],
   );
+  // if (text == null) {
+  //   return CompletionList(isIncomplete: false, items: <CompletionItem>[]);
+  // }
 
-  final index = localIndexer.parseAndIndex(text);
-  final contextDetector = ContextDetector(
-    index: index,
-    indexLoader: indexLoader,
-  );
-  final context = await contextDetector.detect(
-    text: text,
-    cursorOffset: cursorOffset,
-  );
+  // final cursorOffset = _offsetAtPosition(
+  //   text: text,
+  //   line: position.line,
+  //   character: position.character,
+  // );
 
-  Future<CompletionList> completeFor(String prefix) async {
-    final localSuggestion = TreeSitterCompletionService(index: index);
-    final indexedSuggestion = SuggestionFromIndexedFiles(
-      indexLoader: indexLoader,
-    );
+  // final index = localIndexer.parseAndIndex(text);
+  // final contextDetector = ContextDetector(
+  //   index: index,
+  //   //indexLoader: indexLoader,
+  // );
+  // final context = await contextDetector.detect(
+  //   text: text,
+  //   cursorOffset: cursorOffset,
+  // );
 
-    final aggregator = CompletionAggregator(
-      localSuggestion: localSuggestion,
-      indexedSuggestion: indexedSuggestion,
-    );
-    final candidates = await aggregator.suggest(context: context);
-    final filteredCandidates = candidates.where(
-      (candidate) => potentiallyMatches(context, candidate),
-    );
-    final items = rankCandidates(filteredCandidates, prefix)
-        .take(maxCompletionItems)
-        .map(
-          (candidate) =>
-              CompletionItem(label: candidate.name, insertText: candidate.name),
-        )
-        .toList();
+  // Future<CompletionList> completeFor(String prefix) async {
+  //   final localSuggestion = TreeSitterCompletionService(index: index);
+  //   final indexedSuggestion = SuggestionFromIndexedFiles(
+  //     indexLoader: indexLoader,
+  //   );
 
-    return CompletionList(
-      isIncomplete: filteredCandidates.length > maxCompletionItems,
-      items: items,
-    );
-  }
+  //   final aggregator = CompletionAggregator(
+  //     localSuggestion: localSuggestion,
+  //     indexedSuggestion: indexedSuggestion,
+  //   );
+  //   final candidates = await aggregator.suggest(context: context);
+  //   final filteredCandidates = candidates.where(
+  //     (candidate) => potentiallyMatches(context, candidate),
+  //   );
+  //   final items = rankCandidates(filteredCandidates, prefix)
+  //       .take(maxCompletionItems)
+  //       .map(
+  //         (candidate) =>
+  //             CompletionItem(label: candidate.name, insertText: candidate.name),
+  //       )
+  //       .toList();
 
-  return switch (context) {
-    CompletionContextNone() => CompletionList(
-      isIncomplete: false,
-      items: <CompletionItem>[],
-    ),
-    CompletionContextMember(:final prefix) ||
-    CompletionContextTopLevel(:final prefix) => completeFor(prefix),
-  };
+  //   return CompletionList(
+  //     isIncomplete: filteredCandidates.length > maxCompletionItems,
+  //     items: items,
+  //   );
+  // }
+
+  // return switch (context) {
+  //   CompletionContextNone() => CompletionList(
+  //     isIncomplete: false,
+  //     items: <CompletionItem>[],
+  //   ),
+  //   CompletionContextMember(:final prefix) ||
+  //   CompletionContextTopLevel(:final prefix) => completeFor(prefix),
+  // };
 }
 
 /// Converts a line and character position to a byte offset within the text.
@@ -204,44 +206,44 @@ Future<CompletionList> onCompletion({
 /// );
 /// print(offset); // 8 (6 for 'Hello\n' + 2 for 'Wo')
 /// ```
-int _offsetAtPosition({
-  required String text,
-  required int line,
-  required int character,
-}) {
-  if (line < 0) return 0;
+// int _offsetAtPosition({
+//   required String text,
+//   required int line,
+//   required int character,
+// }) {
+//   if (line < 0) return 0;
 
-  final lines = text.split('\n');
-  if (lines.isEmpty) return 0;
-  if (line >= lines.length) return text.length;
+//   final lines = text.split('\n');
+//   if (lines.isEmpty) return 0;
+//   if (line >= lines.length) return text.length;
 
-  var offset = 0;
-  for (var i = 0; i < line; i++) {
-    offset += lines[i].length + 1;
-  }
+//   var offset = 0;
+//   for (var i = 0; i < line; i++) {
+//     offset += lines[i].length + 1;
+//   }
 
-  final lineText = lines[line];
-  final clamped = character.clamp(0, lineText.length).toInt();
-  return offset + clamped;
-}
+//   final lineText = lines[line];
+//   final clamped = character.clamp(0, lineText.length).toInt();
+//   return offset + clamped;
+// }
 
-bool potentiallyMatches(
-  CompletionContext context,
-  CompletionCandidate candidate,
-) {
-  bool candidateNameStartsWith(String prefix) {
-    return switch (candidate) {
-      ApexTypeCandidate(:final type) => type.name.startsWithIgnoreCase(prefix),
-      MemberCandidate(:final member) => member.name.startsWithIgnoreCase(
-        prefix,
-      ),
-      LocalVariableCandidate(:final name) => name.startsWithIgnoreCase(prefix),
-    };
-  }
+// bool potentiallyMatches(
+//   CompletionContext context,
+//   CompletionCandidate candidate,
+// ) {
+//   bool candidateNameStartsWith(String prefix) {
+//     return switch (candidate) {
+//       ApexTypeCandidate(:final type) => type.name.startsWithIgnoreCase(prefix),
+//       MemberCandidate(:final member) => member.name.startsWithIgnoreCase(
+//         prefix,
+//       ),
+//       LocalVariableCandidate(:final name) => name.startsWithIgnoreCase(prefix),
+//     };
+//   }
 
-  return switch (context) {
-    CompletionContextNone() => false,
-    CompletionContextTopLevel(:final prefix) ||
-    CompletionContextMember(:final prefix) => candidateNameStartsWith(prefix),
-  };
-}
+//   return switch (context) {
+//     CompletionContextNone() => false,
+//     CompletionContextTopLevel(:final prefix) ||
+//     CompletionContextMember(:final prefix) => candidateNameStartsWith(prefix),
+//   };
+// }

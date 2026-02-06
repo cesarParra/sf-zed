@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:apex_lsp/indexing/indexer.dart';
-import 'package:apex_lsp/indexing/sfdx_workspace_locator.dart';
 import 'package:apex_lsp/message.dart';
 import 'package:apex_lsp/utils/platform.dart';
 import 'package:file/file.dart';
@@ -22,7 +21,6 @@ void main() {
   group('Indexer', () {
     late FileSystem fs;
     late FakeLspPlatform platform;
-    late SfdxWorkspaceLocator locator;
     late ApexIndexer indexer;
     late Directory workspaceRoot;
     late Uri workspaceUri;
@@ -30,12 +28,7 @@ void main() {
     setUp(() {
       fs = MemoryFileSystem();
       platform = FakeLspPlatform();
-      locator = SfdxWorkspaceLocator(fileSystem: fs, platform: platform);
-      indexer = ApexIndexer(
-        sfdxWorkspaceLocator: locator,
-        fileSystem: fs,
-        platform: platform,
-      );
+      indexer = ApexIndexer(fileSystem: fs, platform: platform);
 
       workspaceRoot = fs.directory('/repo')..createSync();
       workspaceUri = Uri.directory(workspaceRoot.path);
