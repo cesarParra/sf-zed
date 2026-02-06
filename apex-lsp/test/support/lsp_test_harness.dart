@@ -2,19 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:apex_lsp/di.dart';
 import 'package:apex_lsp/lsp_out.dart';
 import 'package:apex_lsp/utils/platform.dart';
-
-/// Initializes the dependency injection container for tests.
-///
-/// Registers an [InMemoryByteSink] and [LspOut] so that code
-/// using the `logger` (locator`<LspOut`>()) does not fail.
-void setupTestLocator() {
-  if (!locator.isRegistered<LspOut>()) {
-    locator.registerSingleton<LspOut>(LspOut(output: InMemoryByteSink()));
-  }
-}
 
 /// Captures bytes written by [LspOut] into an in-memory buffer.
 ///

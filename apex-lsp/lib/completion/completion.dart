@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:apex_lsp/completion/completion_aggregator.dart';
 import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';

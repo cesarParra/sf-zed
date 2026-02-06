@@ -5,11 +5,7 @@ import 'package:apex_lsp/indexing/local_indexer.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:test/test.dart';
 
-import '../../support/lsp_test_harness.dart';
-
 void main() {
-  setUpAll(setupTestLocator);
-
   final libPath = Platform.environment['TS_SFAPEX_LIB'];
 
   final bindings = TreeSitterBindings.load(path: libPath);

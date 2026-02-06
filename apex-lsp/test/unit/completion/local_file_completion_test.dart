@@ -4,10 +4,7 @@
 // declared at the root of the same file, or a completing
 // members from a single class.
 
-import 'dart:io';
-
 import 'package:apex_lsp/completion/completion.dart';
-import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/message.dart';
 import 'package:test/test.dart';
@@ -72,20 +69,6 @@ TextWithPosition extractCursorPosition(String text) {
 }
 
 void main() {
-  // setUpAll(setupTestLocator);
-
-  // final libPath = Platform.environment['TS_SFAPEX_LIB'];
-
-  // late LocalIndexer indexer;
-
-  // setUp(() {
-  //   final bindings = TreeSitterBindings.load(path: libPath);
-  //   indexer = LocalIndexer(bindings: bindings);
-  // });
-  //
-  final libPath = Platform.environment['TS_SFAPEX_LIB'];
-  final bindings = TreeSitterBindings.load(path: libPath);
-
   Future<CompletionList> complete(
     TextWithPosition textWithPosition, {
     required List<IndexedType> types,
