@@ -5,10 +5,7 @@ import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/documents/open_documents.dart';
 import 'package:apex_lsp/indexing/indexer.dart';
 import 'package:apex_lsp/indexing/local_indexer.dart';
-import 'package:apex_lsp/indexing/revamped.dart';
-import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
 import 'package:apex_lsp/initialization_status.dart';
-import 'package:get_it/get_it.dart';
 
 import 'lsp_out.dart';
 import 'message.dart';

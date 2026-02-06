@@ -1,5 +1,4 @@
 import 'package:apex_lsp/completion/helpers.dart';
-import 'package:apex_lsp/indexing/revamped.dart';
 
 sealed class CompletionContext {
   final String prefix;
@@ -52,13 +51,7 @@ final class CompletionContextMember extends CompletionContext {
 }
 
 final class ContextDetector {
-  ContextDetector({
-    required List<IndexedType> index,
-    // required IndexLoader indexLoader,
-  }) : _index = index;
-
-  final List<IndexedType> _index;
-  //final IndexLoader _indexLoader;
+  const ContextDetector();
 
   Future<CompletionContext> detect({
     required String text,

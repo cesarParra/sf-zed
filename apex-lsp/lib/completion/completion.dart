@@ -131,7 +131,7 @@ Future<CompletionList> onCompletion({
     character: position.character,
   );
 
-  final contextDetector = ContextDetector(index: index);
+  final contextDetector = ContextDetector();
   final context = await contextDetector.detect(
     text: text,
     cursorOffset: cursorOffset,

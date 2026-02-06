@@ -8,7 +8,6 @@ import 'dart:io';
 
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
-import 'package:apex_lsp/indexing/local_indexer.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/message.dart';
 import 'package:test/test.dart';
@@ -135,7 +134,19 @@ void main() {
     expect(completionList.items, contains(CompletionItem(label: 'Baz')));
   });
 
-  // TODO: filters by name
+  test('autocompletes all enum values by name', () async {
+    final enumType = IndexedEnum(
+      'Foo',
+      values: ['Bar'.enumValueMember(), 'Other'.enumValueMember()],
+    );
+    final completionList = await complete(
+      extractCursorPosition('Foo.B{cursor}'),
+      types: [enumType],
+    );
+
+    expect(completionList.items, hasLength(1));
+    expect(completionList.items, contains(CompletionItem(label: 'Bar')));
+  });
 
   // ===========================DISCARD
   //   group('root scope', () {
