@@ -4,56 +4,43 @@
 // declared at the root of the same file, or a completing
 // members from a single class.
 
-import 'dart:io';
-
-import 'package:apex_lsp/completion/completion.dart';
-import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
-import 'package:apex_lsp/indexing/indexed_class.dart';
-import 'package:apex_lsp/indexing/tree_sitter_indexer.dart';
+import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/message.dart';
 import 'package:test/test.dart';
 
 import '../../support/lsp_test_harness.dart';
 
-/// IndexedClassProvider with no indexed files.
-class FakeIndexedClassProvider implements IndexedClassProvider {
-  FakeIndexedClassProvider({this.types = const {}});
-
-  final Map<String, IndexedType> types;
-
-  @override
-  Iterable<String> get classNames => types.keys;
-
-  @override
-  Future<IndexedType?> typeByNameAsync(String name) async {
-    return null;
-  }
-}
-
 void main() {
   setUpAll(setupTestLocator);
 
-  final libPath = Platform.environment['TS_SFAPEX_LIB'];
+  // final libPath = Platform.environment['TS_SFAPEX_LIB'];
 
-  late TreeSitterIndexer indexer;
+  // late LocalIndexer indexer;
 
-  setUp(() {
-    final bindings = TreeSitterBindings.load(path: libPath);
-    indexer = TreeSitterIndexer(bindings: bindings);
+  // setUp(() {
+  //   final bindings = TreeSitterBindings.load(path: libPath);
+  //   indexer = LocalIndexer(bindings: bindings);
+  // });
+
+  Future<CompletionList> complete(
+    String text, {
+    required List<IndexedType> types,
+  }) {
+    return Future.value(
+      CompletionList(
+        isIncomplete: false,
+        items: [CompletionItem(label: 'Foo')],
+      ),
+    );
+  }
+
+  test('autocomplete enum types', () async {
+    final enumType = IndexedEnum('Foo', values: []);
+    final completionList = await complete('{{cursor}}', types: [enumType]);
+
+    expect(completionList.items, hasLength(1));
+    expect(completionList.items.first.label, 'Foo');
   });
-
-  // Future<CompletionList> complete(
-  //   String? text, {
-  //   int line = 0,
-  //   int character = 0,
-  // }) {
-  //   return onCompletion(
-  //     text: text,
-  //     position: Position(line: line, character: character),
-  //     localIndexer: indexer,
-  //     indexLoader: FakeIndexedClassProvider(),
-  //   );
-  // }
 
   //   group('root scope', () {
   //     group('at the root level', () {

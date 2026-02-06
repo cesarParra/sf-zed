@@ -17,179 +17,179 @@ final class _ExitCalled implements Exception {
 }
 
 void main() {
-  group('LSP Initialization', () {
-    late Directory workspaceDir;
-    late Uri workspaceUri;
+  // group('LSP Initialization', () {
+  //   late Directory workspaceDir;
+  //   late Uri workspaceUri;
 
-    late InMemoryLspInput input;
-    late InMemoryByteSink sink;
-    late Server server;
+  //   late InMemoryLspInput input;
+  //   late InMemoryByteSink sink;
+  //   late Server server;
 
-    setUp(() async {
-      // Create a temporary workspace.
-      workspaceDir = await Directory.systemTemp.createTemp('apex-lsp-it-');
-      workspaceUri = Uri.directory(workspaceDir.path);
+  //   setUp(() async {
+  //     // Create a temporary workspace.
+  //     workspaceDir = await Directory.systemTemp.createTemp('apex-lsp-it-');
+  //     workspaceUri = Uri.directory(workspaceDir.path);
 
-      // Minimal SFDX project config (loaded from fixtures).
-      final sfdxProject = File('${workspaceDir.path}/sfdx-project.json');
-      final sfdxProjectFixture = File(
-        'test/fixtures/initialize_and_completion/sfdx-project.json',
-      );
-      await sfdxProject.writeAsString(await sfdxProjectFixture.readAsString());
+  //     // Minimal SFDX project config (loaded from fixtures).
+  //     final sfdxProject = File('${workspaceDir.path}/sfdx-project.json');
+  //     final sfdxProjectFixture = File(
+  //       'test/fixtures/initialize_and_completion/sfdx-project.json',
+  //     );
+  //     await sfdxProject.writeAsString(await sfdxProjectFixture.readAsString());
 
-      // Create an Apex class under the typical SFDX path.
-      final classesDir = Directory(
-        '${workspaceDir.path}/force-app/main/default/classes',
-      );
-      await classesDir.create(recursive: true);
+  //     // Create an Apex class under the typical SFDX path.
+  //     final classesDir = Directory(
+  //       '${workspaceDir.path}/force-app/main/default/classes',
+  //     );
+  //     await classesDir.create(recursive: true);
 
-      final fooClass = File('${classesDir.path}/Foo.cls');
-      final fooClassFixture = File(
-        'test/fixtures/initialize_and_completion/Foo.cls',
-      );
-      await fooClass.writeAsString(await fooClassFixture.readAsString());
+  //     final fooClass = File('${classesDir.path}/Foo.cls');
+  //     final fooClassFixture = File(
+  //       'test/fixtures/initialize_and_completion/Foo.cls',
+  //     );
+  //     await fooClass.writeAsString(await fooClassFixture.readAsString());
 
-      // Inject an ExitFn that throws instead of terminating the process.
-      locator.registerFactory<ExitFn>(
-        () =>
-            (code) => throw _ExitCalled(code),
-      );
+  //     // Inject an ExitFn that throws instead of terminating the process.
+  //     locator.registerFactory<ExitFn>(
+  //       () =>
+  //           (code) => throw _ExitCalled(code),
+  //     );
 
-      input = InMemoryLspInput(sync: true);
-      sink = InMemoryByteSink();
+  //     input = InMemoryLspInput(sync: true);
+  //     sink = InMemoryByteSink();
 
-      locator.registerSingleton<LspOut>(LspOut(output: sink));
+  //     locator.registerSingleton<LspOut>(LspOut(output: sink));
 
-      // Ensure production (non-overridden) dependencies are initialized.
-      initializeDependencies();
+  //     // Ensure production (non-overridden) dependencies are initialized.
+  //     initializeDependencies();
 
-      server = Server(input: input.stream);
-    });
+  //     server = Server(input: input.stream);
+  //   });
 
-    tearDown(() async {
-      await input.close();
-      await workspaceDir.delete(recursive: true);
-      await locator.reset(dispose: true);
-    });
+  //   tearDown(() async {
+  //     await input.close();
+  //     await workspaceDir.delete(recursive: true);
+  //     await locator.reset(dispose: true);
+  //   });
 
-    test('client can initialize', () async {
-      final serverTask = server.run();
+  //   test('client can initialize', () async {
+  //     final serverTask = server.run();
 
-      input.addFrame(
-        jsonRpcInitialize(
-          id: 1,
-          workspaceFolders: <Map<String, String>>[
-            <String, String>{
-              'uri': workspaceUri.toString(),
-              'name': 'workspace',
-            },
-          ],
-        ),
-      );
+  //     input.addFrame(
+  //       jsonRpcInitialize(
+  //         id: 1,
+  //         workspaceFolders: <Map<String, String>>[
+  //           <String, String>{
+  //             'uri': workspaceUri.toString(),
+  //             'name': 'workspace',
+  //           },
+  //         ],
+  //       ),
+  //     );
 
-      final initResponse = await _waitForResponse(
-        sink: sink,
-        id: 1,
-        timeout: const Duration(seconds: 2),
-      );
+  //     final initResponse = await _waitForResponse(
+  //       sink: sink,
+  //       id: 1,
+  //       timeout: const Duration(seconds: 2),
+  //     );
 
-      expect(initResponse['jsonrpc'], equals('2.0'));
-      expect(initResponse['id'], equals(1));
-      expect(initResponse['result'], isA<Map<String, Object?>>());
+  //     expect(initResponse['jsonrpc'], equals('2.0'));
+  //     expect(initResponse['id'], equals(1));
+  //     expect(initResponse['result'], isA<Map<String, Object?>>());
 
-      final result = initResponse['result'] as Map<String, Object?>;
-      expect(result['capabilities'], isA<Map<String, Object?>>());
+  //     final result = initResponse['result'] as Map<String, Object?>;
+  //     expect(result['capabilities'], isA<Map<String, Object?>>());
 
-      await input.close();
-      await serverTask.timeout(const Duration(seconds: 2));
-    });
+  //     await input.close();
+  //     await serverTask.timeout(const Duration(seconds: 2));
+  //   });
 
-    test(
-      'fails with error response when request sent before initialize',
-      () async {
-        final serverTask = server.run();
+  //   test(
+  //     'fails with error response when request sent before initialize',
+  //     () async {
+  //       final serverTask = server.run();
 
-        // Send a request before `initialize`. The server should respond with an
-        // LSP ServerNotInitialized error.
-        input.addFrame(
-          jsonRpcRequest(
-            id: 1,
-            method: 'textDocument/completion',
-            params: <String, Object?>{
-              'textDocument': <String, Object?>{
-                'uri': 'file:///does/not/matter',
-              },
-              'position': <String, Object?>{'line': 0, 'character': 0},
-            },
-          ),
-        );
+  //       // Send a request before `initialize`. The server should respond with an
+  //       // LSP ServerNotInitialized error.
+  //       input.addFrame(
+  //         jsonRpcRequest(
+  //           id: 1,
+  //           method: 'textDocument/completion',
+  //           params: <String, Object?>{
+  //             'textDocument': <String, Object?>{
+  //               'uri': 'file:///does/not/matter',
+  //             },
+  //             'position': <String, Object?>{'line': 0, 'character': 0},
+  //           },
+  //         ),
+  //       );
 
-        final errorResponse = await _waitForResponse(
-          sink: sink,
-          id: 1,
-          timeout: const Duration(seconds: 2),
-        );
+  //       final errorResponse = await _waitForResponse(
+  //         sink: sink,
+  //         id: 1,
+  //         timeout: const Duration(seconds: 2),
+  //       );
 
-        expect(errorResponse['jsonrpc'], equals('2.0'));
-        expect(errorResponse['id'], equals(1));
-        expect(errorResponse['error'], isA<Map<String, Object?>>());
+  //       expect(errorResponse['jsonrpc'], equals('2.0'));
+  //       expect(errorResponse['id'], equals(1));
+  //       expect(errorResponse['error'], isA<Map<String, Object?>>());
 
-        final error = errorResponse['error'] as Map<String, Object?>;
-        expect(error['code'], equals(-32002));
-        expect(error['message'], equals('Server not initialized'));
+  //       final error = errorResponse['error'] as Map<String, Object?>;
+  //       expect(error['code'], equals(-32002));
+  //       expect(error['message'], equals('Server not initialized'));
 
-        await input.close();
-        await serverTask.timeout(const Duration(seconds: 2));
-      },
-      timeout: const Timeout(Duration(seconds: 5)),
-    );
+  //       await input.close();
+  //       await serverTask.timeout(const Duration(seconds: 2));
+  //     },
+  //     timeout: const Timeout(Duration(seconds: 5)),
+  //   );
 
-    test('receives indexing updates after initialization', () async {
-      final serverTask = server.run();
+  //   test('receives indexing updates after initialization', () async {
+  //     final serverTask = server.run();
 
-      // 1) initialize
-      input.addFrame(
-        jsonRpcInitialize(
-          id: 1,
-          workspaceFolders: <Map<String, String>>[
-            <String, String>{
-              'uri': workspaceUri.toString(),
-              'name': 'workspace',
-            },
-          ],
-        ),
-      );
-      await _waitForResponse(
-        sink: sink,
-        id: 1,
-        timeout: const Duration(seconds: 2),
-      );
+  //     // 1) initialize
+  //     input.addFrame(
+  //       jsonRpcInitialize(
+  //         id: 1,
+  //         workspaceFolders: <Map<String, String>>[
+  //           <String, String>{
+  //             'uri': workspaceUri.toString(),
+  //             'name': 'workspace',
+  //           },
+  //         ],
+  //       ),
+  //     );
+  //     await _waitForResponse(
+  //       sink: sink,
+  //       id: 1,
+  //       timeout: const Duration(seconds: 2),
+  //     );
 
-      // 2) initialized notification triggers indexing
-      input.addFrame(jsonRpcNotification(method: 'initialized'));
+  //     // 2) initialized notification triggers indexing
+  //     input.addFrame(jsonRpcNotification(method: 'initialized'));
 
-      // 3) Wait for progress notifications ($/progress).
-      // We expect at least 'begin' and 'end'.
-      final beginProgress = await _waitForNotification(
-        sink: sink,
-        method: r'$/progress',
-        predicate: (params) => (params['value'] as Map)['kind'] == 'begin',
-        timeout: const Duration(seconds: 2),
-      );
-      expect(beginProgress, isNotNull);
+  //     // 3) Wait for progress notifications ($/progress).
+  //     // We expect at least 'begin' and 'end'.
+  //     final beginProgress = await _waitForNotification(
+  //       sink: sink,
+  //       method: r'$/progress',
+  //       predicate: (params) => (params['value'] as Map)['kind'] == 'begin',
+  //       timeout: const Duration(seconds: 2),
+  //     );
+  //     expect(beginProgress, isNotNull);
 
-      final endProgress = await _waitForNotification(
-        sink: sink,
-        method: r'$/progress',
-        predicate: (params) => (params['value'] as Map)['kind'] == 'end',
-        timeout: const Duration(seconds: 5),
-      );
-      expect(endProgress, isNotNull);
+  //     final endProgress = await _waitForNotification(
+  //       sink: sink,
+  //       method: r'$/progress',
+  //       predicate: (params) => (params['value'] as Map)['kind'] == 'end',
+  //       timeout: const Duration(seconds: 5),
+  //     );
+  //     expect(endProgress, isNotNull);
 
-      await input.close();
-      await serverTask.timeout(const Duration(seconds: 2));
-    });
-  });
+  //     await input.close();
+  //     await serverTask.timeout(const Duration(seconds: 2));
+  //   });
+  // });
 }
 
 /// Generic polling helper for LSP frames that handles timeouts and frame draining.

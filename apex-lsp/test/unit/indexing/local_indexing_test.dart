@@ -27,8 +27,8 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      expect(result, isA<IndexedEnum>());
-      final enumDeclaration = result as IndexedEnum;
+      expect(result.first, isA<IndexedEnum>());
+      final enumDeclaration = result.first as IndexedEnum;
       expect(enumDeclaration.name, 'Foo');
     });
 
@@ -37,8 +37,8 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      expect(result, isA<IndexedEnum>());
-      final enumDeclaration = result as IndexedEnum;
+      expect(result.first, isA<IndexedEnum>());
+      final enumDeclaration = result.first as IndexedEnum;
       expect(enumDeclaration.location, isNotNull);
       expect(enumDeclaration.location, equals((0, text.length)));
     });
@@ -48,8 +48,8 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      expect(result, isA<IndexedEnum>());
-      final enumDeclaration = result as IndexedEnum;
+      expect(result.first, isA<IndexedEnum>());
+      final enumDeclaration = result.first as IndexedEnum;
       expect(enumDeclaration.values, hasLength(3));
     });
   });

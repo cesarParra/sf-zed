@@ -546,7 +546,6 @@ final class IndexLoader {
 Future<List<String>> getMemberNamesByType(
   IndexedType source,
   MemberType type,
-  IndexLoader loader,
 ) async {
   List<String> enumMembers(IndexedEnum sourceEnum) {
     return switch (type) {

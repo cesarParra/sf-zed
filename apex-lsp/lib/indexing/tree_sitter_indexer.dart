@@ -6,6 +6,7 @@ import 'package:apex_lsp/indexing/scope.dart';
 import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 import 'package:ffi/ffi.dart';
 
+@Deprecated('Use the local_indexer')
 class TreeSitterIndexer {
   TreeSitterIndexer({required TreeSitterBindings bindings})
     : _bindings = bindings,

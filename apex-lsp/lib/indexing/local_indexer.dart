@@ -19,7 +19,7 @@ class LocalIndexer {
   final TreeSitterBindings _bindings;
   final Pointer<TSParser> _parser;
 
-  IndexedType parseAndIndex(String text) {
+  List<IndexedType> parseAndIndex(String text) {
     final bindings = _bindings;
     final parser = _parser;
     final sourceBytes = utf8.encode(text);
@@ -44,7 +44,7 @@ class LocalIndexer {
       final indexedResult = _visit(root, bytes);
 
       bindings.ts_tree_delete(tree);
-      return indexedResult[0];
+      return indexedResult;
     } finally {
       malloc.free(sourcePtr);
     }

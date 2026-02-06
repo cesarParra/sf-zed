@@ -268,7 +268,6 @@ final class SuggestionFromIndexedFiles implements CompletionSuggestion {
       final memberNamesForType = await getMemberNamesByType(
         workspaceType,
         memberType,
-        _indexLoader,
       );
 
       return memberNamesForType.map((memberName) {
