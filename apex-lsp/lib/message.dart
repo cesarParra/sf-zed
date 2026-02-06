@@ -89,7 +89,8 @@ final class CompletionItem {
   final String label;
   final String? insertText;
 
-  const CompletionItem({required this.label, this.insertText});
+  const CompletionItem({required this.label, String? insertText})
+    : insertText = insertText ?? label;
 
   Map<String, Object?> toJson() => _$CompletionItemToJson(this);
 
@@ -97,6 +98,17 @@ final class CompletionItem {
   String toString() {
     return 'CompletionItem{label: $label, insertText: $insertText}';
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CompletionItem &&
+          runtimeType == other.runtimeType &&
+          label == other.label &&
+          insertText == other.insertText;
+
+  @override
+  int get hashCode => Object.hash(label, insertText);
 }
 
 @JsonSerializable(createFactory: false)

@@ -165,10 +165,14 @@ final class Server {
     required CompletionParams params,
     required LocalIndexer localIndexer,
   }) async {
+    final text = _openDocuments.get(params.textDocument.uri);
+    if (text == null) {
+      return;
+    }
     final completionList = await onCompletion(
-      text: _openDocuments.get(params.textDocument.uri),
+      text: text,
       position: params.position,
-      localIndexer: localIndexer,
+      index: localIndexer.parseAndIndex(text),
     );
     await _output.sendResponse(id: id, result: completionList.toJson());
   }

@@ -1,17 +1,13 @@
-import 'dart:convert';
-
 import 'package:apex_lsp/completion/helpers.dart';
-import 'package:apex_lsp/indexing/local_indexer.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
-import 'package:apex_lsp/indexing/scope.dart';
-import 'package:apex_lsp/indexing/tree_sitter_completion_types.dart';
 
 sealed class CompletionContext {
-  const CompletionContext();
+  final String prefix;
+  const CompletionContext({required this.prefix});
 }
 
 final class CompletionContextNone extends CompletionContext {
-  const CompletionContextNone();
+  const CompletionContextNone() : super(prefix: '');
 
   @override
   String toString() {
@@ -21,12 +17,11 @@ final class CompletionContextNone extends CompletionContext {
 
 final class CompletionContextTopLevel extends CompletionContext {
   const CompletionContextTopLevel({
-    required this.prefix,
+    required super.prefix,
     required this.text,
     required this.cursorOffset,
   });
 
-  final String prefix;
   final String text;
   final int cursorOffset;
 
@@ -40,14 +35,13 @@ final class CompletionContextMember extends CompletionContext {
   const CompletionContextMember({
     required this.objectName,
     required this.typeName,
-    required this.prefix,
+    required super.prefix,
     required this.text,
     required this.cursorOffset,
   });
 
   final String? typeName;
   final String? objectName;
-  final String prefix;
   final String text;
   final int cursorOffset;
 
@@ -59,137 +53,138 @@ final class CompletionContextMember extends CompletionContext {
 
 final class ContextDetector {
   ContextDetector({
-    required LocalIndexer index,
+    required List<IndexedType> index,
     // required IndexLoader indexLoader,
   }) : _index = index;
 
-  final LocalIndexer _index;
+  final List<IndexedType> _index;
   //final IndexLoader _indexLoader;
 
   Future<CompletionContext> detect({
     required String text,
     required int cursorOffset,
   }) async {
-    //if (text.isEmpty || cursorOffset <= 0) {
-    return const CompletionContextNone();
-    //}
+    print('text $text | offset $cursorOffset');
 
-    // final prefix = text.extractIndentifierPrefixAt(cursorOffset);
+    final prefix = text.extractIndentifierPrefixAt(cursorOffset);
+    print('prefix identified $prefix');
 
-    // // Member access: "foo." or "foo?."
-    // var dotIndex = _findMemberDotIndex(text, cursorOffset);
+    // Member access: "foo." or "foo?."
+    var dotIndex = _findMemberDotIndex(text, cursorOffset);
+    print('dot index $dotIndex');
 
-    // // If we're typing a member name (e.g., "foo.ba"), look just before the prefix
-    // // to detect the member access.
-    // if (dotIndex == null && prefix.isNotEmpty) {
-    //   final probeIndex = cursorOffset - prefix.length - 1;
-    //   if (probeIndex >= 0) {
-    //     final ch = text.codeUnitAt(probeIndex);
-    //     if (ch == 0x2E /* . */ ) {
-    //       dotIndex = probeIndex;
-    //     } else if (ch == 0x3F /* ? */ ) {
-    //       final next = probeIndex + 1;
-    //       if (next < text.length && text.codeUnitAt(next) == 0x2E /* . */ ) {
-    //         dotIndex = next;
-    //       }
-    //     }
-    //   }
-    //}
+    // If we're typing a member name (e.g., "foo.ba"), look just before the prefix
+    // to detect the member access.
+    if (dotIndex == null && prefix.isNotEmpty) {
+      final probeIndex = cursorOffset - prefix.length - 1;
+      if (probeIndex >= 0) {
+        final ch = text.codeUnitAt(probeIndex);
+        if (ch == 0x2E /* . */ ) {
+          dotIndex = probeIndex;
+        } else if (ch == 0x3F /* ? */ ) {
+          final next = probeIndex + 1;
+          if (next < text.length && text.codeUnitAt(next) == 0x2E /* . */ ) {
+            dotIndex = next;
+          }
+        }
+      }
+    }
 
-    // if (dotIndex != null) {
-    //   var objectIndex = dotIndex - 1;
-    //   if (objectIndex >= 0 && text.codeUnitAt(objectIndex) == 0x3F /* ? */ ) {
-    //     objectIndex--;
-    //   }
-    //   final objectName = _extractIdentifierBefore(text, objectIndex);
-    //   if (objectName == null) {
-    //     return CompletionContextNone();
-    //   }
+    if (dotIndex != null) {
+      var objectIndex = dotIndex - 1;
+      if (objectIndex >= 0 && text.codeUnitAt(objectIndex) == 0x3F /* ? */ ) {
+        objectIndex--;
+      }
+      final objectName = _extractIdentifierBefore(text, objectIndex);
+      if (objectName == null) {
+        return CompletionContextNone();
+      }
 
-    //   final cursorByteOffset = _byteOffset(text, cursorOffset);
-    //   final typeName =
-    //       (await _resolveTypeForObject(
-    //         objectName: objectName,
-    //         cursorByteOffset: cursorByteOffset,
-    //       )) ??
-    //       objectName;
-    //   return CompletionContextMember(
-    //     typeName: typeName,
-    //     objectName: objectName,
-    //     prefix: prefix,
-    //     text: text,
-    //     cursorOffset: cursorOffset,
-    //   );
-    // }
+      // final cursorByteOffset = _byteOffset(text, cursorOffset);
+      // final typeName =
+      //     (await _resolveTypeForObject(
+      //       objectName: objectName,
+      //       cursorByteOffset: cursorByteOffset,
+      //     )) ??
+      //     objectName;
+      return CompletionContextMember(
+        //typeName: typeName,
+        typeName: objectName,
+        objectName: objectName,
+        prefix: prefix,
+        text: text,
+        cursorOffset: cursorOffset,
+      );
+    }
 
-    // return CompletionContextTopLevel(
-    //   prefix: prefix,
-    //   text: text,
-    //   cursorOffset: cursorOffset,
-    // );
+    return CompletionContextTopLevel(
+      prefix: prefix,
+      text: text,
+      cursorOffset: cursorOffset,
+    );
   }
 
-  // int? _findMemberDotIndex(String text, int cursorOffset) {
-  //   var i = cursorOffset - 1;
-  //   if (i < 0) return null;
+  int? _findMemberDotIndex(String text, int cursorOffset) {
+    var i = cursorOffset - 1;
+    if (i < 0) return null;
 
-  //   // Skip whitespace between dot and cursor (rare but possible).
-  //   while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
-  //     i--;
-  //   }
-  //   if (i < 0) return null;
+    // Skip whitespace between dot and cursor (rare but possible).
+    while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
+      i--;
+    }
+    if (i < 0) return null;
 
-  //   final ch = text.codeUnitAt(i);
+    final ch = text.codeUnitAt(i);
 
-  //   if (ch == 0x2E /* . */ ) {
-  //     return i;
-  //   }
+    if (ch == 0x2E /* . */ ) {
+      return i;
+    }
 
-  //   if (ch == 0x3F /* ? */ ) {
-  //     final next = i + 1;
-  //     if (next < text.length && text.codeUnitAt(next) == 0x2E /* . */ ) {
-  //       return next;
-  //     }
+    if (ch == 0x3F /* ? */ ) {
+      final next = i + 1;
+      if (next < text.length && text.codeUnitAt(next) == 0x2E /* . */ ) {
+        return next;
+      }
 
-  //     final prev = i - 1;
-  //     if (prev >= 0 && text.codeUnitAt(prev) == 0x2E /* . */ ) {
-  //       return prev;
-  //     }
-  //   }
+      final prev = i - 1;
+      if (prev >= 0 && text.codeUnitAt(prev) == 0x2E /* . */ ) {
+        return prev;
+      }
+    }
 
-  //   return null;
-  // }
+    return null;
+  }
 
-  // bool _isWhitespace(int ch) {
-  //   return ch == 32 || ch == 9 || ch == 10 || ch == 13;
-  // }
+  bool _isWhitespace(int ch) {
+    return ch == 32 || ch == 9 || ch == 10 || ch == 13;
+  }
 
-  // String? _extractIdentifierBefore(String text, int index) {
-  //   var i = index;
-  //   while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
-  //     i--;
-  //   }
-  //   if (i < 0) return null;
+  String? _extractIdentifierBefore(String text, int index) {
+    var i = index;
+    while (i >= 0 && _isWhitespace(text.codeUnitAt(i))) {
+      i--;
+    }
+    if (i < 0) return null;
 
-  //   final identifier = text.extractQualifiedIdentifierAt(i + 1);
-  //   return identifier.isNotEmpty ? identifier : null;
-  // }
+    final identifier = text.extractQualifiedIdentifierAt(i + 1);
+    return identifier.isNotEmpty ? identifier : null;
+  }
 
   // Future<String?> _resolveTypeForObject({
   //   required String objectName,
   //   required int cursorByteOffset,
   // }) async {
-  //   if (objectName.toLowerCase() == 'this') {
-  //     final containing = _findTypeAtOffset(_index, cursorByteOffset);
-  //     return containing?.name;
-  //   }
-  //   if (objectName.toLowerCase() == 'super') {
-  //     final containing = _findTypeAtOffset(_index, cursorByteOffset);
-  //     if (containing is ApexClassInfo) {
-  //       return containing.superclass ?? containing.name;
-  //     }
-  //     return containing?.name;
-  //   }
+  //   // if (objectName.toLowerCase() == 'this') {
+  //   //   final containing = _findTypeAtOffset(_index, cursorByteOffset);
+  //   //   return containing?.name;
+  //   // }
+  //   // if (objectName.toLowerCase() == 'super') {
+  //   //   final containing = _findTypeAtOffset(_index, cursorByteOffset);
+  //   //   if (containing is ApexClassInfo) {
+  //   //     return containing.superclass ?? containing.name;
+  //   //   }
+  //   //   return containing?.name;
+  //   // }
 
   //   final variable = _resolveVariable(_index, objectName, cursorByteOffset);
   //   if (variable != null) {

@@ -85,6 +85,20 @@ final class EnumValueMember extends Member {
   bool get isStatic => true;
 
   EnumValueMember(super.name);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EnumValueMember &&
+          runtimeType == other.runtimeType &&
+          name == other.name;
+
+  @override
+  int get hashCode => name.hashCode;
+}
+
+extension IndexedTypeStringExtensions on String {
+  EnumValueMember enumValueMember() => EnumValueMember(this);
 }
 
 final class Indexer {
