@@ -57,14 +57,10 @@ final class ContextDetector {
     required String text,
     required int cursorOffset,
   }) async {
-    print('text $text | offset $cursorOffset');
-
     final prefix = text.extractIndentifierPrefixAt(cursorOffset);
-    print('prefix identified $prefix');
 
     // Member access: "foo." or "foo?."
     var dotIndex = _findMemberDotIndex(text, cursorOffset);
-    print('dot index $dotIndex');
 
     // If we're typing a member name (e.g., "foo.ba"), look just before the prefix
     // to detect the member access.
