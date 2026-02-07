@@ -80,54 +80,56 @@ void main() {
     );
   }
 
-  test('autocomplete enum types on empty file', () async {
-    final enumType = IndexedEnum('Foo', values: []);
-    final completionList = await complete(
-      extractCursorPosition('{cursor}'),
-      types: [enumType],
-    );
+  group('enums', () {
+    test('autocomplete enum types on empty file', () async {
+      final enumType = IndexedEnum('Foo', values: []);
+      final completionList = await complete(
+        extractCursorPosition('{cursor}'),
+        types: [enumType],
+      );
 
-    expect(completionList.items, hasLength(1));
-    expect(completionList.items.first.label, 'Foo');
-  });
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'Foo');
+    });
 
-  test('autocomplete enum types when typing a top level name', () async {
-    final enumType = IndexedEnum('Foo', values: []);
-    final completionList = await complete(
-      extractCursorPosition('F{cursor}'),
-      types: [enumType],
-    );
+    test('autocomplete enum types when typing a top level name', () async {
+      final enumType = IndexedEnum('Foo', values: []);
+      final completionList = await complete(
+        extractCursorPosition('F{cursor}'),
+        types: [enumType],
+      );
 
-    expect(completionList.items, hasLength(1));
-    expect(completionList.items.first.label, 'Foo');
-  });
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'Foo');
+    });
 
-  test('autocompletes all enum values', () async {
-    final enumType = IndexedEnum(
-      'Foo',
-      values: ['Bar'.enumValueMember(), 'Baz'.enumValueMember()],
-    );
-    final completionList = await complete(
-      extractCursorPosition('Foo.{cursor}'),
-      types: [enumType],
-    );
+    test('autocompletes all enum values', () async {
+      final enumType = IndexedEnum(
+        'Foo',
+        values: ['Bar'.enumValueMember(), 'Baz'.enumValueMember()],
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.{cursor}'),
+        types: [enumType],
+      );
 
-    expect(completionList.items, hasLength(2));
-    expect(completionList.items, contains(CompletionItem(label: 'Bar')));
-    expect(completionList.items, contains(CompletionItem(label: 'Baz')));
-  });
+      expect(completionList.items, hasLength(2));
+      expect(completionList.items, contains(CompletionItem(label: 'Bar')));
+      expect(completionList.items, contains(CompletionItem(label: 'Baz')));
+    });
 
-  test('autocompletes all enum values by name', () async {
-    final enumType = IndexedEnum(
-      'Foo',
-      values: ['Bar'.enumValueMember(), 'Other'.enumValueMember()],
-    );
-    final completionList = await complete(
-      extractCursorPosition('Foo.B{cursor}'),
-      types: [enumType],
-    );
+    test('autocompletes all enum values by name', () async {
+      final enumType = IndexedEnum(
+        'Foo',
+        values: ['Bar'.enumValueMember(), 'Other'.enumValueMember()],
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.B{cursor}'),
+        types: [enumType],
+      );
 
-    expect(completionList.items, hasLength(1));
-    expect(completionList.items, contains(CompletionItem(label: 'Bar')));
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items, contains(CompletionItem(label: 'Bar')));
+    });
   });
 }
