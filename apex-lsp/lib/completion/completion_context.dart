@@ -89,15 +89,7 @@ final class ContextDetector {
         return CompletionContextNone();
       }
 
-      // final cursorByteOffset = _byteOffset(text, cursorOffset);
-      // final typeName =
-      //     (await _resolveTypeForObject(
-      //       objectName: objectName,
-      //       cursorByteOffset: cursorByteOffset,
-      //     )) ??
-      //     objectName;
       return CompletionContextMember(
-        //typeName: typeName,
         typeName: objectName,
         objectName: objectName,
         prefix: prefix,
@@ -158,89 +150,4 @@ final class ContextDetector {
     final identifier = text.extractQualifiedIdentifierAt(i + 1);
     return identifier.isNotEmpty ? identifier : null;
   }
-
-  // Future<String?> _resolveTypeForObject({
-  //   required String objectName,
-  //   required int cursorByteOffset,
-  // }) async {
-  //   // if (objectName.toLowerCase() == 'this') {
-  //   //   final containing = _findTypeAtOffset(_index, cursorByteOffset);
-  //   //   return containing?.name;
-  //   // }
-  //   // if (objectName.toLowerCase() == 'super') {
-  //   //   final containing = _findTypeAtOffset(_index, cursorByteOffset);
-  //   //   if (containing is ApexClassInfo) {
-  //   //     return containing.superclass ?? containing.name;
-  //   //   }
-  //   //   return containing?.name;
-  //   // }
-
-  //   final variable = _resolveVariable(_index, objectName, cursorByteOffset);
-  //   if (variable != null) {
-  //     return variable.typeName;
-  //   }
-
-  //   // If the object name itself is a class name, treat as that type.
-  //   final typeInfo = _index.typeByName(objectName);
-  //   if (typeInfo != null) {
-  //     // Return the qualified name to ensure it can be resolved again later.
-  //     return objectName;
-  //   }
-
-  //   final indexedType = await _indexLoader.getIndexedType(objectName);
-  //   if (indexedType != null) {
-  //     return objectName;
-  //   }
-
-  //   return null;
-  // }
-
-  // int _byteOffset(String text, int codeUnitOffset) {
-  //   if (codeUnitOffset <= 0) return 0;
-  //   if (codeUnitOffset >= text.length) {
-  //     return utf8.encode(text).length;
-  //   }
-  //   return utf8.encode(text.substring(0, codeUnitOffset)).length;
-  // }
-
-  // TypeInfo? _findTypeAtOffset(ApexDocumentIndex index, int offset) {
-  //   for (final typeInfo in index.rootScope.definitions.whereType<TypeInfo>()) {
-  //     if (offset >= typeInfo.startByte && offset <= typeInfo.endByte) {
-  //       return typeInfo;
-  //     }
-  //   }
-  //   return null;
-  // }
-
-  // ApexVariableInfo? _resolveVariable(
-  //   ApexDocumentIndex index,
-  //   String name,
-  //   int cursorByteOffset,
-  // ) {
-  //   var scope = _findScope(index.rootScope, cursorByteOffset);
-  //   while (scope != null) {
-  //     for (final def in scope.definitions) {
-  //       if (def is ApexVariableInfo && def.name == name) {
-  //         if (def.startByte < cursorByteOffset) {
-  //           return def;
-  //         }
-  //       }
-  //     }
-  //     scope = scope.parent;
-  //   }
-  //   return null;
-  // }
-
-  // Scope? _findScope(Scope scope, int offset) {
-  //   if (offset < scope.startByte || offset > scope.endByte) {
-  //     return null;
-  //   }
-
-  //   for (final child in scope.children) {
-  //     final result = _findScope(child, offset);
-  //     if (result != null) return result;
-  //   }
-
-  //   return scope;
-  // }
 }

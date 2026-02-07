@@ -136,40 +136,6 @@ Future<CompletionList> onCompletion({
     cursorOffset: cursorOffset,
   );
 
-  // print('context $context');
-
-  // Future<CompletionList> completeFor(String prefix) async {
-  //   // final localSuggestion = TreeSitterCompletionService(index: index);
-  //   // final indexedSuggestion = SuggestionFromIndexedFiles(
-  //   //   indexLoader: indexLoader,
-  //   // );
-
-  //   // final aggregator = CompletionAggregator(
-  //   //   localSuggestion: localSuggestion,
-  //   //   indexedSuggestion: indexedSuggestion,
-  //   // );
-  //   // final candidates = await aggregator.suggest(context: context);
-
-  //   print('prefix $prefix');
-  //   final candidates = switch (prefix) {
-  //     // When dealing with no prefix, we are dealing with an explicit request (e.g. Ctrl+Space)
-  //     // so we return all parent types.
-  //     '' =>
-  //       index
-  //           .map(
-  //             (indexedType) => ApexTypeCandidate(Local(name: indexedType.name)),
-  //           )
-  //           .toList(),
-  //     _ =>
-  //       index
-  //           .map(
-  //             (indexedType) => ApexTypeCandidate(Local(name: indexedType.name)),
-  //           )
-  //           .toList(),
-  //   };
-
-  // }
-
   List<CompletionCandidate> topLevelCandidates() {
     return index
         .map((indexedType) => ApexTypeCandidate(Local(name: indexedType.name)))
