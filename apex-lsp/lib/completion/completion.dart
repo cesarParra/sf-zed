@@ -117,7 +117,7 @@ const maxCompletionItems = 25;
 Future<CompletionList> onCompletion({
   required String? text,
   required Position position,
-  required List<IndexedType> index,
+  required List<Declaration> index,
   Rank rank = rankCandidates,
 }) async {
   if (text == null) {
@@ -137,9 +137,15 @@ Future<CompletionList> onCompletion({
   );
 
   List<CompletionCandidate> topLevelCandidates() {
-    return index
-        .map((indexedType) => ApexTypeCandidate(Local(name: indexedType.name)))
-        .toList();
+    return index.map((declaration) => switch (declaration) {
+      IndexedType() =>
+        ApexTypeCandidate(Local(name: declaration.name)),
+      IndexedVariable() =>
+        LocalVariableCandidate(declaration.name),
+      FieldMember() => LocalVariableCandidate(declaration.name),
+      MethodMember() => LocalVariableCandidate(declaration.name),
+      EnumValueMember() => LocalVariableCandidate(declaration.name),
+    }).toList();
   }
 
   List<CompletionCandidate> memberCandidates(
@@ -149,11 +155,13 @@ Future<CompletionList> onCompletion({
       return <CompletionCandidate>[];
     }
 
-    final indexedType = index.firstWhereOrNull(
-      (indexedType) =>
-          indexedType.name.toLowerCase() ==
-          memberContext.typeName!.toLowerCase(),
-    );
+    final indexedType = index
+        .whereType<IndexedType>()
+        .firstWhereOrNull(
+          (indexedType) =>
+              indexedType.name.toLowerCase() ==
+              memberContext.typeName!.toLowerCase(),
+        );
 
     return switch (indexedType) {
       null => <CompletionCandidate>[],

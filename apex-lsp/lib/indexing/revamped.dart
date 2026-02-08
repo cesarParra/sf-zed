@@ -17,23 +17,19 @@ import 'package:file/file.dart';
 
 typedef Location = (int startByte, int endByte);
 
-sealed class Member {
+sealed class Declaration {
   final String name;
   final Location? location;
-  bool get isStatic;
 
-  Member(this.name, {this.location});
+  Declaration(this.name, {this.location});
 }
 
-sealed class IndexedType extends Member {
-  @override
-  bool get isStatic => true;
-
+sealed class IndexedType extends Declaration {
   IndexedType(super.name, {super.location});
 }
 
 final class IndexedClass extends IndexedType {
-  final List<Member> members;
+  final List<Declaration> members;
   final List<Constructor> constructors;
   final String? superClass;
 
@@ -58,32 +54,24 @@ final class IndexedEnum extends IndexedType {
   IndexedEnum(super.name, {required this.values, super.location});
 }
 
-final class FieldMember extends Member {
-  final bool _isStatic;
+final class FieldMember extends Declaration {
+  final String? typeName;
+  final bool isStatic;
 
-  @override
-  bool get isStatic => _isStatic;
-
-  FieldMember(super.name, {required bool isStatic}) : _isStatic = isStatic;
+  FieldMember(super.name, {required this.isStatic, this.typeName});
 }
 
-final class MethodMember extends Member {
-  final bool _isStatic;
+final class MethodMember extends Declaration {
+  final bool isStatic;
 
-  @override
-  bool get isStatic => _isStatic;
-
-  MethodMember(super.name, {required bool isStatic}) : _isStatic = isStatic;
+  MethodMember(super.name, {required this.isStatic});
 }
 
 final class Constructor {
   Constructor();
 }
 
-final class EnumValueMember extends Member {
-  @override
-  bool get isStatic => true;
-
+final class EnumValueMember extends Declaration {
   EnumValueMember(super.name);
 
   @override
@@ -95,6 +83,27 @@ final class EnumValueMember extends Member {
 
   @override
   int get hashCode => name.hashCode;
+}
+
+final class IndexedVariable extends Declaration {
+  final String typeName;
+
+  IndexedVariable(
+    super.name, {
+    required this.typeName,
+    required Location location,
+  }) : super(location: location);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is IndexedVariable &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          typeName == other.typeName;
+
+  @override
+  int get hashCode => Object.hash(name, typeName);
 }
 
 extension IndexedTypeStringExtensions on String {
@@ -576,17 +585,25 @@ Future<List<String>> getMemberNamesByType(
     };
   }
 
+  bool isStaticDeclaration(Declaration declaration) => switch (declaration) {
+    FieldMember(:final isStatic) => isStatic,
+    MethodMember(:final isStatic) => isStatic,
+    EnumValueMember() => true,
+    IndexedType() => true,
+    IndexedVariable() => false,
+  };
+
   List<String> classMembers(IndexedClass sourceClass) {
     return switch (type) {
       .static =>
         sourceClass.members
-            .where((member) => member.isStatic)
-            .map((member) => member.name)
+            .where(isStaticDeclaration)
+            .map((declaration) => declaration.name)
             .toList(),
       .instance =>
         sourceClass.members
-            .where((member) => !member.isStatic)
-            .map((member) => member.name)
+            .where((declaration) => !isStaticDeclaration(declaration))
+            .map((declaration) => declaration.name)
             .toList(),
     };
   }

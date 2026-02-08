@@ -19,7 +19,7 @@ class LocalIndexer {
   final TreeSitterBindings _bindings;
   final Pointer<TSParser> _parser;
 
-  List<IndexedType> parseAndIndex(String text) {
+  List<Declaration> parseAndIndex(String text) {
     final bindings = _bindings;
     final parser = _parser;
     final sourceBytes = utf8.encode(text);
@@ -33,11 +33,6 @@ class LocalIndexer {
       );
 
       final root = bindings.ts_tree_root_node(tree);
-      // final rootScope = Scope(
-      //   type: ScopeType.file,
-      //   startByte: bindings.ts_node_start_byte(root),
-      //   endByte: bindings.ts_node_end_byte(root),
-      // );
 
       List<int> bytes = sourceBytes;
 
@@ -50,20 +45,23 @@ class LocalIndexer {
     }
   }
 
-  List<IndexedType> _visit(TSNode node, List<int> bytes) {
-    List<IndexedType> results = [];
+  List<Declaration> _visit(TSNode node, List<int> bytes) {
+    List<Declaration> results = [];
     final type = _nodeType(node);
 
-    if (type == 'enum_declaration') {
-      results.add(_extractEnum(node, bytes));
-    } else {
-      results.addAll(_visitChildren(node, bytes));
+    switch (type) {
+      case 'enum_declaration':
+        results.add(_extractEnum(node, bytes));
+      case 'local_variable_declaration':
+        results.addAll(_extractVariables(node, bytes));
+      default:
+        results.addAll(_visitChildren(node, bytes));
     }
     return results;
   }
 
-  List<IndexedType> _visitChildren(TSNode node, List<int> bytes) {
-    List<IndexedType> results = [];
+  List<Declaration> _visitChildren(TSNode node, List<int> bytes) {
+    List<Declaration> results = [];
     final count = _bindings.ts_node_named_child_count(node);
     for (var i = 0; i < count; i++) {
       final child = _bindings.ts_node_named_child(node, i);
@@ -79,10 +77,8 @@ class LocalIndexer {
 
   IndexedEnum _extractEnum(TSNode node, List<int> bytes) {
     final nameNode = _getField(node, 'name');
-    // if (_isNullNode(nameNode)) return null;
 
     final enumName = _nodeText(nameNode, bytes);
-    // if (enumName.isEmpty) return null;
 
     final members = <EnumValueMember>[];
     final bodyNode = _getField(node, 'body');
@@ -104,6 +100,34 @@ class LocalIndexer {
       ),
       values: members,
     );
+  }
+
+  List<IndexedVariable> _extractVariables(TSNode node, List<int> bytes) {
+    final typeNode = _getField(node, 'type');
+    final typeName = _nodeText(typeNode, bytes);
+
+    final results = <IndexedVariable>[];
+    final childCount = _bindings.ts_node_named_child_count(node);
+    for (var i = 0; i < childCount; i++) {
+      final child = _bindings.ts_node_named_child(node, i);
+      if (_nodeType(child) == 'variable_declarator') {
+        final nameNode = _getField(child, 'name');
+        final name = _nodeText(nameNode, bytes);
+        if (name.isNotEmpty) {
+          results.add(
+            IndexedVariable(
+              name,
+              typeName: typeName,
+              location: (
+                _bindings.ts_node_start_byte(child),
+                _bindings.ts_node_end_byte(child),
+              ),
+            ),
+          );
+        }
+      }
+    }
+    return results;
   }
 
   TSNode _getField(TSNode node, String fieldName) {

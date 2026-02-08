@@ -71,12 +71,12 @@ TextWithPosition extractCursorPosition(String text) {
 void main() {
   Future<CompletionList> complete(
     TextWithPosition textWithPosition, {
-    required List<IndexedType> types,
+    required List<Declaration> index,
   }) {
     return onCompletion(
       text: textWithPosition.text,
       position: textWithPosition.position,
-      index: types,
+      index: index,
     );
   }
 
@@ -85,7 +85,7 @@ void main() {
       final enumType = IndexedEnum('Foo', values: []);
       final completionList = await complete(
         extractCursorPosition('{cursor}'),
-        types: [enumType],
+        index: [enumType],
       );
 
       expect(completionList.items, hasLength(1));
@@ -96,7 +96,7 @@ void main() {
       final enumType = IndexedEnum('Foo', values: []);
       final completionList = await complete(
         extractCursorPosition('F{cursor}'),
-        types: [enumType],
+        index: [enumType],
       );
 
       expect(completionList.items, hasLength(1));
@@ -110,7 +110,7 @@ void main() {
       );
       final completionList = await complete(
         extractCursorPosition('Foo.{cursor}'),
-        types: [enumType],
+        index: [enumType],
       );
 
       expect(completionList.items, hasLength(2));
@@ -125,11 +125,63 @@ void main() {
       );
       final completionList = await complete(
         extractCursorPosition('Foo.B{cursor}'),
-        types: [enumType],
+        index: [enumType],
       );
 
       expect(completionList.items, hasLength(1));
       expect(completionList.items, contains(CompletionItem(label: 'Bar')));
+    });
+  });
+
+  group('variables', () {
+    test('autocomplete variable names at top level', () async {
+      final variable = IndexedVariable(
+        'myVar',
+        typeName: 'String',
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('{cursor}'),
+        index: [variable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'myVar');
+    });
+
+    test('autocomplete variable names with prefix', () async {
+      final variable = IndexedVariable(
+        'myVar',
+        typeName: 'String',
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('my{cursor}'),
+        index: [variable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'myVar');
+    });
+
+    test('mixed types and variables', () async {
+      final enumType = IndexedEnum('Foo', values: []);
+      final variable = IndexedVariable(
+        'fooInstance',
+        typeName: 'Foo',
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('f{cursor}'),
+        index: [enumType, variable],
+      );
+
+      expect(completionList.items, hasLength(2));
+      expect(completionList.items, contains(CompletionItem(label: 'Foo')));
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'fooInstance')),
+      );
     });
   });
 }
