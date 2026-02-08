@@ -183,5 +183,20 @@ void main() {
         contains(CompletionItem(label: 'fooInstance')),
       );
     });
+
+    test('does not autocomplete variables declared after cursor', () async {
+      // The variable is declared at bytes 20-40, but the cursor is at byte 5
+      final variable = IndexedVariable(
+        'laterVar',
+        typeName: 'String',
+        location: (20, 40),
+      );
+      final completionList = await complete(
+        extractCursorPosition('l{cursor}                                     '),
+        index: [variable],
+      );
+
+      expect(completionList.items, isEmpty);
+    });
   });
 }
