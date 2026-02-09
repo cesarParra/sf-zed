@@ -45,7 +45,7 @@ final class IndexedInterface extends IndexedType {
   final List<MethodMember> methods;
   final String? superInterface;
 
-  IndexedInterface(super.name, {required this.methods, this.superInterface});
+  IndexedInterface(super.name, {required this.methods, this.superInterface, super.location});
 }
 
 final class IndexedEnum extends IndexedType {

@@ -142,15 +142,18 @@ Future<CompletionList> onCompletion({
   }
 
   List<CompletionCandidate> topLevelCandidates() {
-    return index.where(isDeclaredBeforeCursor).map((declaration) => switch (declaration) {
-      IndexedType() =>
-        ApexTypeCandidate(Local(name: declaration.name)),
-      IndexedVariable() =>
-        LocalVariableCandidate(declaration.name),
-      FieldMember() => LocalVariableCandidate(declaration.name),
-      MethodMember() => LocalVariableCandidate(declaration.name),
-      EnumValueMember() => LocalVariableCandidate(declaration.name),
-    }).toList();
+    return index
+        .where(isDeclaredBeforeCursor)
+        .map(
+          (declaration) => switch (declaration) {
+            IndexedType() => ApexTypeCandidate(Local(name: declaration.name)),
+            IndexedVariable() => LocalVariableCandidate(declaration.name),
+            FieldMember() => LocalVariableCandidate(declaration.name),
+            MethodMember() => LocalVariableCandidate(declaration.name),
+            EnumValueMember() => LocalVariableCandidate(declaration.name),
+          },
+        )
+        .toList();
   }
 
   List<CompletionCandidate> memberCandidates(
@@ -160,18 +163,36 @@ Future<CompletionList> onCompletion({
       return <CompletionCandidate>[];
     }
 
-    final indexedType = index
-        .whereType<IndexedType>()
-        .firstWhereOrNull(
-          (indexedType) =>
-              indexedType.name.toLowerCase() ==
-              memberContext.typeName!.toLowerCase(),
+    final typeName = memberContext.typeName!;
+
+    IndexedType? findType(String name) =>
+        index.whereType<IndexedType>().firstWhereOrNull(
+          (indexedType) => indexedType.name.toLowerCase() == name.toLowerCase(),
         );
+
+    String? resolveVariableType(String name) => index
+        .whereType<IndexedVariable>()
+        .firstWhereOrNull((v) => v.name.toLowerCase() == name.toLowerCase())
+        ?.typeName;
+
+    final indexedType =
+        findType(typeName) ?? findType(resolveVariableType(typeName) ?? '');
 
     return switch (indexedType) {
       null => <CompletionCandidate>[],
       IndexedClass() => throw UnimplementedError(),
-      IndexedInterface() => throw UnimplementedError(),
+      IndexedInterface() =>
+        indexedType.methods
+            .map(
+              (method) => MemberCandidate(
+                Member(
+                  name: method.name,
+                  parentType: Local(name: indexedType.name),
+                  type: MemberType.instance,
+                ),
+              ),
+            )
+            .toList(),
       IndexedEnum() =>
         indexedType.values
             .map(

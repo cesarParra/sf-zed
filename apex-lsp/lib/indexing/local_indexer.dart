@@ -52,6 +52,8 @@ class LocalIndexer {
     switch (type) {
       case 'enum_declaration':
         results.add(_extractEnum(node, bytes));
+      case 'interface_declaration':
+        results.add(_extractInterface(node, bytes));
       case 'local_variable_declaration':
         results.addAll(_extractVariables(node, bytes));
       default:
@@ -99,6 +101,33 @@ class LocalIndexer {
         _bindings.ts_node_end_byte(node),
       ),
       values: members,
+    );
+  }
+
+  IndexedInterface _extractInterface(TSNode node, List<int> bytes) {
+    final nameNode = _getField(node, 'name');
+    final interfaceName = _nodeText(nameNode, bytes);
+
+    final methods = <MethodMember>[];
+    final bodyNode = _getField(node, 'body');
+    if (!_isNullNode(bodyNode)) {
+      final methodNodes = _collectDirectChildrenByType(bodyNode, 'method_declaration');
+      for (final methodNode in methodNodes) {
+        final methodNameNode = _getField(methodNode, 'name');
+        final name = _nodeText(methodNameNode, bytes);
+        if (name.isNotEmpty) {
+          methods.add(MethodMember(name, isStatic: false));
+        }
+      }
+    }
+
+    return IndexedInterface(
+      interfaceName,
+      methods: methods,
+      location: (
+        _bindings.ts_node_start_byte(node),
+        _bindings.ts_node_end_byte(node),
+      ),
     );
   }
 

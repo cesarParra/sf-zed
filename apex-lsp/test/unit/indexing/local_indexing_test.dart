@@ -108,4 +108,72 @@ public Enum Foo { A, B, C };
       expect(variable.location, isNotNull);
     });
   });
+
+  group('indexes interfaces', () {
+    test('indexes top level interface declaration', () {
+      final text = '''
+public interface Foo {
+  String doSomething();
+  void saySomething();
+}
+      ''';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<IndexedInterface>());
+      final interfaceDeclaration = result.first as IndexedInterface;
+      expect(interfaceDeclaration.name, 'Foo');
+    });
+
+    test('parses method declarations', () {
+      final text = '''
+public interface Foo {
+  String doSomething();
+  void saySomething();
+}
+      ''';
+
+      final result = indexer.parseAndIndex(text);
+
+      final interfaceDeclaration = result.first as IndexedInterface;
+      expect(interfaceDeclaration.methods, hasLength(2));
+      expect(interfaceDeclaration.methods[0].name, 'doSomething');
+      expect(interfaceDeclaration.methods[1].name, 'saySomething');
+    });
+
+    test('methods are marked as non-static', () {
+      final text = '''
+public interface Foo {
+  String doSomething();
+}
+      ''';
+
+      final result = indexer.parseAndIndex(text);
+
+      final interfaceDeclaration = result.first as IndexedInterface;
+      expect(interfaceDeclaration.methods.first.isStatic, isFalse);
+    });
+
+    test('index contains location of the declaration', () {
+      final text = 'public interface Foo { String doSomething(); }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final interfaceDeclaration = result.first as IndexedInterface;
+      expect(interfaceDeclaration.location, isNotNull);
+      expect(interfaceDeclaration.location, equals((0, text.length)));
+    });
+
+    test('indexes interface with no methods', () {
+      final text = 'public interface Empty { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      final interfaceDeclaration = result.first as IndexedInterface;
+      expect(interfaceDeclaration.name, 'Empty');
+      expect(interfaceDeclaration.methods, isEmpty);
+    });
+  });
 }

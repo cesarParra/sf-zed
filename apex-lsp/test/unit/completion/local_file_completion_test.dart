@@ -199,4 +199,98 @@ void main() {
       expect(completionList.items, isEmpty);
     });
   });
+
+  group('interfaces', () {
+    test('autocomplete interface types at top level', () async {
+      final interfaceType = IndexedInterface(
+        'Foo',
+        methods: [MethodMember('doSomething', isStatic: false)],
+      );
+      final completionList = await complete(
+        extractCursorPosition('{cursor}'),
+        index: [interfaceType],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'Foo');
+    });
+
+    test('autocompletes all interface methods via type name', () async {
+      final interfaceType = IndexedInterface(
+        'Foo',
+        methods: [
+          MethodMember('doSomething', isStatic: false),
+          MethodMember('saySomething', isStatic: false),
+        ],
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.{cursor}'),
+        index: [interfaceType],
+      );
+
+      expect(completionList.items, hasLength(2));
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'doSomething')),
+      );
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'saySomething')),
+      );
+    });
+
+    test('autocompletes interface methods via variable', () async {
+      final interfaceType = IndexedInterface(
+        'Foo',
+        methods: [
+          MethodMember('doSomething', isStatic: false),
+          MethodMember('saySomething', isStatic: false),
+        ],
+      );
+      final variable = IndexedVariable(
+        'myVar',
+        typeName: 'Foo',
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('myVar.{cursor}'),
+        index: [interfaceType, variable],
+      );
+
+      expect(completionList.items, hasLength(2));
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'doSomething')),
+      );
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'saySomething')),
+      );
+    });
+
+    test('autocompletes interface methods filtered by prefix', () async {
+      final interfaceType = IndexedInterface(
+        'Foo',
+        methods: [
+          MethodMember('doSomething', isStatic: false),
+          MethodMember('saySomething', isStatic: false),
+        ],
+      );
+      final variable = IndexedVariable(
+        'myVar',
+        typeName: 'Foo',
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('myVar.do{cursor}'),
+        index: [interfaceType, variable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'doSomething')),
+      );
+    });
+  });
 }
