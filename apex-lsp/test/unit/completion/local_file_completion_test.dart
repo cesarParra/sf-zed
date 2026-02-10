@@ -279,8 +279,7 @@ void main() {
       expect(completionList.items.first.label, 'paramVar');
     });
 
-    test('autocomplete members of a parameter typed as an interface',
-        () async {
+    test('autocomplete members of a parameter typed as an interface', () async {
       final interfaceType = IndexedInterface(
         TypeName('Foo'),
         methods: [
@@ -354,50 +353,51 @@ void main() {
       expect(completionList.items.first.label, 'paramVar');
     });
 
-    test('parameter is not completed when cursor is outside method body',
-        () async {
-      // Parameter at bytes 18-32, method body spans bytes 35-60
-      final parameter = IndexedVariable(
-        TypeName('paramVar'),
-        typeName: TypeName('String'),
-        location: (18, 32),
-        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 60),
-      );
-      final completionList = await complete(
-        // Cursor at byte 65, after the method body
-        extractCursorPosition(
-          '                  Foo paramVar  {                           }  p{cursor}',
-        ),
-        index: [parameter],
-      );
+    test(
+      'parameter is not completed when cursor is outside method body',
+      () async {
+        // Parameter at bytes 18-32, method body spans bytes 35-60
+        final parameter = IndexedVariable(
+          TypeName('paramVar'),
+          typeName: TypeName('String'),
+          location: (18, 32),
+          visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 60),
+        );
+        final completionList = await complete(
+          extractCursorPosition(
+            '                  Foo paramVar  {                           }  p{cursor}',
+          ),
+          index: [parameter],
+        );
 
-      expect(completionList.items, isEmpty);
-    });
+        expect(completionList.items, isEmpty);
+      },
+    );
 
-    test('variable inside method body is completed at cursor inside body',
-        () async {
-      // Variable at bytes 40-46, method body ends at byte 50
-      final variable = IndexedVariable(
-        TypeName('myTest'),
-        typeName: TypeName('String'),
-        location: (40, 46),
-        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
-      );
-      final completionList = await complete(
-        // Cursor at byte 48, after the variable but inside the body
-        extractCursorPosition(
-          '                                        myTest  {cursor} }',
-        ),
-        index: [variable],
-      );
+    test(
+      'variable inside method body is completed at cursor inside body',
+      () async {
+        // Variable at bytes 40-46, method body ends at byte 50
+        final variable = IndexedVariable(
+          TypeName('myTest'),
+          typeName: TypeName('String'),
+          location: (40, 46),
+          visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
+        );
+        final completionList = await complete(
+          // Cursor at byte 48, after the variable but inside the body
+          extractCursorPosition(
+            '                                        myTest  {cursor} }',
+          ),
+          index: [variable],
+        );
 
-      expect(completionList.items, hasLength(1));
-      expect(completionList.items.first.label, 'myTest');
-    });
+        expect(completionList.items, hasLength(1));
+        expect(completionList.items.first.label, 'myTest');
+      },
+    );
 
-    test('variable inside method body is not completed outside body',
-        () async {
-      // Variable at bytes 40-46, method body ends at byte 50
+    test('variable inside method body is not completed outside body', () async {
       final variable = IndexedVariable(
         TypeName('myTest'),
         typeName: TypeName('String'),
@@ -413,6 +413,102 @@ void main() {
       );
 
       expect(completionList.items, isEmpty);
+    });
+  });
+
+  group('loop scoping', () {
+    test('for loop init variable is not completed after the loop', () async {
+      final variable = IndexedVariable(
+        TypeName('myIndex'),
+        typeName: TypeName('Integer'),
+        location: (5, 12),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 30),
+      );
+      final completionList = await complete(
+        extractCursorPosition('     myIndex              }         my{cursor}'),
+        index: [variable],
+      );
+
+      expect(completionList.items, isEmpty);
+    });
+
+    test('for loop init variable is completed inside the for body', () async {
+      final variable = IndexedVariable(
+        TypeName('myIndex'),
+        typeName: TypeName('Integer'),
+        location: (5, 12),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 40),
+      );
+      final completionList = await complete(
+        extractCursorPosition(
+          '     myIndex        my{cursor}                  ',
+        ),
+        index: [variable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'myIndex');
+    });
+
+    test('enhanced for variable is not completed after the loop', () async {
+      final variable = IndexedVariable(
+        TypeName('item'),
+        typeName: TypeName('String'),
+        location: (16, 20),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 40),
+      );
+      final completionList = await complete(
+        // Cursor at byte 45, after the loop
+        extractCursorPosition(
+          'for (String item : items) {            }    i{cursor}',
+        ),
+        index: [variable],
+      );
+
+      expect(completionList.items, isEmpty);
+    });
+
+    test('while loop body variable is not completed after the loop', () async {
+      final variable = IndexedVariable(
+        TypeName('loopVar'),
+        typeName: TypeName('String'),
+        location: (17, 24),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 40),
+      );
+      final completionList = await complete(
+        // Cursor at byte 45, after the while loop
+        extractCursorPosition(
+          'while (true) {  loopVar                         }    l{cursor}',
+        ),
+        index: [variable],
+      );
+
+      expect(completionList.items, isEmpty);
+    });
+
+    test('nested block variable is not completed outside that block', () async {
+      final innerVar = IndexedVariable(
+        TypeName('innerVar'),
+        typeName: TypeName('String'),
+        location: (12, 20),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 30),
+      );
+      final outerVar = IndexedVariable(
+        TypeName('outerVar'),
+        typeName: TypeName('String'),
+        location: (0, 8),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
+      );
+      final completionList = await complete(
+        // Cursor at byte 35, after inner block but inside outer scope
+        extractCursorPosition(
+          'outerVar  { innerVar          }    {cursor}              ',
+        ),
+        index: [innerVar, outerVar],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'outerVar');
     });
   });
 

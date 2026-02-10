@@ -59,6 +59,20 @@ class LocalIndexer {
         results.addAll(_extractMethod(node, bytes));
       case 'local_variable_declaration':
         results.addAll(_extractVariables(node, bytes, scopeEnd: scopeEnd));
+      case 'block':
+        results.addAll(_visitChildren(
+          node,
+          bytes,
+          scopeEnd: _bindings.ts_node_end_byte(node),
+        ));
+      case 'for_statement':
+        results.addAll(_visitChildren(
+          node,
+          bytes,
+          scopeEnd: _bindings.ts_node_end_byte(node),
+        ));
+      case 'enhanced_for_statement':
+        results.addAll(_extractEnhancedFor(node, bytes));
       default:
         results.addAll(_visitChildren(node, bytes, scopeEnd: scopeEnd));
     }
@@ -195,6 +209,38 @@ class LocalIndexer {
       results.addAll(
         _visitChildren(bodyNode, bytes, scopeEnd: bodyScopeEnd),
       );
+    }
+
+    return results;
+  }
+
+  List<Declaration> _extractEnhancedFor(TSNode node, List<int> bytes) {
+    final results = <Declaration>[];
+    final scopeEnd = _bindings.ts_node_end_byte(node);
+
+    final typeNode = _getField(node, 'type');
+    final nameNode = _getField(node, 'name');
+    final typeName = _nodeText(typeNode, bytes);
+    final name = _nodeText(nameNode, bytes);
+    if (name.isNotEmpty) {
+      results.add(
+        IndexedVariable(
+          TypeName(name),
+          typeName: TypeName(typeName),
+          location: (
+            _bindings.ts_node_start_byte(nameNode),
+            _bindings.ts_node_end_byte(nameNode),
+          ),
+          visibility: VisibleBetweenDeclarationAndScopeEnd(
+            scopeEnd: scopeEnd,
+          ),
+        ),
+      );
+    }
+
+    final bodyNode = _getField(node, 'body');
+    if (!_isNullNode(bodyNode)) {
+      results.addAll(_visit(bodyNode, bytes, scopeEnd: scopeEnd));
     }
 
     return results;

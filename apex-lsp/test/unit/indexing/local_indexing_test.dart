@@ -252,6 +252,96 @@ public Enum Foo { A, B, C };
     });
   });
 
+  group('indexes variables in loop scopes', () {
+    test('for loop init variable is scoped to the for statement', () {
+      final text = 'void m() { for (Integer i = 0; i < 10; i++) { } }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variable = result.whereType<IndexedVariable>().first;
+      expect(variable.name.value, 'i');
+      expect(
+        variable.visibility,
+        isA<VisibleBetweenDeclarationAndScopeEnd>(),
+      );
+      // The for statement ends after its body's closing brace (before the outer ' }')
+      final visibility =
+          variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      final methodBodyEnd = text.lastIndexOf('}') + 1;
+      expect(visibility.scopeEnd, lessThan(methodBodyEnd));
+    });
+
+    test('variable inside for body is scoped to the body block', () {
+      final text =
+          'void m() { for (Integer i = 0; i < 10; i++) { String inner; } }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variables = result.whereType<IndexedVariable>().toList();
+      final initVar = variables.firstWhere((v) => v.name.value == 'i');
+      final bodyVar = variables.firstWhere((v) => v.name.value == 'inner');
+
+      final initVisibility =
+          initVar.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      final bodyVisibility =
+          bodyVar.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      expect(
+        bodyVisibility.scopeEnd,
+        lessThanOrEqualTo(initVisibility.scopeEnd),
+      );
+    });
+
+    test('enhanced for iteration variable is scoped to the for statement',
+        () {
+      final text =
+          'void m() { List<String> items; for (String item : items) { } }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variable = result
+          .whereType<IndexedVariable>()
+          .firstWhere((v) => v.name.value == 'item');
+      expect(
+        variable.visibility,
+        isA<VisibleBetweenDeclarationAndScopeEnd>(),
+      );
+    });
+
+    test('while loop body variable is scoped to the body block', () {
+      final text = 'void m() { while (true) { String loopVar; } }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variable = result
+          .whereType<IndexedVariable>()
+          .firstWhere((v) => v.name.value == 'loopVar');
+      expect(
+        variable.visibility,
+        isA<VisibleBetweenDeclarationAndScopeEnd>(),
+      );
+      final whileBodyEnd = text.lastIndexOf('}', text.lastIndexOf('}') - 1) + 1;
+      final visibility =
+          variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      expect(visibility.scopeEnd, whileBodyEnd);
+    });
+
+    test('nested for loops have independent scopes', () {
+      final text = '''void m() { for (Integer i = 0; i < 10; i++) { for (Integer j = 0; j < 5; j++) { } } }''';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variables = result.whereType<IndexedVariable>().toList();
+      final outerVar = variables.firstWhere((v) => v.name.value == 'i');
+      final innerVar = variables.firstWhere((v) => v.name.value == 'j');
+
+      final outerVisibility =
+          outerVar.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      final innerVisibility =
+          innerVar.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      expect(innerVisibility.scopeEnd, lessThan(outerVisibility.scopeEnd));
+    });
+  });
+
   group('indexes interfaces', () {
     test('indexes top level interface declaration', () {
       final text = '''
