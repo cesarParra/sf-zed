@@ -232,7 +232,7 @@ void main() {
       expect(completionList.items.first.label, 'sampleMethod');
     });
 
-    test('does not autocomplete methods declared after cursor', () async {
+    test('autocompletes methods declared after cursor', () async {
       final method = MethodDeclaration(
         TypeName('laterMethod'),
         isStatic: false,
@@ -241,6 +241,175 @@ void main() {
       final completionList = await complete(
         extractCursorPosition('l{cursor}                                     '),
         index: [method],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'laterMethod');
+    });
+  });
+
+  group('method parameters', () {
+    test('autocomplete parameter names', () async {
+      final parameter = IndexedVariable(
+        TypeName('paramVar'),
+        typeName: TypeName('String'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('{cursor}'),
+        index: [parameter],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'paramVar');
+    });
+
+    test('autocomplete parameter names with prefix', () async {
+      final parameter = IndexedVariable(
+        TypeName('paramVar'),
+        typeName: TypeName('String'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('par{cursor}'),
+        index: [parameter],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'paramVar');
+    });
+
+    test('autocomplete members of a parameter typed as an interface',
+        () async {
+      final interfaceType = IndexedInterface(
+        TypeName('Foo'),
+        methods: [
+          MethodDeclaration(TypeName('doSomething'), isStatic: false),
+          MethodDeclaration(TypeName('saySomething'), isStatic: false),
+        ],
+      );
+      final parameter = IndexedVariable(
+        TypeName('paramVar'),
+        typeName: TypeName('Foo'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('paramVar.{cursor}'),
+        index: [interfaceType, parameter],
+      );
+
+      expect(completionList.items, hasLength(2));
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'doSomething')),
+      );
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'saySomething')),
+      );
+    });
+
+    test('autocomplete members of a parameter filtered by prefix', () async {
+      final interfaceType = IndexedInterface(
+        TypeName('Foo'),
+        methods: [
+          MethodDeclaration(TypeName('doSomething'), isStatic: false),
+          MethodDeclaration(TypeName('saySomething'), isStatic: false),
+        ],
+      );
+      final parameter = IndexedVariable(
+        TypeName('paramVar'),
+        typeName: TypeName('Foo'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('paramVar.do{cursor}'),
+        index: [interfaceType, parameter],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'doSomething')),
+      );
+    });
+
+    test('parameter is completed when cursor is inside method body', () async {
+      // Parameter at bytes 18-32, method body spans bytes 35-60
+      final parameter = IndexedVariable(
+        TypeName('paramVar'),
+        typeName: TypeName('String'),
+        location: (18, 32),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 60),
+      );
+      final completionList = await complete(
+        // Cursor at byte 40, inside the method body
+        extractCursorPosition(
+          '                  Foo paramVar  {    p{cursor}                    }',
+        ),
+        index: [parameter],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'paramVar');
+    });
+
+    test('parameter is not completed when cursor is outside method body',
+        () async {
+      // Parameter at bytes 18-32, method body spans bytes 35-60
+      final parameter = IndexedVariable(
+        TypeName('paramVar'),
+        typeName: TypeName('String'),
+        location: (18, 32),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 60),
+      );
+      final completionList = await complete(
+        // Cursor at byte 65, after the method body
+        extractCursorPosition(
+          '                  Foo paramVar  {                           }  p{cursor}',
+        ),
+        index: [parameter],
+      );
+
+      expect(completionList.items, isEmpty);
+    });
+
+    test('variable inside method body is completed at cursor inside body',
+        () async {
+      // Variable at bytes 40-46, method body ends at byte 50
+      final variable = IndexedVariable(
+        TypeName('myTest'),
+        typeName: TypeName('String'),
+        location: (40, 46),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
+      );
+      final completionList = await complete(
+        // Cursor at byte 48, after the variable but inside the body
+        extractCursorPosition(
+          '                                        myTest  {cursor} }',
+        ),
+        index: [variable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'myTest');
+    });
+
+    test('variable inside method body is not completed outside body',
+        () async {
+      // Variable at bytes 40-46, method body ends at byte 50
+      final variable = IndexedVariable(
+        TypeName('myTest'),
+        typeName: TypeName('String'),
+        location: (40, 46),
+        visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
+      );
+      final completionList = await complete(
+        // Cursor at byte 55, after the method body
+        extractCursorPosition(
+          '                                        myTest     }    m{cursor}',
+        ),
+        index: [variable],
       );
 
       expect(completionList.items, isEmpty);

@@ -152,6 +152,106 @@ public Enum Foo { A, B, C };
     });
   });
 
+  group('indexes method parameters', () {
+    test('indexes a single parameter', () {
+      final text = 'void sampleMethod(String name) { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variables = result.whereType<IndexedVariable>().toList();
+      expect(variables, hasLength(1));
+      expect(variables.first.name.value, 'name');
+      expect(variables.first.typeName.value, 'String');
+    });
+
+    test('indexes multiple parameters', () {
+      final text = 'void sampleMethod(String name, Integer count) { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variables = result.whereType<IndexedVariable>().toList();
+      expect(variables, hasLength(2));
+      expect(variables[0].name.value, 'name');
+      expect(variables[0].typeName.value, 'String');
+      expect(variables[1].name.value, 'count');
+      expect(variables[1].typeName.value, 'Integer');
+    });
+
+    test('tracks location of parameters', () {
+      final text = 'void sampleMethod(String name) { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variable = result.whereType<IndexedVariable>().first;
+      expect(variable.location, isNotNull);
+    });
+
+    test('method with no parameters produces no variables', () {
+      final text = 'void sampleMethod() { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variables = result.whereType<IndexedVariable>().toList();
+      expect(variables, isEmpty);
+    });
+
+    test('parameter visibility is scoped to method body', () {
+      final text = 'void sampleMethod(String name) { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variable = result.whereType<IndexedVariable>().first;
+      expect(
+        variable.visibility,
+        isA<VisibleBetweenDeclarationAndScopeEnd>(),
+      );
+      final bodyEnd = text.indexOf('}') + 1;
+      final visibility =
+          variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      expect(visibility.scopeEnd, bodyEnd);
+    });
+  });
+
+  group('indexes variables inside method bodies', () {
+    test('indexes a variable declared inside a method body', () {
+      final text = 'void sampleMethod() { String myTest; }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variables = result.whereType<IndexedVariable>().toList();
+      expect(variables, hasLength(1));
+      expect(variables.first.name.value, 'myTest');
+      expect(variables.first.typeName.value, 'String');
+    });
+
+    test('variable inside method body has scoped visibility', () {
+      final text = 'void sampleMethod() { String myTest; }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variable = result.whereType<IndexedVariable>().first;
+      expect(
+        variable.visibility,
+        isA<VisibleBetweenDeclarationAndScopeEnd>(),
+      );
+      final bodyEnd = text.indexOf('}') + 1;
+      final visibility =
+          variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
+      expect(visibility.scopeEnd, bodyEnd);
+    });
+
+    test('indexes both parameters and body variables', () {
+      final text = 'void sampleMethod(String param) { Integer local; }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final variables = result.whereType<IndexedVariable>().toList();
+      expect(variables, hasLength(2));
+      expect(variables[0].name.value, 'param');
+      expect(variables[1].name.value, 'local');
+    });
+  });
+
   group('indexes interfaces', () {
     test('indexes top level interface declaration', () {
       final text = '''

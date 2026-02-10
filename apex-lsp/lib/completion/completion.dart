@@ -137,14 +137,9 @@ Future<CompletionList> onCompletion({
     cursorOffset: cursorOffset,
   );
 
-  bool isDeclaredBeforeCursor(Declaration declaration) {
-    final location = declaration.location;
-    return location == null || location.$1 <= cursorOffset;
-  }
-
   List<CompletionCandidate> topLevelCandidates() {
     return index
-        .where(isDeclaredBeforeCursor)
+        .where((declaration) => declaration.isVisibleAt(cursorOffset))
         .map(
           (declaration) => switch (declaration) {
             IndexedType() => ApexTypeCandidate(Local(name: declaration.name)),

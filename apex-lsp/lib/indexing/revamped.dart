@@ -18,15 +18,48 @@ import 'package:file/file.dart';
 
 typedef Location = (int startByte, int endByte);
 
+sealed class Visibility {
+  bool isVisibleAt(int cursorOffset, Location? location);
+}
+
+final class AlwaysVisible extends Visibility {
+  @override
+  bool isVisibleAt(int cursorOffset, Location? location) => true;
+}
+
+final class VisibleAfterDeclaration extends Visibility {
+  @override
+  bool isVisibleAt(int cursorOffset, Location? location) {
+    if (location == null) return true;
+    return cursorOffset >= location.$1;
+  }
+}
+
+final class VisibleBetweenDeclarationAndScopeEnd extends Visibility {
+  final int scopeEnd;
+
+  VisibleBetweenDeclarationAndScopeEnd({required this.scopeEnd});
+
+  @override
+  bool isVisibleAt(int cursorOffset, Location? location) {
+    if (location == null) return true;
+    return cursorOffset >= location.$1 && cursorOffset <= scopeEnd;
+  }
+}
+
 sealed class Declaration {
   final TypeName name;
   final Location? location;
+  final Visibility visibility;
 
-  Declaration(this.name, {this.location});
+  Declaration(this.name, {this.location, required this.visibility});
+
+  bool isVisibleAt(int cursorOffset) =>
+      visibility.isVisibleAt(cursorOffset, location);
 }
 
 sealed class IndexedType extends Declaration {
-  IndexedType(super.name, {super.location});
+  IndexedType(super.name, {super.location}) : super(visibility: AlwaysVisible());
 }
 
 final class IndexedClass extends IndexedType {
@@ -64,13 +97,15 @@ final class FieldMember extends Declaration {
   final TypeName? typeName;
   final bool isStatic;
 
-  FieldMember(super.name, {required this.isStatic, this.typeName});
+  FieldMember(super.name, {required this.isStatic, this.typeName})
+      : super(visibility: AlwaysVisible());
 }
 
 final class MethodDeclaration extends Declaration {
   final bool isStatic;
 
-  MethodDeclaration(super.name, {required this.isStatic, super.location});
+  MethodDeclaration(super.name, {required this.isStatic, super.location})
+      : super(visibility: AlwaysVisible());
 }
 
 final class Constructor {
@@ -78,7 +113,7 @@ final class Constructor {
 }
 
 final class EnumValueMember extends Declaration {
-  EnumValueMember(super.name);
+  EnumValueMember(super.name) : super(visibility: AlwaysVisible());
 
   @override
   bool operator ==(Object other) =>
@@ -98,7 +133,8 @@ final class IndexedVariable extends Declaration {
     super.name, {
     required this.typeName,
     required Location location,
-  }) : super(location: location);
+    Visibility? visibility,
+  }) : super(location: location, visibility: visibility ?? VisibleAfterDeclaration());
 
   @override
   bool operator ==(Object other) =>

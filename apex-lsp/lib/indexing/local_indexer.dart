@@ -46,7 +46,7 @@ class LocalIndexer {
     }
   }
 
-  List<Declaration> _visit(TSNode node, List<int> bytes) {
+  List<Declaration> _visit(TSNode node, List<int> bytes, {int? scopeEnd}) {
     List<Declaration> results = [];
     final type = _nodeType(node);
 
@@ -56,21 +56,25 @@ class LocalIndexer {
       case 'interface_declaration':
         results.add(_extractInterface(node, bytes));
       case 'method_declaration':
-        results.add(_extractMethod(node, bytes));
+        results.addAll(_extractMethod(node, bytes));
       case 'local_variable_declaration':
-        results.addAll(_extractVariables(node, bytes));
+        results.addAll(_extractVariables(node, bytes, scopeEnd: scopeEnd));
       default:
-        results.addAll(_visitChildren(node, bytes));
+        results.addAll(_visitChildren(node, bytes, scopeEnd: scopeEnd));
     }
     return results;
   }
 
-  List<Declaration> _visitChildren(TSNode node, List<int> bytes) {
+  List<Declaration> _visitChildren(
+    TSNode node,
+    List<int> bytes, {
+    int? scopeEnd,
+  }) {
     List<Declaration> results = [];
     final count = _bindings.ts_node_named_child_count(node);
     for (var i = 0; i < count; i++) {
       final child = _bindings.ts_node_named_child(node, i);
-      results.addAll(_visit(child, bytes));
+      results.addAll(_visit(child, bytes, scopeEnd: scopeEnd));
     }
     return results;
   }
@@ -137,22 +141,76 @@ class LocalIndexer {
     );
   }
 
-  MethodDeclaration _extractMethod(TSNode node, List<int> bytes) {
+  List<Declaration> _extractMethod(TSNode node, List<int> bytes) {
     final nameNode = _getField(node, 'name');
     final name = _nodeText(nameNode, bytes);
-    return MethodDeclaration(
-      TypeName(name),
-      isStatic: false,
-      location: (
-        _bindings.ts_node_start_byte(node),
-        _bindings.ts_node_end_byte(node),
+
+    final results = <Declaration>[
+      MethodDeclaration(
+        TypeName(name),
+        isStatic: false,
+        location: (
+          _bindings.ts_node_start_byte(node),
+          _bindings.ts_node_end_byte(node),
+        ),
       ),
-    );
+    ];
+
+    final bodyNode = _getField(node, 'body');
+    final bodyScopeEnd = _isNullNode(bodyNode)
+        ? null
+        : _bindings.ts_node_end_byte(bodyNode);
+
+    final parametersNode = _getField(node, 'parameters');
+    if (!_isNullNode(parametersNode)) {
+      final scopeVisibility = bodyScopeEnd != null
+          ? VisibleBetweenDeclarationAndScopeEnd(scopeEnd: bodyScopeEnd)
+          : null;
+      final params = _collectDirectChildrenByType(
+        parametersNode,
+        'formal_parameter',
+      );
+      for (final param in params) {
+        final paramTypeNode = _getField(param, 'type');
+        final paramNameNode = _getField(param, 'name');
+        final paramType = _nodeText(paramTypeNode, bytes);
+        final paramName = _nodeText(paramNameNode, bytes);
+        if (paramName.isNotEmpty) {
+          results.add(
+            IndexedVariable(
+              TypeName(paramName),
+              typeName: TypeName(paramType),
+              location: (
+                _bindings.ts_node_start_byte(param),
+                _bindings.ts_node_end_byte(param),
+              ),
+              visibility: scopeVisibility,
+            ),
+          );
+        }
+      }
+    }
+
+    if (!_isNullNode(bodyNode)) {
+      results.addAll(
+        _visitChildren(bodyNode, bytes, scopeEnd: bodyScopeEnd),
+      );
+    }
+
+    return results;
   }
 
-  List<IndexedVariable> _extractVariables(TSNode node, List<int> bytes) {
+  List<IndexedVariable> _extractVariables(
+    TSNode node,
+    List<int> bytes, {
+    int? scopeEnd,
+  }) {
     final typeNode = _getField(node, 'type');
     final typeName = _nodeText(typeNode, bytes);
+
+    final visibility = scopeEnd != null
+        ? VisibleBetweenDeclarationAndScopeEnd(scopeEnd: scopeEnd)
+        : null;
 
     final results = <IndexedVariable>[];
     final childCount = _bindings.ts_node_named_child_count(node);
@@ -170,6 +228,7 @@ class LocalIndexer {
                 _bindings.ts_node_start_byte(child),
                 _bindings.ts_node_end_byte(child),
               ),
+              visibility: visibility,
             ),
           );
         }
