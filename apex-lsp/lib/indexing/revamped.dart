@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/indexing/sfdx_workspace_locator.dart';
 import 'package:apex_lsp/message.dart';
+import 'package:apex_lsp/type_name.dart';
 import 'package:apex_lsp/utils/platform.dart';
 import 'package:apex_lsp/utils/result.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
@@ -18,7 +19,7 @@ import 'package:file/file.dart';
 typedef Location = (int startByte, int endByte);
 
 sealed class Declaration {
-  final String name;
+  final TypeName name;
   final Location? location;
 
   Declaration(this.name, {this.location});
@@ -55,7 +56,7 @@ final class IndexedEnum extends IndexedType {
 }
 
 final class FieldMember extends Declaration {
-  final String? typeName;
+  final TypeName? typeName;
   final bool isStatic;
 
   FieldMember(super.name, {required this.isStatic, this.typeName});
@@ -86,7 +87,7 @@ final class EnumValueMember extends Declaration {
 }
 
 final class IndexedVariable extends Declaration {
-  final String typeName;
+  final TypeName typeName;
 
   IndexedVariable(
     super.name, {
@@ -107,7 +108,7 @@ final class IndexedVariable extends Declaration {
 }
 
 extension IndexedTypeStringExtensions on String {
-  EnumValueMember enumValueMember() => EnumValueMember(this);
+  EnumValueMember enumValueMember() => EnumValueMember(TypeName(this));
 }
 
 final class Indexer {
@@ -493,7 +494,7 @@ final class IndexLoader {
         final decoded = jsonDecode(content);
         final indexedType = _parseIndexedType(decoded);
         if (indexedType == null) continue;
-        indexedTypesByName[indexedType.name.toLowerCase()] = indexedType;
+        indexedTypesByName[indexedType.name.value.toLowerCase()] = indexedType;
       } catch (_) {
         // TODO: Ignoring malformed index entries for now.
       }
@@ -511,9 +512,9 @@ final class IndexLoader {
 
     IndexedEnum fromEnumMirror(apex_reflection.EnumMirror mirror) {
       return IndexedEnum(
-        mirror.name,
+        TypeName(mirror.name),
         values: mirror.values
-            .map((value) => EnumValueMember(value.name))
+            .map((value) => EnumValueMember(TypeName(value.name)))
             .toList(),
       );
     }
@@ -523,25 +524,37 @@ final class IndexLoader {
     ) {
       // TODO: Parse and populate methods
       // TODO: Parse and populate super
-      return IndexedInterface(mirror.name, methods: [], superInterface: null);
+      return IndexedInterface(
+        TypeName(mirror.name),
+        methods: [],
+        superInterface: null,
+      );
     }
 
     IndexedClass fromClassMirror(apex_reflection.ClassMirror mirror) {
       return IndexedClass(
-        mirror.name,
+        TypeName(mirror.name),
         members: [
           ...mirror.classes.map(fromClassMirror),
           ...mirror.enums.map(fromEnumMirror),
           ...mirror.interfaces.map(fromInterfaceMirror),
           ...mirror.fields.map(
-            (field) => FieldMember(field.name, isStatic: field.isStatic),
+            (field) => FieldMember(
+              TypeName(field.name),
+              isStatic: field.isStatic,
+            ),
           ),
           ...mirror.properties.map(
-            (property) =>
-                FieldMember(property.name, isStatic: property.isStatic),
+            (property) => FieldMember(
+              TypeName(property.name),
+              isStatic: property.isStatic,
+            ),
           ),
           ...mirror.methods.map(
-            (method) => MethodMember(method.name, isStatic: method.isStatic),
+            (method) => MethodMember(
+              TypeName(method.name),
+              isStatic: method.isStatic,
+            ),
           ),
         ],
         constructors: mirror.constructors
@@ -572,7 +585,8 @@ Future<List<String>> getMemberNamesByType(
 ) async {
   List<String> enumMembers(IndexedEnum sourceEnum) {
     return switch (type) {
-      .static => sourceEnum.values.map((current) => current.name).toList(),
+      .static =>
+        sourceEnum.values.map((current) => current.name.value).toList(),
       .instance => [],
     };
   }
@@ -581,7 +595,9 @@ Future<List<String>> getMemberNamesByType(
     return switch (type) {
       .static => [],
       .instance =>
-        sourceInterface.methods.map((current) => current.name).toList(),
+        sourceInterface.methods
+            .map((current) => current.name.value)
+            .toList(),
     };
   }
 
@@ -598,12 +614,12 @@ Future<List<String>> getMemberNamesByType(
       .static =>
         sourceClass.members
             .where(isStaticDeclaration)
-            .map((declaration) => declaration.name)
+            .map((declaration) => declaration.name.value)
             .toList(),
       .instance =>
         sourceClass.members
             .where((declaration) => !isStaticDeclaration(declaration))
-            .map((declaration) => declaration.name)
+            .map((declaration) => declaration.name.value)
             .toList(),
     };
   }

@@ -1,5 +1,6 @@
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/indexing/indexer.dart' as indexer;
+import 'package:apex_lsp/type_name.dart';
 import 'package:apex_reflection/apex_reflection.dart' as apex_reflection;
 
 /// Contract for indexed classes completion data.
@@ -134,12 +135,10 @@ class ClassMirrorWrapper implements IndexedType {
     return allMembers.toList();
   }
 
-  /// Returns true if any member matches [prefix] (case-insensitive).
   @override
   bool hasMemberPrefix(String prefix) {
-    final lower = prefix.toLowerCase();
     return memberNames.any(
-      (current) => current.toLowerCase().startsWith(lower),
+      (current) => TypeName(current).startsWith(prefix),
     );
   }
 
@@ -152,19 +151,19 @@ class ClassMirrorWrapper implements IndexedType {
 
   @override
   IndexedType? nestedTypeByName(String name) {
-    final lowerName = name.toLowerCase();
+    final target = TypeName(name);
     for (final c in classMirror.classes) {
-      if (c.name.toLowerCase() == lowerName) {
+      if (TypeName(c.name) == target) {
         return ClassMirrorWrapper(classMirror: c);
       }
     }
     for (final i in classMirror.interfaces) {
-      if (i.name.toLowerCase() == lowerName) {
+      if (TypeName(i.name) == target) {
         return InterfaceMirrorWrapper(interfaceMirror: i);
       }
     }
     for (final e in classMirror.enums) {
-      if (e.name.toLowerCase() == lowerName) {
+      if (TypeName(e.name) == target) {
         return EnumMirrorWrapper(enumMirror: e);
       }
     }
@@ -195,12 +194,10 @@ class EnumMirrorWrapper implements IndexedType {
     };
   }
 
-  /// Returns true if any member matches [prefix] (case-insensitive).
   @override
   bool hasMemberPrefix(String prefix) {
-    final lower = prefix.toLowerCase();
     return memberNames.any(
-      (current) => current.toLowerCase().startsWith(lower),
+      (current) => TypeName(current).startsWith(prefix),
     );
   }
 
@@ -235,9 +232,8 @@ class InterfaceMirrorWrapper implements IndexedType {
 
   @override
   bool hasMemberPrefix(String prefix) {
-    final lower = prefix.toLowerCase();
     return memberNames.any(
-      (current) => current.toLowerCase().startsWith(lower),
+      (current) => TypeName(current).startsWith(prefix),
     );
   }
 

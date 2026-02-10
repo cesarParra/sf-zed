@@ -7,6 +7,7 @@
 import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/message.dart';
+import 'package:apex_lsp/type_name.dart';
 import 'package:test/test.dart';
 
 /// Result of extracting cursor position from text with a {cursor} marker.
@@ -82,7 +83,7 @@ void main() {
 
   group('enums', () {
     test('autocomplete enum types on empty file', () async {
-      final enumType = IndexedEnum('Foo', values: []);
+      final enumType = IndexedEnum(TypeName('Foo'), values: []);
       final completionList = await complete(
         extractCursorPosition('{cursor}'),
         index: [enumType],
@@ -93,7 +94,7 @@ void main() {
     });
 
     test('autocomplete enum types when typing a top level name', () async {
-      final enumType = IndexedEnum('Foo', values: []);
+      final enumType = IndexedEnum(TypeName('Foo'), values: []);
       final completionList = await complete(
         extractCursorPosition('F{cursor}'),
         index: [enumType],
@@ -105,7 +106,7 @@ void main() {
 
     test('autocompletes all enum values', () async {
       final enumType = IndexedEnum(
-        'Foo',
+        TypeName('Foo'),
         values: ['Bar'.enumValueMember(), 'Baz'.enumValueMember()],
       );
       final completionList = await complete(
@@ -120,7 +121,7 @@ void main() {
 
     test('autocompletes all enum values by name', () async {
       final enumType = IndexedEnum(
-        'Foo',
+        TypeName('Foo'),
         values: ['Bar'.enumValueMember(), 'Other'.enumValueMember()],
       );
       final completionList = await complete(
@@ -136,8 +137,8 @@ void main() {
   group('variables', () {
     test('autocomplete variable names at top level', () async {
       final variable = IndexedVariable(
-        'myVar',
-        typeName: 'String',
+        TypeName('myVar'),
+        typeName: TypeName('String'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -151,8 +152,8 @@ void main() {
 
     test('autocomplete variable names with prefix', () async {
       final variable = IndexedVariable(
-        'myVar',
-        typeName: 'String',
+        TypeName('myVar'),
+        typeName: TypeName('String'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -165,10 +166,10 @@ void main() {
     });
 
     test('mixed types and variables', () async {
-      final enumType = IndexedEnum('Foo', values: []);
+      final enumType = IndexedEnum(TypeName('Foo'), values: []);
       final variable = IndexedVariable(
-        'fooInstance',
-        typeName: 'Foo',
+        TypeName('fooInstance'),
+        typeName: TypeName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -187,8 +188,8 @@ void main() {
     test('does not autocomplete variables declared after cursor', () async {
       // The variable is declared at bytes 20-40, but the cursor is at byte 5
       final variable = IndexedVariable(
-        'laterVar',
-        typeName: 'String',
+        TypeName('laterVar'),
+        typeName: TypeName('String'),
         location: (20, 40),
       );
       final completionList = await complete(
@@ -203,8 +204,8 @@ void main() {
   group('interfaces', () {
     test('autocomplete interface types at top level', () async {
       final interfaceType = IndexedInterface(
-        'Foo',
-        methods: [MethodMember('doSomething', isStatic: false)],
+        TypeName('Foo'),
+        methods: [MethodMember(TypeName('doSomething'), isStatic: false)],
       );
       final completionList = await complete(
         extractCursorPosition('{cursor}'),
@@ -217,10 +218,10 @@ void main() {
 
     test('autocompletes all interface methods via type name', () async {
       final interfaceType = IndexedInterface(
-        'Foo',
+        TypeName('Foo'),
         methods: [
-          MethodMember('doSomething', isStatic: false),
-          MethodMember('saySomething', isStatic: false),
+          MethodMember(TypeName('doSomething'), isStatic: false),
+          MethodMember(TypeName('saySomething'), isStatic: false),
         ],
       );
       final completionList = await complete(
@@ -241,15 +242,15 @@ void main() {
 
     test('autocompletes interface methods via variable', () async {
       final interfaceType = IndexedInterface(
-        'Foo',
+        TypeName('Foo'),
         methods: [
-          MethodMember('doSomething', isStatic: false),
-          MethodMember('saySomething', isStatic: false),
+          MethodMember(TypeName('doSomething'), isStatic: false),
+          MethodMember(TypeName('saySomething'), isStatic: false),
         ],
       );
       final variable = IndexedVariable(
-        'myVar',
-        typeName: 'Foo',
+        TypeName('myVar'),
+        typeName: TypeName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -270,15 +271,15 @@ void main() {
 
     test('autocompletes interface methods filtered by prefix', () async {
       final interfaceType = IndexedInterface(
-        'Foo',
+        TypeName('Foo'),
         methods: [
-          MethodMember('doSomething', isStatic: false),
-          MethodMember('saySomething', isStatic: false),
+          MethodMember(TypeName('doSomething'), isStatic: false),
+          MethodMember(TypeName('saySomething'), isStatic: false),
         ],
       );
       final variable = IndexedVariable(
-        'myVar',
-        typeName: 'Foo',
+        TypeName('myVar'),
+        typeName: TypeName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(

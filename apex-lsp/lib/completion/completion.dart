@@ -5,6 +5,7 @@ import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/message.dart';
+import 'package:apex_lsp/type_name.dart';
 
 // TODO: In the future, we also want to add language keywords here
 /// Represents a candidate for completion.
@@ -19,7 +20,7 @@ final class ApexTypeCandidate extends CompletionCandidate {
   ApexTypeCandidate(this.type);
 
   @override
-  String get name => type.name;
+  String get name => type.name.value;
 }
 
 /// Represents a completion for a member of a type
@@ -29,13 +30,13 @@ final class MemberCandidate extends CompletionCandidate {
   MemberCandidate(this.member);
 
   @override
-  String get name => member.name;
+  String get name => member.name.value;
 }
 
 enum MemberType { static, instance }
 
 final class Member {
-  final String name;
+  final TypeName name;
   final ApexType parentType;
   final MemberType type;
 
@@ -55,7 +56,7 @@ final class LocalVariableCandidate extends CompletionCandidate {
 
 /// Represents a top-level type (class, enum, interface).
 sealed class ApexType {
-  final String name;
+  final TypeName name;
 
   ApexType({required this.name});
 }
@@ -147,10 +148,12 @@ Future<CompletionList> onCompletion({
         .map(
           (declaration) => switch (declaration) {
             IndexedType() => ApexTypeCandidate(Local(name: declaration.name)),
-            IndexedVariable() => LocalVariableCandidate(declaration.name),
-            FieldMember() => LocalVariableCandidate(declaration.name),
-            MethodMember() => LocalVariableCandidate(declaration.name),
-            EnumValueMember() => LocalVariableCandidate(declaration.name),
+            IndexedVariable() =>
+              LocalVariableCandidate(declaration.name.value),
+            FieldMember() => LocalVariableCandidate(declaration.name.value),
+            MethodMember() => LocalVariableCandidate(declaration.name.value),
+            EnumValueMember() =>
+              LocalVariableCandidate(declaration.name.value),
           },
         )
         .toList();
@@ -163,20 +166,21 @@ Future<CompletionList> onCompletion({
       return <CompletionCandidate>[];
     }
 
-    final typeName = memberContext.typeName!;
+    final typeName = TypeName(memberContext.typeName!);
 
-    IndexedType? findType(String name) =>
+    IndexedType? findType(TypeName name) =>
         index.whereType<IndexedType>().firstWhereOrNull(
-          (indexedType) => indexedType.name.toLowerCase() == name.toLowerCase(),
+          (indexedType) => indexedType.name == name,
         );
 
-    String? resolveVariableType(String name) => index
+    TypeName? resolveVariableType(TypeName name) => index
         .whereType<IndexedVariable>()
-        .firstWhereOrNull((v) => v.name.toLowerCase() == name.toLowerCase())
+        .firstWhereOrNull((v) => v.name == name)
         ?.typeName;
 
     final indexedType =
-        findType(typeName) ?? findType(resolveVariableType(typeName) ?? '');
+        findType(typeName) ??
+        findType(resolveVariableType(typeName) ?? const TypeName(''));
 
     return switch (indexedType) {
       null => <CompletionCandidate>[],
@@ -282,10 +286,8 @@ bool potentiallyMatches(
 ) {
   bool candidateNameStartsWith(String prefix) {
     return switch (candidate) {
-      ApexTypeCandidate(:final type) => type.name.startsWithIgnoreCase(prefix),
-      MemberCandidate(:final member) => member.name.startsWithIgnoreCase(
-        prefix,
-      ),
+      ApexTypeCandidate(:final type) => type.name.startsWith(prefix),
+      MemberCandidate(:final member) => member.name.startsWith(prefix),
       LocalVariableCandidate(:final name) => name.startsWithIgnoreCase(prefix),
     };
   }

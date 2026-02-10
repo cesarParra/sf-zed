@@ -25,7 +25,7 @@ public Enum Foo { A, B, C };
 
       expect(result.first, isA<IndexedEnum>());
       final enumDeclaration = result.first as IndexedEnum;
-      expect(enumDeclaration.name, 'Foo');
+      expect(enumDeclaration.name.value, 'Foo');
     });
 
     test('index contains location of the declaration', () {
@@ -59,8 +59,8 @@ public Enum Foo { A, B, C };
       expect(result, hasLength(1));
       expect(result.first, isA<IndexedVariable>());
       final variable = result.first as IndexedVariable;
-      expect(variable.name, 'myVar');
-      expect(variable.typeName, 'String');
+      expect(variable.name.value, 'myVar');
+      expect(variable.typeName.value, 'String');
     });
 
     test('indexes multiple declarators', () {
@@ -71,10 +71,10 @@ public Enum Foo { A, B, C };
       expect(result, hasLength(2));
       final variables = result.whereType<IndexedVariable>().toList();
       expect(variables, hasLength(2));
-      expect(variables[0].name, 'a');
-      expect(variables[0].typeName, 'Integer');
-      expect(variables[1].name, 'b');
-      expect(variables[1].typeName, 'Integer');
+      expect(variables[0].name.value, 'a');
+      expect(variables[0].typeName.value, 'Integer');
+      expect(variables[1].name.value, 'b');
+      expect(variables[1].typeName.value, 'Integer');
     });
 
     test('indexes declaration without initializer', () {
@@ -84,8 +84,8 @@ public Enum Foo { A, B, C };
 
       expect(result, hasLength(1));
       final variable = result.first as IndexedVariable;
-      expect(variable.name, 'items');
-      expect(variable.typeName, 'String');
+      expect(variable.name.value, 'items');
+      expect(variable.typeName.value, 'String');
     });
 
     test('indexes final variable', () {
@@ -95,8 +95,8 @@ public Enum Foo { A, B, C };
 
       expect(result, hasLength(1));
       final variable = result.first as IndexedVariable;
-      expect(variable.name, 'name');
-      expect(variable.typeName, 'String');
+      expect(variable.name.value, 'name');
+      expect(variable.typeName.value, 'String');
     });
 
     test('tracks location', () {
@@ -123,7 +123,7 @@ public interface Foo {
       expect(result, hasLength(1));
       expect(result.first, isA<IndexedInterface>());
       final interfaceDeclaration = result.first as IndexedInterface;
-      expect(interfaceDeclaration.name, 'Foo');
+      expect(interfaceDeclaration.name.value, 'Foo');
     });
 
     test('parses method declarations', () {
@@ -138,8 +138,8 @@ public interface Foo {
 
       final interfaceDeclaration = result.first as IndexedInterface;
       expect(interfaceDeclaration.methods, hasLength(2));
-      expect(interfaceDeclaration.methods[0].name, 'doSomething');
-      expect(interfaceDeclaration.methods[1].name, 'saySomething');
+      expect(interfaceDeclaration.methods[0].name.value, 'doSomething');
+      expect(interfaceDeclaration.methods[1].name.value, 'saySomething');
     });
 
     test('methods are marked as non-static', () {
@@ -172,7 +172,7 @@ public interface Foo {
 
       expect(result, hasLength(1));
       final interfaceDeclaration = result.first as IndexedInterface;
-      expect(interfaceDeclaration.name, 'Empty');
+      expect(interfaceDeclaration.name.value, 'Empty');
       expect(interfaceDeclaration.methods, isEmpty);
     });
   });

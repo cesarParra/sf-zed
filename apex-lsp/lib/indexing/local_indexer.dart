@@ -3,6 +3,7 @@ import 'dart:ffi';
 
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/indexing/revamped.dart';
+import 'package:apex_lsp/type_name.dart';
 import 'package:ffi/ffi.dart';
 
 class LocalIndexer {
@@ -89,13 +90,13 @@ class LocalIndexer {
       for (final constant in constants) {
         final name = _nodeText(constant, bytes);
         if (name.isNotEmpty) {
-          members.add(EnumValueMember(name));
+          members.add(EnumValueMember(TypeName(name)));
         }
       }
     }
 
     return IndexedEnum(
-      enumName,
+      TypeName(enumName),
       location: (
         _bindings.ts_node_start_byte(node),
         _bindings.ts_node_end_byte(node),
@@ -116,13 +117,13 @@ class LocalIndexer {
         final methodNameNode = _getField(methodNode, 'name');
         final name = _nodeText(methodNameNode, bytes);
         if (name.isNotEmpty) {
-          methods.add(MethodMember(name, isStatic: false));
+          methods.add(MethodMember(TypeName(name), isStatic: false));
         }
       }
     }
 
     return IndexedInterface(
-      interfaceName,
+      TypeName(interfaceName),
       methods: methods,
       location: (
         _bindings.ts_node_start_byte(node),
@@ -145,8 +146,8 @@ class LocalIndexer {
         if (name.isNotEmpty) {
           results.add(
             IndexedVariable(
-              name,
-              typeName: typeName,
+              TypeName(name),
+              typeName: TypeName(typeName),
               location: (
                 _bindings.ts_node_start_byte(child),
                 _bindings.ts_node_end_byte(child),
