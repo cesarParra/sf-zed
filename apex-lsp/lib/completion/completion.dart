@@ -7,13 +7,30 @@ import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/message.dart';
 import 'package:apex_lsp/type_name.dart';
 
-// TODO: In the future, we also want to add language keywords here
-/// Represents a candidate for completion.
+/// Base class for all completion candidates.
+///
+/// A completion candidate represents a potential code completion suggestion
+/// that can be shown to the user. Candidates are filtered and ranked based
+/// on the completion context and user input.
+///
+/// See also:
+///  * [ApexTypeCandidate], for type-level completions.
+///  * [MemberCandidate], for member access completions.
+///  * [LocalVariableCandidate], for local variable completions.
 sealed class CompletionCandidate {
   String get name;
 }
 
-/// Represents a completion for a top level [ApexType].
+/// Completion candidate for a top-level Apex type.
+///
+/// Represents completions for classes, enums, and interfaces that can
+/// appear in type positions or as standalone references.
+///
+/// Example:
+/// ```dart
+/// final candidate = ApexTypeCandidate(Local(name: TypeName('Account')));
+/// print(candidate.name); // 'Account'
+/// ```
 final class ApexTypeCandidate extends CompletionCandidate {
   final ApexType type;
 
@@ -23,7 +40,20 @@ final class ApexTypeCandidate extends CompletionCandidate {
   String get name => type.name.value;
 }
 
-/// Represents a completion for a member of a type
+/// Completion candidate for a type member.
+///
+/// Represents completions that appear after a dot operator, such as
+/// instance methods, static methods, or enum values.
+///
+/// Example:
+/// ```dart
+/// final member = Member(
+///   name: TypeName('getName'),
+///   parentType: Local(name: TypeName('Account')),
+///   type: MemberType.instance,
+/// );
+/// final candidate = MemberCandidate(member);
+/// ```
 final class MemberCandidate extends CompletionCandidate {
   final Member member;
 
@@ -33,8 +63,13 @@ final class MemberCandidate extends CompletionCandidate {
   String get name => member.name.value;
 }
 
+/// Indicates whether a member is static or instance-level.
 enum MemberType { static, instance }
 
+/// Represents a type member with its parent type and access type.
+///
+/// Used to track completions for fields, methods, and enum values along
+/// with their containing type and whether they are static or instance members.
 final class Member {
   final TypeName name;
   final ApexType parentType;
@@ -43,8 +78,17 @@ final class Member {
   Member({required this.name, required this.parentType, required this.type});
 }
 
-/// Represents a completion to a locally declared variable accessible
-/// "globally" in this file. This can happen in anonymous apex files.
+/// Completion candidate for a locally declared variable.
+///
+/// Represents variables, method parameters, and loop variables that are
+/// accessible at the current cursor position. This is particularly common
+/// in anonymous Apex blocks where variables are declared at the file level.
+///
+/// Example:
+/// ```dart
+/// final candidate = LocalVariableCandidate('accountName');
+/// print(candidate.name); // 'accountName'
+/// ```
 final class LocalVariableCandidate extends CompletionCandidate {
   final String _name;
 
@@ -54,67 +98,102 @@ final class LocalVariableCandidate extends CompletionCandidate {
   String get name => _name;
 }
 
-/// Represents a top-level type (class, enum, interface).
+/// Base class for Apex type sources.
+///
+/// Tracks where a type is defined relative to the current file being edited.
+/// This distinction is important for understanding scope and accessibility.
+///
+/// See also:
+///  * [Indexed], for types in other workspace files.
+///  * [Local], for types in the current file.
+///  * [Self], for the type currently being edited.
 sealed class ApexType {
   final TypeName name;
 
   ApexType({required this.name});
 }
 
-/// Represents an [ApexType] that is somewhere in the index,
-/// this means it lives in a different file than the one being edited.
+/// An Apex type defined in the workspace index.
+///
+/// Represents classes, enums, and interfaces that exist in other files
+/// within the workspace and have been indexed by [ApexIndexer].
 final class Indexed extends ApexType {
   Indexed({required super.name});
 }
 
-/// Represents an [ApexType] that is somewhere local but is not the
-/// type being edited. For example, this can happen when writing Anonymous Apex.
+/// An Apex type defined locally in the current file.
+///
+/// Represents types declared in the same file being edited, such as
+/// inner classes or types in anonymous Apex blocks.
 final class Local extends ApexType {
   Local({required super.name});
 }
 
-/// Represents the [ApexType] being edited.
+/// The Apex type currently being edited.
+///
+/// Represents the primary type definition in the current file, allowing
+/// for self-referential completions like accessing own members.
 final class Self extends ApexType {
   Self({required super.name});
 }
 
-/// Supports suggesting [CompletionCadidate]s based on the received [text],
-/// which is the full text of the open document, and an [cursorOffset],
-/// which is where the cursor is currently positioned at.
+/// Interface for completion suggestion providers.
+///
+/// Implementations provide completion candidates based on the completion
+/// context, which includes cursor position and surrounding code.
 abstract interface class CompletionSuggestion {
+  /// Generates completion candidates for the given context.
+  ///
+  /// - [context]: The completion context including prefix and position.
+  ///
+  /// Returns a list of completion candidates appropriate for the context.
   FutureOr<List<CompletionCandidate>> suggest({
     required CompletionContext context,
   });
 }
 
+/// Maximum number of completion items to return to the client.
+///
+/// When more candidates are available, the list is marked as incomplete,
+/// prompting the client to request more specific completions as the user types.
 const maxCompletionItems = 25;
 
 /// Handles a Language Server Protocol completion request.
 ///
-/// This function processes a completion request by retrieving
-/// the text content of the document, extracting its position using
-/// the received [params], and delegates the work to the [aggregator]. It finally ranks the completion
-/// candidates returned by the aggregator.
+/// Processes a completion request by analyzing the document text at the
+/// cursor position, determining the completion context (top-level type,
+/// member access, etc.), gathering candidates from the index, and ranking
+/// them by relevance.
 ///
-/// Returns a [CompletionList] with up to 25 completion items. The list is marked
-/// as incomplete (`isIncomplete: true`) when there are more than 25 candidates
-/// available, indicating that the client may need to request more specific completions
-/// as the user continues typing.
+/// - [text]: The complete document content. Returns empty list if `null`.
+/// - [position]: The cursor position (line and character) in the document.
+/// - [index]: The list of declarations from parsing the current file.
+/// - [rank]: The ranking function to sort candidates (defaults to [rankCandidates]).
+///
+/// Returns a [CompletionList] with up to [maxCompletionItems] items. The list
+/// is marked as incomplete (`isIncomplete: true`) when there are more candidates
+/// available, signaling the client to request updated completions as the user
+/// continues typing.
+///
+/// **Completion contexts:**
+/// - **Top-level**: Types and local variables accessible at the current scope
+/// - **Member access**: Methods, fields, or enum values accessed via dot operator
+/// - **None**: No valid completion context detected
 ///
 /// Example:
 /// ```dart
 /// final completions = await onCompletion(
-///   text: documentText,
-///   aggregator: completionAggregator,
-///   id: requestId,
-///   params: completionParams,
+///   text: 'Account acc = new Acc',
+///   position: Position(line: 0, character: 21),
+///   index: localIndexer.parseAndIndex(text),
 /// );
-/// // Send completions back to the LSP client
+/// // Returns completions like ['Account']
 /// ```
 ///
 /// See also:
-///  * [CompletionAggregator], which provides the completion candidates.
-///  * [rankCandidates], which applies ranking to class name suggestions.
+///  * [ContextDetector], which determines the completion context.
+///  * [rankCandidates], which applies Levenshtein-based ranking.
+///  * [LocalIndexer], which provides the declaration index.
 Future<CompletionList> onCompletion({
   required String? text,
   required Position position,
@@ -274,6 +353,24 @@ int _offsetAtPosition({
   return offset + clamped;
 }
 
+/// Determines if a completion candidate potentially matches the completion context.
+///
+/// Filters candidates based on the prefix in the completion context. A candidate
+/// matches if its name starts with the context prefix, using case-insensitive
+/// comparison for local variables.
+///
+/// - [context]: The completion context containing the prefix to match against.
+/// - [candidate]: The completion candidate to check.
+///
+/// Returns `true` if the candidate's name starts with the context prefix,
+/// `false` otherwise. Always returns `false` for [CompletionContextNone].
+///
+/// Example:
+/// ```dart
+/// final context = CompletionContextTopLevel(prefix: 'Acc');
+/// final candidate = ApexTypeCandidate(Local(name: TypeName('Account')));
+/// print(potentiallyMatches(context, candidate)); // true
+/// ```
 bool potentiallyMatches(
   CompletionContext context,
   CompletionCandidate candidate,
@@ -293,7 +390,21 @@ bool potentiallyMatches(
   };
 }
 
+/// Extension methods for [Iterable] types.
 extension IterableExtension<T> on Iterable<T> {
+  /// Returns the first element matching the predicate, or `null` if none match.
+  ///
+  /// Similar to [Iterable.firstWhere] but returns `null` instead of throwing
+  /// when no element is found.
+  ///
+  /// - [test]: The predicate to test elements against.
+  ///
+  /// Example:
+  /// ```dart
+  /// final numbers = [1, 2, 3, 4];
+  /// final even = numbers.firstWhereOrNull((n) => n % 2 == 0); // 2
+  /// final big = numbers.firstWhereOrNull((n) => n > 10); // null
+  /// ```
   T? firstWhereOrNull(bool Function(T element) test) {
     for (final element in this) {
       if (test(element)) return element;

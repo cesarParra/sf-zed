@@ -11,8 +11,42 @@ import 'lsp_out.dart';
 import 'message.dart';
 import 'message_reader.dart';
 
+/// Function signature for exiting the server process.
+///
+/// Takes an exit code where 0 indicates clean shutdown and non-zero
+/// indicates an error condition.
 typedef ExitFn = Never Function(int exitCode);
 
+/// Language Server Protocol implementation for Apex code intelligence.
+///
+/// This server provides completion suggestions for Apex files in Salesforce
+/// projects by maintaining an index of workspace types and analyzing open
+/// documents. It follows the LSP lifecycle: initialize → initialized →
+/// requests/notifications → shutdown → exit.
+///
+/// **Key responsibilities:**
+/// - Handling LSP protocol messages (requests and notifications)
+/// - Managing workspace indexing of Apex classes, enums, and interfaces
+/// - Providing completion suggestions based on cursor position
+/// - Tracking open documents and their content changes
+///
+/// Example usage:
+/// ```dart
+/// final server = Server(
+///   output: LspOut(output: StdoutByteSink(stdout)),
+///   reader: MessageReader(stdin),
+///   exitFn: exit,
+///   openDocuments: OpenDocuments(),
+///   localIndexer: LocalIndexer(bindings: treeSitterBindings),
+///   workspaceIndexer: ApexIndexer(fileSystem: fs, platform: platform),
+/// );
+/// await server.run();
+/// ```
+///
+/// See also:
+///  * [MessageReader], which parses incoming LSP messages.
+///  * [LspOut], which sends outgoing LSP responses.
+///  * [ApexIndexer], which indexes workspace Apex files.
 final class Server {
   Server({
     required LspOut output,
@@ -40,6 +74,18 @@ final class Server {
   bool _shutdownRequested = false;
   bool _exiting = false;
 
+  /// Sends a log message to the LSP client.
+  ///
+  /// Messages are only sent after the server has been initialized. Log messages
+  /// appear in the client's output panel but do not interrupt the user.
+  ///
+  /// - [type]: The severity level of the message.
+  /// - [message]: The message content to log.
+  ///
+  /// Example:
+  /// ```dart
+  /// await server.logMessage(MessageType.info, 'Indexing complete');
+  /// ```
   Future<void> logMessage(MessageType type, String message) async {
     switch (_initializationStatus) {
       case Initialized():
@@ -48,6 +94,19 @@ final class Server {
     }
   }
 
+  /// Starts the main server loop.
+  ///
+  /// Continuously reads and processes LSP messages from the [_reader] until
+  /// an exit notification is received or the input stream closes. Each message
+  /// is routed to the appropriate handler based on its type.
+  ///
+  /// This method blocks until the server exits.
+  ///
+  /// Example:
+  /// ```dart
+  /// final server = Server(...);
+  /// await server.run(); // Blocks until exit
+  /// ```
   Future<void> run() async {
     await for (final message in _reader.messages()) {
       if (_exiting) break;
@@ -61,6 +120,16 @@ final class Server {
     }
   }
 
+  /// Handles incoming LSP request messages.
+  ///
+  /// Routes requests to appropriate handlers based on the request method.
+  /// Enforces that the server must be initialized before handling most requests,
+  /// except for `initialize` and `shutdown`.
+  ///
+  /// - [req]: The incoming request message to handle.
+  ///
+  /// Returns an error response if the server is not initialized and the request
+  /// is not `initialize` or `shutdown`.
   Future<void> _handleRequest(RequestMessage req) async {
     switch (_initializationStatus) {
       case NotInitialized():
@@ -90,6 +159,16 @@ final class Server {
     }
   }
 
+  /// Handles incoming LSP notification messages.
+  ///
+  /// Processes notifications such as document open/change/close events and
+  /// triggers workspace indexing after initialization. The `exit` notification
+  /// terminates the server process.
+  ///
+  /// - [note]: The incoming notification message to handle.
+  ///
+  /// Notifications are only processed after the server has been initialized,
+  /// except for protocol lifecycle events.
   Future<void> _handleNotification(IncomingNotificationMessage note) async {
     switch (_initializationStatus) {
       case Initialized(:final params):
@@ -137,6 +216,16 @@ final class Server {
     }
   }
 
+  /// Handles the LSP `initialize` request.
+  ///
+  /// Transitions the server from [NotInitialized] to [Initialized] state and
+  /// sends back the server capabilities including text document sync and
+  /// completion support.
+  ///
+  /// - [req]: The initialize request containing workspace information.
+  ///
+  /// This must be the first request sent to the server. After responding,
+  /// the client will send an `initialized` notification to begin normal operation.
   Future<void> _onInitialize(InitializeRequest req) async {
     _initializationStatus = Initialized(params: req.params);
 
@@ -157,6 +246,18 @@ final class Server {
     await _output.sendResponse(id: req.id, result: result);
   }
 
+  /// Handles the LSP `textDocument/completion` request.
+  ///
+  /// Provides completion suggestions at the specified cursor position by
+  /// parsing the document with the local indexer and computing candidates
+  /// based on the completion context.
+  ///
+  /// - [id]: The request ID to include in the response.
+  /// - [params]: Contains the document URI and cursor position.
+  /// - [localIndexer]: Used to parse and index the current document.
+  ///
+  /// Returns an empty completion list if the document is not open or cannot
+  /// be retrieved.
   Future<void> _onCompletion({
     required Object id,
     required CompletionParams params,

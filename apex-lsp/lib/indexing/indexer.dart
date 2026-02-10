@@ -9,29 +9,75 @@ import 'package:file/file.dart';
 
 import '../message.dart';
 
+/// Base wrapper for Apex type mirrors from the reflection API.
+///
+/// Provides a sealed hierarchy for type-safe handling of different Apex
+/// type kinds (classes, enums, interfaces) returned from the reflection parser.
+///
+/// See also:
+///  * [ClassMirrorWrapper], for class type mirrors.
+///  * [EnumMirrorWrapper], for enum type mirrors.
+///  * [InterfaceMirrorWrapper], for interface type mirrors.
 sealed class TypeMirrorWrapper<T extends apex_reflection.TypeMirror> {
   const TypeMirrorWrapper(this.typeMirror);
 
   final T typeMirror;
 }
 
+/// Wrapper for Apex class type mirrors.
 final class ClassMirrorWrapper
     extends TypeMirrorWrapper<apex_reflection.ClassMirror> {
   const ClassMirrorWrapper(super.typeMirror);
 }
 
+/// Wrapper for Apex enum type mirrors.
 final class EnumMirrorWrapper
     extends TypeMirrorWrapper<apex_reflection.EnumMirror> {
   const EnumMirrorWrapper(super.typeMirror);
 }
 
+/// Wrapper for Apex interface type mirrors.
 final class InterfaceMirrorWrapper
     extends TypeMirrorWrapper<apex_reflection.InterfaceMirror> {
   const InterfaceMirrorWrapper(super.typeMirror);
 }
 
-/// Indexes Apex `.cls` files under a set of package directories and writes JSON
-/// metadata files into a hidden `.sf-zed` folder at each workspace root.
+/// Indexes Apex workspace files and maintains completion metadata.
+///
+/// This indexer scans Salesforce DX projects for `.cls` files, parses them
+/// using the `apex_reflection` library, and generates JSON metadata files
+/// stored in a `.sf-zed` directory at each workspace root. The metadata
+/// enables fast completion suggestions without re-parsing files.
+///
+/// **Key features:**
+/// - Discovers SFDX package directories automatically
+/// - Parses Apex classes, enums, and interfaces
+/// - Writes structured JSON metadata for quick lookup
+/// - Maintains in-memory cache of indexed class names
+/// - Reports progress during indexing via LSP progress notifications
+///
+/// **Index structure:**
+/// ```
+/// <workspace-root>/.sf-zed/
+///   ├── ClassName1.json
+///   ├── ClassName2.json
+///   └── ...
+/// ```
+///
+/// Example:
+/// ```dart
+/// final indexer = ApexIndexer(
+///   fileSystem: LocalFileSystem(),
+///   platform: LspPlatform(),
+/// );
+/// await for (final progress in indexer.index(params, token: token)) {
+///   output.progress(params: progress);
+/// }
+/// ```
+///
+/// See also:
+///  * [SfdxWorkspaceLocator], which discovers SFDX project directories.
+///  * [LocalIndexer], which indexes the currently open file.
 final class ApexIndexer {
   ApexIndexer({required FileSystem fileSystem, required LspPlatform platform})
     : _sfdxWorkspaceLocator = SfdxWorkspaceLocator(
@@ -41,28 +87,58 @@ final class ApexIndexer {
       _fileSystem = fileSystem,
       _platform = platform;
 
+  /// Name of the hidden directory where index files are stored.
   static const String indexFolderName = '.sf-zed';
 
   final SfdxWorkspaceLocator _sfdxWorkspaceLocator;
   final FileSystem _fileSystem;
   final LspPlatform _platform;
 
-  // Workspace roots discovered during initialize.
+  /// Workspace root URIs discovered during initialization.
   List<Uri> _workspaceRootUris = <Uri>[];
 
-  // Minimal in-memory completion index derived from `.sf-zed/*.json`.
-  // Top-level for now: just known class names.
+  /// In-memory set of all indexed class names across workspaces.
+  ///
+  /// Loaded lazily on first access from the `.sf-zed` directories.
   final Set<String> _indexedClassNames = <String>{};
+
+  /// Whether the class names have been loaded from disk.
   bool _indexedClassNamesLoaded = false;
 
+  /// Returns the set of all indexed class names.
+  ///
+  /// Ensures the class names are loaded from disk on first access.
   Set<String> get indexedClassNames {
     _ensureIndexedClassNamesLoaded();
     return _indexedClassNames;
   }
 
+  /// Cache of loaded type mirrors by class name.
   final _indexedClassByNameCache = <String, TypeMirrorWrapper>{};
+
+  /// Set of class names confirmed to not exist in any workspace.
   final Set<String> _workspaceClassNotFound = <String>{};
 
+  /// Indexes all Apex files in the workspace and reports progress.
+  ///
+  /// Discovers workspace folders from [params], locates SFDX package directories,
+  /// and indexes all `.cls` files found. Progress is reported via LSP work-done
+  /// progress notifications using the provided [token].
+  ///
+  /// - [params]: Initialization parameters containing workspace folders.
+  /// - [token]: Progress token for reporting indexing status.
+  ///
+  /// Yields [WorkDoneProgressParams] as indexing progresses, including:
+  /// - Begin event when indexing starts
+  /// - Report events with percentage complete
+  /// - End event when indexing finishes or fails
+  ///
+  /// Example:
+  /// ```dart
+  /// await for (final progress in indexer.index(params, token: token)) {
+  ///   output.progress(params: progress);
+  /// }
+  /// ```
   Stream<WorkDoneProgressParams> index(
     InitializedParams params, {
     required ProgressToken token,
@@ -151,6 +227,10 @@ final class ApexIndexer {
     _workspaceClassNotFound.clear();
   }
 
+  /// Ensures indexed class names are loaded from disk.
+  ///
+  /// Lazily loads class names from all workspace `.sf-zed` directories
+  /// on first access. Subsequent calls are no-ops.
   void _ensureIndexedClassNamesLoaded() {
     if (_indexedClassNamesLoaded) return;
 
@@ -166,6 +246,12 @@ final class ApexIndexer {
     _indexedClassNamesLoaded = true;
   }
 
+  /// Loads indexed class names from a single workspace's `.sf-zed` directory.
+  ///
+  /// Scans the index directory for JSON files and extracts class names from
+  /// the file names (e.g., `Account.json` → `Account`).
+  ///
+  /// - [workspaceRoot]: The workspace root URI to load from.
   void _loadIndexedClassNamesForWorkspace(Uri workspaceRoot) {
     final rootPath = workspaceRoot.toFilePath(windows: _platform.isWindows);
     final indexDir = _fileSystem.directory(
@@ -194,6 +280,23 @@ final class ApexIndexer {
     }
   }
 
+  /// Retrieves detailed type information for an indexed class.
+  ///
+  /// Searches all workspaces for the class metadata file and returns the
+  /// parsed type mirror. Results are cached to avoid repeated disk reads.
+  ///
+  /// - [className]: The name of the class to look up.
+  ///
+  /// Returns the type mirror wrapper, or `null` if the class is not found
+  /// in any workspace or if the metadata file cannot be parsed.
+  ///
+  /// Example:
+  /// ```dart
+  /// final classInfo = await indexer.getIndexedClassInfo('Account');
+  /// if (classInfo case ClassMirrorWrapper(:final typeMirror)) {
+  ///   print('Found class: ${typeMirror.name}');
+  /// }
+  /// ```
   Future<TypeMirrorWrapper?> getIndexedClassInfo(String className) async {
     if (className.isEmpty) return null;
 
@@ -257,8 +360,14 @@ final class ApexIndexer {
 
   /// Builds the index for a single workspace.
   ///
-  /// [workspaceRoot] should be a `file://` URI.
-  /// [packageDirectoryUris] are absolute directory URIs.
+  /// Creates the `.sf-zed` directory, indexes all Apex files in the workspace's
+  /// package directories, and writes JSON metadata files for each type.
+  ///
+  /// - [workspaceRoot]: The workspace root as a `file://` URI.
+  /// - [packageDirectoryUris]: Absolute URIs of package directories to index.
+  /// - [token]: Progress token for reporting indexing status.
+  ///
+  /// The existing index directory is deleted and recreated to ensure freshness.
   Stream<WorkDoneProgressParams> _indexWorkspace({
     required Uri workspaceRoot,
     required List<Uri> packageDirectoryUris,
@@ -418,8 +527,17 @@ final class ApexIndexer {
     }
   }
 
-  /// Returns a best-effort relative path from [fromRoot] to [absolutePath].
-  /// If the paths can’t be made relative (different roots), returns [absolutePath].
+  /// Computes a relative path from a workspace root to an absolute file path.
+  ///
+  /// Attempts to create a relative path from [fromRoot] to [absolutePath].
+  /// If the paths are on different roots or cannot be made relative, returns
+  /// the [absolutePath] unchanged.
+  ///
+  /// - [fromRoot]: The workspace root URI to compute relative to.
+  /// - [absolutePath]: The absolute file path to make relative.
+  ///
+  /// Returns the relative path with leading path separator removed, or the
+  /// original [absolutePath] if it cannot be made relative.
   String _safeRelativePath({
     required Uri fromRoot,
     required String absolutePath,
@@ -435,6 +553,13 @@ final class ApexIndexer {
     return absolutePath;
   }
 
+  /// Counts the total number of Apex files to index across all package directories.
+  ///
+  /// Used to calculate accurate progress percentages during indexing.
+  ///
+  /// - [packageDirectoryUris]: The package directories to scan.
+  ///
+  /// Returns the total count of `.cls` files found.
   Future<int> _countApexFilesToIndex(List<Uri> packageDirectoryUris) async {
     var total = 0;
 

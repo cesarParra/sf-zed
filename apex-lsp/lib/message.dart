@@ -2,14 +2,29 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'message.g.dart';
 
+/// Severity levels for LSP log and show messages.
+///
+/// Maps to the LSP `MessageType` enumeration with corresponding numeric codes.
+///
+/// See also:
+///  * [LogMessage], which uses this type for logging.
+///  * [ShowMessage], which uses this type for user notifications.
 enum MessageType {
+  /// Error message (code 1) - indicates a failure or critical issue.
   error(code: 1),
+
+  /// Warning message (code 2) - indicates a potential problem.
   warning(code: 2),
+
+  /// Info message (code 3) - indicates general informational output.
   info(code: 3),
+
+  /// Log message (code 4) - indicates debug or trace-level output.
   log(code: 4);
 
   const MessageType({required this.code});
 
+  /// The numeric code as defined by the LSP specification.
   final int code;
 }
 
@@ -21,12 +36,32 @@ MessageType messageTypeFromJson(int code) =>
 // ----------- Incoming requests and notifications-----------------
 // The LSP protocol defines 2 types of incoming messages: requests and notifications.
 
+/// Base class for all incoming LSP messages from the client.
+///
+/// LSP defines two types of incoming messages:
+/// - **Requests** ([RequestMessage]): Have an `id` and expect a response
+/// - **Notifications** ([IncomingNotificationMessage]): No `id`, no response expected
+///
+/// See also:
+///  * [RequestMessage], for messages requiring a response.
+///  * [IncomingNotificationMessage], for fire-and-forget messages.
 sealed class IncomingMessage {
   const IncomingMessage();
 }
 
+/// Base class for LSP request messages that require a response.
+///
+/// Requests include an `id` field that must be included in the response.
+/// The server must send either a [SuccessResponseMessage] or [ErrorResponseMessage]
+/// for each request received.
+///
+/// See also:
+///  * [RequestMessageWithParams], for requests with typed parameters.
 sealed class RequestMessage extends IncomingMessage {
+  /// The request identifier that must be included in the response.
   final Object id;
+
+  /// The LSP method name (e.g., 'initialize', 'textDocument/completion').
   String get method;
 
   const RequestMessage(this.id);
@@ -38,9 +73,22 @@ sealed class RequestMessageWithParams<TParams> extends RequestMessage {
   const RequestMessageWithParams(super.id, this.params);
 }
 
+/// A position in a text document expressed as zero-based line and character offset.
+///
+/// A position is between two characters like an insert cursor in an editor.
+/// Line and character values are zero-based.
+///
+/// Example:
+/// ```dart
+/// final pos = Position(line: 0, character: 5);
+/// // Represents the position after the 5th character on the first line
+/// ```
 @JsonSerializable()
 final class Position {
+  /// Zero-based line number.
   final int line;
+
+  /// Zero-based character offset within the line.
   final int character;
 
   const Position({required this.line, required this.character});
@@ -63,9 +111,19 @@ final class TextDocumentIdentifierWithUri {
   Map<String, Object?> toJson() => _$TextDocumentIdentifierWithUriToJson(this);
 }
 
+/// Parameters for a `textDocument/completion` request.
+///
+/// Contains the document and cursor position where completion was triggered.
+///
+/// See also:
+///  * [CompletionRequest], which uses these parameters.
+///  * [CompletionList], the response type.
 @JsonSerializable()
 final class CompletionParams {
+  /// The text document where completion was requested.
   final TextDocumentIdentifierWithUri textDocument;
+
+  /// The cursor position where completion was triggered.
   final Position position;
 
   const CompletionParams({required this.textDocument, required this.position});
@@ -76,6 +134,12 @@ final class CompletionParams {
   Map<String, Object?> toJson() => _$CompletionParamsToJson(this);
 }
 
+/// LSP `textDocument/completion` request.
+///
+/// Sent by the client to request completion suggestions at a specific
+/// cursor position in a text document.
+///
+/// The server responds with a [CompletionList] containing completion items.
 final class CompletionRequest
     extends RequestMessageWithParams<CompletionParams> {
   @override
@@ -84,9 +148,25 @@ final class CompletionRequest
   const CompletionRequest(super.id, super.params);
 }
 
+/// A single completion suggestion returned to the client.
+///
+/// Represents one possible completion at the requested position.
+/// The [label] is displayed in the completion menu, while [insertText]
+/// is what gets inserted when the item is selected.
+///
+/// Example:
+/// ```dart
+/// final item = CompletionItem(
+///   label: 'Account',
+///   insertText: 'Account',
+/// );
+/// ```
 @JsonSerializable(createFactory: false)
 final class CompletionItem {
+  /// The label shown in the completion menu.
   final String label;
+
+  /// The text to insert. Defaults to [label] if not specified.
   final String? insertText;
 
   const CompletionItem({required this.label, String? insertText})
@@ -111,9 +191,27 @@ final class CompletionItem {
   int get hashCode => Object.hash(label, insertText);
 }
 
+/// Response to a completion request containing a list of completion items.
+///
+/// When [isIncomplete] is `true`, the client may re-request completions as
+/// the user continues typing to get more specific results.
+///
+/// Example:
+/// ```dart
+/// final list = CompletionList(
+///   isIncomplete: false,
+///   items: [
+///     CompletionItem(label: 'Account'),
+///     CompletionItem(label: 'Contact'),
+///   ],
+/// );
+/// ```
 @JsonSerializable(createFactory: false)
 final class CompletionList {
+  /// Whether the list is incomplete. When `true`, more items may be available.
   final bool isIncomplete;
+
+  /// The completion items to present to the user.
   final List<CompletionItem> items;
 
   const CompletionList({required this.isIncomplete, required this.items});
@@ -126,6 +224,15 @@ final class CompletionList {
   }
 }
 
+/// LSP `initialize` request.
+///
+/// The first request sent from client to server to initialize the LSP session.
+/// Must be sent before any other requests (except `shutdown`).
+///
+/// The server responds with its capabilities and version information.
+///
+/// See also:
+///  * [InitializedMessage], sent by the client after receiving the response.
 final class InitializeRequest
     extends RequestMessageWithParams<InitializedParams> {
   @override
@@ -174,6 +281,13 @@ final class InitializedParams {
   }
 }
 
+/// LSP `shutdown` request.
+///
+/// Requests that the server prepares to exit. The server must not exit
+/// until it receives an [ExitMessage] notification.
+///
+/// After responding to this request, the server should stop accepting
+/// new requests and finish processing ongoing requests.
 final class ShutdownRequest extends RequestMessage {
   @override
   String get method => 'shutdown';
@@ -181,8 +295,16 @@ final class ShutdownRequest extends RequestMessage {
   const ShutdownRequest(super.id);
 }
 
-/// Common base for notifications.
+/// Base class for LSP notification messages that don't require a response.
+///
+/// Notifications are fire-and-forget messages sent from client to server.
+/// Unlike requests, they have no `id` field and the server does not send
+/// a response.
+///
+/// See also:
+///  * [RequestMessage], for messages that require responses.
 sealed class IncomingNotificationMessage extends IncomingMessage {
+  /// The LSP method name (e.g., 'initialized', 'textDocument/didOpen').
   String get method;
 
   const IncomingNotificationMessage();
@@ -196,6 +318,12 @@ sealed class IncomingNotificationMessageWithParams<TParams>
   const IncomingNotificationMessageWithParams();
 }
 
+/// LSP `initialized` notification.
+///
+/// Sent by the client after receiving the response to an [InitializeRequest].
+/// Signals that the client is ready for normal operation and the server
+/// can begin sending notifications and performing initialization work like
+/// workspace indexing.
 class InitializedMessage extends IncomingNotificationMessage {
   @override
   String get method => 'initialized';
@@ -203,6 +331,11 @@ class InitializedMessage extends IncomingNotificationMessage {
   const InitializedMessage();
 }
 
+/// LSP `exit` notification.
+///
+/// Instructs the server to exit its process. The server should exit with
+/// code 0 if a [ShutdownRequest] was received previously, otherwise with
+/// code 1.
 class ExitMessage extends IncomingNotificationMessage {
   @override
   String get method => 'exit';
@@ -210,6 +343,14 @@ class ExitMessage extends IncomingNotificationMessage {
   const ExitMessage();
 }
 
+/// LSP `textDocument/didOpen` notification.
+///
+/// Sent when a text document is opened in the client. The server should
+/// track the document content and may begin analysis or diagnostics.
+///
+/// See also:
+///  * [TextDocumentDidChangeMessage], for content changes.
+///  * [TextDocumentDidCloseMessage], when the document is closed.
 class TextDocumentDidOpenMessage
     extends IncomingNotificationMessageWithParams<DidOpenTextDocumentParams> {
   @override
@@ -246,6 +387,13 @@ final class TextDocumentItem {
   Map<String, Object?> toJson() => _$TextDocumentItemToJson(this);
 }
 
+/// LSP `textDocument/didChange` notification.
+///
+/// Sent when the content of a text document changes. The server should
+/// update its internal representation of the document content.
+///
+/// This implementation uses full document sync, so each change contains
+/// the complete new document content.
 class TextDocumentDidChangeMessage
     extends IncomingNotificationMessageWithParams<DidChangeTextDocumentParams> {
   @override
@@ -257,6 +405,10 @@ class TextDocumentDidChangeMessage
   const TextDocumentDidChangeMessage(this.params);
 }
 
+/// LSP `textDocument/didClose` notification.
+///
+/// Sent when a text document is closed in the client. The server should
+/// stop tracking the document and may clean up associated resources.
 class TextDocumentDidCloseMessage
     extends IncomingNotificationMessageWithParams<DidCloseTextDocumentParams> {
   @override
@@ -322,11 +474,20 @@ final class DidChangeTextDocumentParams {
 
 //  ---------- Outgoing requests and notifications -------------
 
+/// Base class for all LSP messages sent from server to client.
+///
+/// All outgoing messages include the JSON-RPC version field set to "2.0".
+///
+/// See also:
+///  * [ResponseMessage], for responses to client requests.
+///  * [OutgoingNotificationMessage], for server-initiated notifications.
 sealed class OutgoingMessage {
+  /// The JSON-RPC protocol version. Always "2.0" for LSP.
   final String jsonrpc = '2.0';
 
   const OutgoingMessage();
 
+  /// Serializes this message to a JSON-encodable map.
   Map<String, Object?> toJson();
 }
 
@@ -418,17 +579,30 @@ class MessageParams {
   Map<String, Object?> toJson() => _$MessageParamsToJson(this);
 }
 
-/// A progress token as defined by LSP:
-/// `ProgressToken = integer | string`
+/// A progress token identifier for LSP work-done progress reporting.
 ///
-/// We intentionally do not use `json_serializable` here since the JSON shape is
-/// not an object, but a tagged union of primitives.
+/// As defined by the LSP specification, a progress token can be either an
+/// integer or a string. This class provides type-safe constructors for both.
+///
+/// Example:
+/// ```dart
+/// final token1 = ProgressToken.integer(42);
+/// final token2 = ProgressToken.string('indexing-123');
+/// ```
+///
+/// See also:
+///  * [WorkDoneProgressCreateRequest], which creates a progress indicator.
+///  * [WorkDoneProgressParams], which updates progress.
 final class ProgressToken {
+  /// The underlying token value (either int or String).
   final Object value;
 
   const ProgressToken._(this.value);
 
+  /// Creates a progress token with an integer value.
   const ProgressToken.integer(int value) : this._(value);
+
+  /// Creates a progress token with a string value.
   const ProgressToken.string(String value) : this._(value);
 
   factory ProgressToken.fromJson(Object? json) => switch (json) {

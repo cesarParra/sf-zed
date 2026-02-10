@@ -3,17 +3,70 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'message.dart';
 
-/// Reads LSP-framed messages from a byte stream.
+/// Reads and parses Language Server Protocol messages from a byte stream.
 ///
-/// Assumes:
-/// - UTF-8 JSON payload
-/// - Header includes Content-Length
-/// - Headers are ASCII and delimited by \r\n, with an empty line \r\n\r\n.
+/// This class handles the LSP message framing protocol, which consists of
+/// HTTP-style headers followed by a JSON payload. Each message has a
+/// `Content-Length` header indicating the size of the JSON body.
+///
+/// **Message format:**
+/// ```
+/// Content-Length: <bytes>\r\n
+/// \r\n
+/// <JSON payload>
+/// ```
+///
+/// **Key features:**
+/// - Streams incoming LSP messages as they arrive
+/// - Handles partial reads and buffering
+/// - Parses both requests (with `id`) and notifications (without `id`)
+/// - UTF-8 decoding of JSON payloads
+/// - ASCII decoding of headers
+///
+/// Example:
+/// ```dart
+/// final reader = MessageReader(stdin);
+/// await for (final message in reader.messages()) {
+///   switch (message) {
+///     case InitializeRequest():
+///       // Handle initialization
+///     case CompletionRequest():
+///       // Handle completion
+///   }
+/// }
+/// ```
+///
+/// See also:
+///  * [LspOut], which sends outgoing LSP messages.
+///  * [IncomingMessage], the base type for all parsed messages.
 final class MessageReader {
   MessageReader(Stream<List<int>> input) : _input = input;
 
   final Stream<List<int>> _input;
 
+  /// Streams LSP messages parsed from the input byte stream.
+  ///
+  /// Continuously reads and parses LSP-framed messages, yielding each
+  /// successfully parsed message. The stream continues until the input
+  /// stream closes or an unrecoverable error occurs.
+  ///
+  /// **Protocol handling:**
+  /// - Buffers incoming bytes until a complete message is available
+  /// - Validates Content-Length header
+  /// - Decodes JSON payloads as UTF-8
+  /// - Routes messages to appropriate types (requests vs notifications)
+  ///
+  /// Invalid or malformed messages are silently skipped to maintain server
+  /// stability.
+  ///
+  /// Example:
+  /// ```dart
+  /// await for (final message in reader.messages()) {
+  ///   if (message is InitializeRequest) {
+  ///     // Handle initialization
+  ///   }
+  /// }
+  /// ```
   Stream<IncomingMessage> messages() async* {
     // Buffer of bytes read so far.
     final buffer = BytesBuilder(copy: false);
@@ -68,6 +121,12 @@ final class MessageReader {
     }
   }
 
+  /// Finds the position of the header terminator `\r\n\r\n` in the byte array.
+  ///
+  /// - [data]: The byte array to search within.
+  ///
+  /// Returns the index of the first `\r` in the `\r\n\r\n` sequence, or -1
+  /// if the sequence is not found.
   static int _indexOfCrlfCrlf(Uint8List data) {
     // Search for "\r\n\r\n" (13,10,13,10)
     for (var i = 0; i + 3 < data.length; i++) {
@@ -81,6 +140,21 @@ final class MessageReader {
     return -1;
   }
 
+  /// Extracts the Content-Length value from LSP message headers.
+  ///
+  /// Parses headers in the format `Header-Name: value\r\n` and returns the
+  /// numeric value of the `Content-Length` header.
+  ///
+  /// - [headers]: The complete header section as an ASCII string.
+  ///
+  /// Returns the content length in bytes, or `null` if the header is missing,
+  /// malformed, or contains an invalid value.
+  ///
+  /// Example:
+  /// ```dart
+  /// final headers = 'Content-Length: 42\r\nContent-Type: application/json\r\n';
+  /// final length = _parseContentLength(headers); // 42
+  /// ```
   static int? _parseContentLength(String headers) {
     // Small parser for Content-Length: <number>
     // Header fields are separated by \r\n.
@@ -100,8 +174,14 @@ final class MessageReader {
     return null;
   }
 
-  // TODO: Return proper error object rather than null. That will allow us to not have to be checking for `Object`
-  // types in the code above
+  /// Attempts to decode a JSON string into a Dart object.
+  ///
+  /// - [text]: The JSON string to decode.
+  ///
+  /// Returns the decoded object, or `null` if the JSON is malformed.
+  ///
+  /// TODO: Return proper error object rather than null. That will allow us to not have to be checking for `Object`
+  /// types in the code above
   static Object? _tryDecodeJson(String text) {
     try {
       return jsonDecode(text);
@@ -110,6 +190,32 @@ final class MessageReader {
     }
   }
 
+  /// Parses a decoded JSON object into a typed LSP message.
+  ///
+  /// Validates JSON-RPC 2.0 format and routes the message to the appropriate
+  /// message type based on the `method` field and presence of `id`.
+  ///
+  /// - [decoded]: The decoded JSON object from the message payload.
+  ///
+  /// **Message routing:**
+  /// - Messages with `method` and `id` are requests
+  /// - Messages with `method` but no `id` are notifications
+  /// - Responses (with `id` but no `method`) are currently ignored
+  ///
+  /// Returns the parsed message, or `null` if the message is invalid,
+  /// unsupported, or malformed.
+  ///
+  /// Supported requests:
+  /// - `initialize`
+  /// - `shutdown`
+  /// - `textDocument/completion`
+  ///
+  /// Supported notifications:
+  /// - `initialized`
+  /// - `exit`
+  /// - `textDocument/didOpen`
+  /// - `textDocument/didChange`
+  /// - `textDocument/didClose`
   static IncomingMessage? _parseJsonRpcMessage(Object decoded) {
     if (decoded is! Map) return null;
 
@@ -180,6 +286,13 @@ final class MessageReader {
     return null;
   }
 
+  /// Removes the first [count] bytes from the buffer.
+  ///
+  /// This is used after successfully parsing a message to discard the
+  /// consumed bytes and retain any remaining data for the next message.
+  ///
+  /// - [buffer]: The byte buffer to modify.
+  /// - [count]: The number of bytes to remove from the beginning.
   static void _consume(BytesBuilder buffer, int count) {
     final data = buffer.toBytes();
     final remaining = data.sublist(count);

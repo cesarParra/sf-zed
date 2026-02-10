@@ -6,6 +6,32 @@ import 'package:apex_lsp/indexing/revamped.dart';
 import 'package:apex_lsp/type_name.dart';
 import 'package:ffi/ffi.dart';
 
+/// Parses and indexes Apex code in the currently open file using Tree-sitter.
+///
+/// This indexer provides real-time analysis of the active document without
+/// requiring persistent disk storage. It extracts declarations (types, methods,
+/// variables) that are visible at different cursor positions, enabling accurate
+/// local completion suggestions.
+///
+/// **Key features:**
+/// - Parses Apex code using native Tree-sitter FFI bindings
+/// - Extracts enums, interfaces, methods, and variables
+/// - Tracks variable scope visibility for accurate completions
+/// - Handles enhanced for loops and method parameters
+///
+/// The indexer is particularly useful for anonymous Apex blocks where
+/// declarations exist at the file level without a containing class.
+///
+/// Example:
+/// ```dart
+/// final indexer = LocalIndexer(bindings: treeSitterBindings);
+/// final declarations = indexer.parseAndIndex(documentText);
+/// // Use declarations for completion suggestions
+/// ```
+///
+/// See also:
+///  * [ApexIndexer], which indexes workspace files persistently.
+///  * [TreeSitterBindings], which provides native parser access.
 class LocalIndexer {
   LocalIndexer({required TreeSitterBindings bindings})
     : _bindings = bindings,
@@ -20,12 +46,29 @@ class LocalIndexer {
   final TreeSitterBindings _bindings;
   final Pointer<TSParser> _parser;
 
+  /// Parses Apex source code and extracts all declarations.
+  ///
+  /// Uses Tree-sitter to parse the text into a syntax tree, then traverses
+  /// the tree to collect type definitions, methods, and variables with their
+  /// scope information.
+  ///
+  /// - [text]: The complete Apex source code to parse.
+  ///
+  /// Returns a list of [Declaration] objects representing all indexable elements
+  /// found in the code.
+  ///
+  /// Example:
+  /// ```dart
+  /// final code = 'String name = "test";';
+  /// final declarations = indexer.parseAndIndex(code);
+  /// ```
   List<Declaration> parseAndIndex(String text) {
     final bindings = _bindings;
     final parser = _parser;
     final sourceBytes = utf8.encode(text);
     final sourcePtr = text.toNativeUtf8();
     try {
+      // Parse the source text into a syntax tree
       final tree = bindings.ts_parser_parse_string(
         parser,
         nullptr,
@@ -46,6 +89,11 @@ class LocalIndexer {
     }
   }
 
+  /// Recursively visits a syntax tree node and extracts declarations.
+  ///
+  /// Routes nodes to specific extraction methods based on their type.
+  /// Passes [scopeEnd] down to track where variable declarations become
+  /// invisible (e.g., at the end of a block or loop).
   List<Declaration> _visit(TSNode node, List<int> bytes, {int? scopeEnd}) {
     List<Declaration> results = [];
     final type = _nodeType(node);
@@ -60,17 +108,24 @@ class LocalIndexer {
       case 'local_variable_declaration':
         results.addAll(_extractVariables(node, bytes, scopeEnd: scopeEnd));
       case 'block':
-        results.addAll(_visitChildren(
-          node,
-          bytes,
-          scopeEnd: _bindings.ts_node_end_byte(node),
-        ));
+        // Blocks define scope boundaries - variables declared inside are
+        // only visible until the block ends
+        results.addAll(
+          _visitChildren(
+            node,
+            bytes,
+            scopeEnd: _bindings.ts_node_end_byte(node),
+          ),
+        );
       case 'for_statement':
-        results.addAll(_visitChildren(
-          node,
-          bytes,
-          scopeEnd: _bindings.ts_node_end_byte(node),
-        ));
+        // For loops also define scope boundaries
+        results.addAll(
+          _visitChildren(
+            node,
+            bytes,
+            scopeEnd: _bindings.ts_node_end_byte(node),
+          ),
+        );
       case 'enhanced_for_statement':
         results.addAll(_extractEnhancedFor(node, bytes));
       default:
@@ -98,6 +153,9 @@ class LocalIndexer {
     return ptr.toDartString();
   }
 
+  /// Extracts an enum declaration with its values.
+  ///
+  /// Parses the enum name and all enum constant values from the body.
   IndexedEnum _extractEnum(TSNode node, List<int> bytes) {
     final nameNode = _getField(node, 'name');
 
@@ -125,6 +183,9 @@ class LocalIndexer {
     );
   }
 
+  /// Extracts an interface declaration with its method signatures.
+  ///
+  /// Parses the interface name and all method declarations from the body.
   IndexedInterface _extractInterface(TSNode node, List<int> bytes) {
     final nameNode = _getField(node, 'name');
     final interfaceName = _nodeText(nameNode, bytes);
@@ -155,6 +216,10 @@ class LocalIndexer {
     );
   }
 
+  /// Extracts a method declaration including parameters and local variables.
+  ///
+  /// Returns the method itself plus any parameter declarations and variables
+  /// declared within the method body. Parameters are scoped to the method body.
   List<Declaration> _extractMethod(TSNode node, List<int> bytes) {
     final nameNode = _getField(node, 'name');
     final name = _nodeText(nameNode, bytes);
@@ -175,6 +240,7 @@ class LocalIndexer {
         ? null
         : _bindings.ts_node_end_byte(bodyNode);
 
+    // Extract method parameters - they're visible throughout the method body
     final parametersNode = _getField(node, 'parameters');
     if (!_isNullNode(parametersNode)) {
       final scopeVisibility = bodyScopeEnd != null
@@ -205,19 +271,23 @@ class LocalIndexer {
       }
     }
 
+    // Recursively visit the method body to extract local variables
     if (!_isNullNode(bodyNode)) {
-      results.addAll(
-        _visitChildren(bodyNode, bytes, scopeEnd: bodyScopeEnd),
-      );
+      results.addAll(_visitChildren(bodyNode, bytes, scopeEnd: bodyScopeEnd));
     }
 
     return results;
   }
 
+  /// Extracts an enhanced for loop (for-each) with its iteration variable.
+  ///
+  /// The iteration variable is scoped to the loop body. For example:
+  /// `for (Account acc : accounts)` declares `acc` visible within the loop.
   List<Declaration> _extractEnhancedFor(TSNode node, List<int> bytes) {
     final results = <Declaration>[];
     final scopeEnd = _bindings.ts_node_end_byte(node);
 
+    // Extract the loop variable (e.g., "acc" in "for (Account acc : accounts)")
     final typeNode = _getField(node, 'type');
     final nameNode = _getField(node, 'name');
     final typeName = _nodeText(typeNode, bytes);
@@ -231,13 +301,12 @@ class LocalIndexer {
             _bindings.ts_node_start_byte(nameNode),
             _bindings.ts_node_end_byte(nameNode),
           ),
-          visibility: VisibleBetweenDeclarationAndScopeEnd(
-            scopeEnd: scopeEnd,
-          ),
+          visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: scopeEnd),
         ),
       );
     }
 
+    // Visit the loop body to extract any nested declarations
     final bodyNode = _getField(node, 'body');
     if (!_isNullNode(bodyNode)) {
       results.addAll(_visit(bodyNode, bytes, scopeEnd: scopeEnd));
@@ -246,6 +315,12 @@ class LocalIndexer {
     return results;
   }
 
+  /// Extracts local variable declarations from a declaration statement.
+  ///
+  /// Handles multiple variables declared on the same line, e.g.:
+  /// `String firstName = 'John', lastName = 'Doe';`
+  ///
+  /// Variables are visible from their declaration point until [scopeEnd].
   List<IndexedVariable> _extractVariables(
     TSNode node,
     List<int> bytes, {
@@ -258,6 +333,7 @@ class LocalIndexer {
         ? VisibleBetweenDeclarationAndScopeEnd(scopeEnd: scopeEnd)
         : null;
 
+    // A single declaration can contain multiple variable_declarator nodes
     final results = <IndexedVariable>[];
     final childCount = _bindings.ts_node_named_child_count(node);
     for (var i = 0; i < childCount; i++) {
@@ -283,6 +359,11 @@ class LocalIndexer {
     return results;
   }
 
+  /// Retrieves a named field from a Tree-sitter node.
+  ///
+  /// Tree-sitter grammars define named fields for structured access to
+  /// child nodes. For example, a method_declaration has fields like 'name',
+  /// 'parameters', and 'body'.
   TSNode _getField(TSNode node, String fieldName) {
     final fieldPtr = fieldName.toNativeUtf8();
     try {
@@ -296,6 +377,10 @@ class LocalIndexer {
     }
   }
 
+  /// Extracts the source text for a Tree-sitter node.
+  ///
+  /// Uses the node's byte range to slice the original source bytes and
+  /// decode them as UTF-8 text.
   String _nodeText(TSNode node, List<int> bytes) {
     final start = _bindings.ts_node_start_byte(node);
     final end = _bindings.ts_node_end_byte(node);
@@ -303,8 +388,15 @@ class LocalIndexer {
     return utf8.decode(bytes.sublist(start, end));
   }
 
+  /// Checks if a Tree-sitter node is null (doesn't exist).
+  ///
+  /// Tree-sitter returns null nodes when accessing missing optional fields.
   bool _isNullNode(TSNode node) => node.id.address == 0;
 
+  /// Collects all direct children of a node that match a specific type.
+  ///
+  /// Only checks immediate children, not recursive descendants. Used to
+  /// find specific constructs like enum constants or method parameters.
   List<TSNode> _collectDirectChildrenByType(TSNode root, String typeName) {
     final matches = <TSNode>[];
     final namedCount = _bindings.ts_node_named_child_count(root);
