@@ -9,6 +9,7 @@ import 'package:apex_lsp/message_reader.dart';
 import 'package:apex_lsp/server.dart';
 import 'package:file/local.dart';
 
+import '../support/lsp_client.dart';
 import '../support/lsp_test_harness.dart';
 
 final _libPath = Platform.environment['TS_SFAPEX_LIB'];
@@ -44,4 +45,9 @@ IntegrationData createIntegrationData() {
     ),
   );
   return (server: integrationServer, sink: sink, input: input);
+}
+
+LspClient createLspClient() {
+  final (:server, :sink, :input) = createIntegrationData();
+  return LspClient(sink: sink, input: input, server: server);
 }
