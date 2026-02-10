@@ -109,6 +109,49 @@ public Enum Foo { A, B, C };
     });
   });
 
+  group('indexes methods', () {
+    test('indexes a simple method declaration', () {
+      final text = 'void sampleMethod() { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<MethodDeclaration>());
+      final method = result.first as MethodDeclaration;
+      expect(method.name.value, 'sampleMethod');
+    });
+
+    test('indexes a method with a non-void return type', () {
+      final text = 'String getName() { return null; }';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<MethodDeclaration>());
+      final method = result.first as MethodDeclaration;
+      expect(method.name.value, 'getName');
+    });
+
+    test('tracks location of the method declaration', () {
+      final text = 'void sampleMethod() { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final method = result.first as MethodDeclaration;
+      expect(method.location, isNotNull);
+      expect(method.location, equals((0, text.length)));
+    });
+
+    test('method is marked as non-static', () {
+      final text = 'void sampleMethod() { }';
+
+      final result = indexer.parseAndIndex(text);
+
+      final method = result.first as MethodDeclaration;
+      expect(method.isStatic, isFalse);
+    });
+  });
+
   group('indexes interfaces', () {
     test('indexes top level interface declaration', () {
       final text = '''

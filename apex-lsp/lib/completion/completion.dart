@@ -148,12 +148,12 @@ Future<CompletionList> onCompletion({
         .map(
           (declaration) => switch (declaration) {
             IndexedType() => ApexTypeCandidate(Local(name: declaration.name)),
-            IndexedVariable() =>
-              LocalVariableCandidate(declaration.name.value),
+            IndexedVariable() => LocalVariableCandidate(declaration.name.value),
             FieldMember() => LocalVariableCandidate(declaration.name.value),
-            MethodMember() => LocalVariableCandidate(declaration.name.value),
-            EnumValueMember() =>
-              LocalVariableCandidate(declaration.name.value),
+            MethodDeclaration() => LocalVariableCandidate(
+              declaration.name.value,
+            ),
+            EnumValueMember() => LocalVariableCandidate(declaration.name.value),
           },
         )
         .toList();
@@ -168,10 +168,9 @@ Future<CompletionList> onCompletion({
 
     final typeName = TypeName(memberContext.typeName!);
 
-    IndexedType? findType(TypeName name) =>
-        index.whereType<IndexedType>().firstWhereOrNull(
-          (indexedType) => indexedType.name == name,
-        );
+    IndexedType? findType(TypeName name) => index
+        .whereType<IndexedType>()
+        .firstWhereOrNull((indexedType) => indexedType.name == name);
 
     TypeName? resolveVariableType(TypeName name) => index
         .whereType<IndexedVariable>()

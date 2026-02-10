@@ -43,10 +43,15 @@ final class IndexedClass extends IndexedType {
 }
 
 final class IndexedInterface extends IndexedType {
-  final List<MethodMember> methods;
+  final List<MethodDeclaration> methods;
   final String? superInterface;
 
-  IndexedInterface(super.name, {required this.methods, this.superInterface, super.location});
+  IndexedInterface(
+    super.name, {
+    required this.methods,
+    this.superInterface,
+    super.location,
+  });
 }
 
 final class IndexedEnum extends IndexedType {
@@ -62,10 +67,10 @@ final class FieldMember extends Declaration {
   FieldMember(super.name, {required this.isStatic, this.typeName});
 }
 
-final class MethodMember extends Declaration {
+final class MethodDeclaration extends Declaration {
   final bool isStatic;
 
-  MethodMember(super.name, {required this.isStatic});
+  MethodDeclaration(super.name, {required this.isStatic, super.location});
 }
 
 final class Constructor {
@@ -539,10 +544,8 @@ final class IndexLoader {
           ...mirror.enums.map(fromEnumMirror),
           ...mirror.interfaces.map(fromInterfaceMirror),
           ...mirror.fields.map(
-            (field) => FieldMember(
-              TypeName(field.name),
-              isStatic: field.isStatic,
-            ),
+            (field) =>
+                FieldMember(TypeName(field.name), isStatic: field.isStatic),
           ),
           ...mirror.properties.map(
             (property) => FieldMember(
@@ -551,7 +554,7 @@ final class IndexLoader {
             ),
           ),
           ...mirror.methods.map(
-            (method) => MethodMember(
+            (method) => MethodDeclaration(
               TypeName(method.name),
               isStatic: method.isStatic,
             ),
@@ -595,15 +598,13 @@ Future<List<String>> getMemberNamesByType(
     return switch (type) {
       .static => [],
       .instance =>
-        sourceInterface.methods
-            .map((current) => current.name.value)
-            .toList(),
+        sourceInterface.methods.map((current) => current.name.value).toList(),
     };
   }
 
   bool isStaticDeclaration(Declaration declaration) => switch (declaration) {
     FieldMember(:final isStatic) => isStatic,
-    MethodMember(:final isStatic) => isStatic,
+    MethodDeclaration(:final isStatic) => isStatic,
     EnumValueMember() => true,
     IndexedType() => true,
     IndexedVariable() => false,

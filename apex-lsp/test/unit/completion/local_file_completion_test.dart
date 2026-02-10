@@ -201,11 +201,57 @@ void main() {
     });
   });
 
+  group('methods', () {
+    test('autocomplete method names at top level', () async {
+      final method = MethodDeclaration(
+        TypeName('sampleMethod'),
+        isStatic: false,
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('{cursor}'),
+        index: [method],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'sampleMethod');
+    });
+
+    test('autocomplete method names with a prefix', () async {
+      final method = MethodDeclaration(
+        TypeName('sampleMethod'),
+        isStatic: false,
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('sam{cursor}'),
+        index: [method],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'sampleMethod');
+    });
+
+    test('does not autocomplete methods declared after cursor', () async {
+      final method = MethodDeclaration(
+        TypeName('laterMethod'),
+        isStatic: false,
+        location: (20, 40),
+      );
+      final completionList = await complete(
+        extractCursorPosition('l{cursor}                                     '),
+        index: [method],
+      );
+
+      expect(completionList.items, isEmpty);
+    });
+  });
+
   group('interfaces', () {
     test('autocomplete interface types at top level', () async {
       final interfaceType = IndexedInterface(
         TypeName('Foo'),
-        methods: [MethodMember(TypeName('doSomething'), isStatic: false)],
+        methods: [MethodDeclaration(TypeName('doSomething'), isStatic: false)],
       );
       final completionList = await complete(
         extractCursorPosition('{cursor}'),
@@ -220,8 +266,8 @@ void main() {
       final interfaceType = IndexedInterface(
         TypeName('Foo'),
         methods: [
-          MethodMember(TypeName('doSomething'), isStatic: false),
-          MethodMember(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(TypeName('doSomething'), isStatic: false),
+          MethodDeclaration(TypeName('saySomething'), isStatic: false),
         ],
       );
       final completionList = await complete(
@@ -244,8 +290,8 @@ void main() {
       final interfaceType = IndexedInterface(
         TypeName('Foo'),
         methods: [
-          MethodMember(TypeName('doSomething'), isStatic: false),
-          MethodMember(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(TypeName('doSomething'), isStatic: false),
+          MethodDeclaration(TypeName('saySomething'), isStatic: false),
         ],
       );
       final variable = IndexedVariable(
@@ -273,8 +319,8 @@ void main() {
       final interfaceType = IndexedInterface(
         TypeName('Foo'),
         methods: [
-          MethodMember(TypeName('doSomething'), isStatic: false),
-          MethodMember(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(TypeName('doSomething'), isStatic: false),
+          MethodDeclaration(TypeName('saySomething'), isStatic: false),
         ],
       );
       final variable = IndexedVariable(
