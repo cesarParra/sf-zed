@@ -327,6 +327,19 @@ public Enum Foo { A, B, C };
     });
   });
 
+  group('indexes classes', () {
+    test('indexes top level class declaration', () {
+      final text = 'public class Foo {}';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<IndexedClass>());
+      final classDeclaration = result.first as IndexedClass;
+      expect(classDeclaration.name.value, 'Foo');
+    });
+  });
+
   group('indexes interfaces', () {
     test('indexes top level interface declaration', () {
       final text = '''

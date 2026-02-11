@@ -103,6 +103,8 @@ class LocalIndexer {
         results.add(_extractEnum(node, bytes));
       case 'interface_declaration':
         results.add(_extractInterface(node, bytes));
+      case 'class_declaration':
+        results.add(_extractClass(node, bytes));
       case 'method_declaration':
         results.addAll(_extractMethod(node, bytes));
       case 'local_variable_declaration':
@@ -214,6 +216,13 @@ class LocalIndexer {
         _bindings.ts_node_end_byte(node),
       ),
     );
+  }
+
+  IndexedClass _extractClass(TSNode node, List<int> bytes) {
+    final nameNode = _getField(node, 'name');
+    final className = _nodeText(nameNode, bytes);
+
+    return IndexedClass(TypeName(className));
   }
 
   /// Extracts a method declaration including parameters and local variables.

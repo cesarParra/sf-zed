@@ -59,7 +59,8 @@ sealed class Declaration {
 }
 
 sealed class IndexedType extends Declaration {
-  IndexedType(super.name, {super.location}) : super(visibility: AlwaysVisible());
+  IndexedType(super.name, {super.location})
+    : super(visibility: AlwaysVisible());
 }
 
 final class IndexedClass extends IndexedType {
@@ -69,8 +70,8 @@ final class IndexedClass extends IndexedType {
 
   IndexedClass(
     super.name, {
-    required this.members,
-    required this.constructors,
+    this.members = const [],
+    this.constructors = const [],
     this.superClass,
   });
 }
@@ -98,14 +99,14 @@ final class FieldMember extends Declaration {
   final bool isStatic;
 
   FieldMember(super.name, {required this.isStatic, this.typeName})
-      : super(visibility: AlwaysVisible());
+    : super(visibility: AlwaysVisible());
 }
 
 final class MethodDeclaration extends Declaration {
   final bool isStatic;
 
   MethodDeclaration(super.name, {required this.isStatic, super.location})
-      : super(visibility: AlwaysVisible());
+    : super(visibility: AlwaysVisible());
 }
 
 final class Constructor {
@@ -134,7 +135,10 @@ final class IndexedVariable extends Declaration {
     required this.typeName,
     required Location location,
     Visibility? visibility,
-  }) : super(location: location, visibility: visibility ?? VisibleAfterDeclaration());
+  }) : super(
+         location: location,
+         visibility: visibility ?? VisibleAfterDeclaration(),
+       );
 
   @override
   bool operator ==(Object other) =>

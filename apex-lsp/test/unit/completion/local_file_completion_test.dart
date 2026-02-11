@@ -548,4 +548,17 @@ void main() {
       );
     });
   });
+
+  group('classes', () {
+    test('autocomplete classes types at top level', () async {
+      final classType = IndexedClass(TypeName('Foo'));
+      final completionList = await complete(
+        extractCursorPosition('{cursor}'),
+        index: [classType],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'Foo');
+    });
+  });
 }

@@ -57,7 +57,7 @@ my{cursor}''');
     test('completes locally declared enums', () async {
       final textWithPosition = extractCursorPosition('''
 public enum Color { RED, GREEN, BLUE }
-Color.{cursor}''');
+{cursor}''');
       final document = Document.withText(textWithPosition.text);
       await client.openDocument(document);
 
@@ -67,7 +67,23 @@ Color.{cursor}''');
         character: textWithPosition.position.character,
       );
 
-      expect(completions, containsCompletions(['RED', 'GREEN', 'BLUE']));
+      expect(completions, containsCompletions(['Color']));
+    });
+
+    test('completes locally declared classes', () async {
+      final textWithPosition = extractCursorPosition('''
+    public class Animal  {}
+    {cursor}''');
+      final document = Document.withText(textWithPosition.text);
+      await client.openDocument(document);
+
+      final completions = await client.completion(
+        uri: document.uri,
+        line: textWithPosition.position.line,
+        character: textWithPosition.position.character,
+      );
+
+      expect(completions, containsCompletions(['Animal']));
     });
 
     test('completes enum values via dot access', () async {
