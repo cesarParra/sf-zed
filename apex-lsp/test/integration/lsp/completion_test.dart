@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 
+import '../../support/cursor_utils.dart';
 import '../../support/lsp_client.dart';
 import '../../support/lsp_matchers.dart';
 import '../../support/test_workspace.dart';
@@ -38,46 +39,48 @@ public interface Greeter {
     });
 
     test('completes local variables', () async {
-      const text = "String myVariable = 'hello';\nmy";
-      final document = Document.withText(text);
+      final textWithPosition = extractCursorPosition('''
+String myVariable = 'hello';
+my{cursor}''');
+      final document = Document.withText(textWithPosition.text);
       await client.openDocument(document);
 
       final completions = await client.completion(
         uri: document.uri,
-        line: 1,
-        character: 2,
+        line: textWithPosition.position.line,
+        character: textWithPosition.position.character,
       );
 
       expect(completions, containsCompletion('myVariable'));
     });
 
     test('completes locally declared enums', () async {
-      const text = '''
+      final textWithPosition = extractCursorPosition('''
 public enum Color { RED, GREEN, BLUE }
-Color.''';
-      final document = Document.withText(text);
+Color.{cursor}''');
+      final document = Document.withText(textWithPosition.text);
       await client.openDocument(document);
 
       final completions = await client.completion(
         uri: document.uri,
-        line: 1,
-        character: 7,
+        line: textWithPosition.position.line,
+        character: textWithPosition.position.character,
       );
 
       expect(completions, containsCompletions(['RED', 'GREEN', 'BLUE']));
     });
 
     test('completes enum values via dot access', () async {
-      const text = '''
+      final textWithPosition = extractCursorPosition('''
 public enum Season { SPRING, SUMMER, FALL, WINTER }
-Season.''';
-      final document = Document.withText(text);
+Season.{cursor}''');
+      final document = Document.withText(textWithPosition.text);
       await client.openDocument(document);
 
       final completions = await client.completion(
         uri: document.uri,
-        line: 1,
-        character: 7,
+        line: textWithPosition.position.line,
+        character: textWithPosition.position.character,
       );
 
       expect(
@@ -87,20 +90,20 @@ Season.''';
     });
 
     test('completes interface methods via dot access', () async {
-      const text = '''
+      final textWithPosition = extractCursorPosition('''
 public interface Greeter {
   String greet();
   void sayGoodbye();
 }
 Greeter g;
-g.''';
-      final document = Document.withText(text);
+g.{cursor}''');
+      final document = Document.withText(textWithPosition.text);
       await client.openDocument(document);
 
       final completions = await client.completion(
         uri: document.uri,
-        line: 5,
-        character: 2,
+        line: textWithPosition.position.line,
+        character: textWithPosition.position.character,
       );
 
       expect(completions, containsCompletions(['greet', 'sayGoodbye']));
@@ -122,29 +125,31 @@ g.''';
 
     test('completions update after document change', () async {
       const documentUri = 'file:///test/anon.apex';
-      const initialText = '''
+      final initialTextWithPosition = extractCursorPosition('''
 String firstName = 'a';
-fir''';
-      await client.openDocument(Document(uri: documentUri, text: initialText));
+fir{cursor}''');
+      await client.openDocument(
+        Document(uri: documentUri, text: initialTextWithPosition.text),
+      );
 
       final first = await client.completion(
         uri: documentUri,
-        line: 1,
-        character: 3,
+        line: initialTextWithPosition.position.line,
+        character: initialTextWithPosition.position.character,
       );
       expect(first, containsCompletion('firstName'));
 
-      const updatedText = '''
+      final updatedTextWithPosition = extractCursorPosition('''
 Integer count = 0;
-cou''';
+cou{cursor}''');
       await client.changeDocument(
-        Document(uri: documentUri, text: updatedText),
+        Document(uri: documentUri, text: updatedTextWithPosition.text),
       );
 
       final second = await client.completion(
         uri: documentUri,
-        line: 1,
-        character: 3,
+        line: updatedTextWithPosition.position.line,
+        character: updatedTextWithPosition.position.character,
       );
       expect(second, containsCompletion('count'));
     });
