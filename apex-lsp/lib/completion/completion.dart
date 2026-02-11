@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:apex_lsp/completion/completion_context.dart';
 import 'package:apex_lsp/completion/helpers.dart';
 import 'package:apex_lsp/completion/rank.dart';
-import 'package:apex_lsp/indexing/revamped.dart';
+import 'package:apex_lsp/indexing/declarations.dart';
 import 'package:apex_lsp/message.dart';
 import 'package:apex_lsp/type_name.dart';
 

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/indexing/local_indexer.dart';
-import 'package:apex_lsp/indexing/revamped.dart';
+import 'package:apex_lsp/indexing/declarations.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -201,10 +201,7 @@ public Enum Foo { A, B, C };
       final result = indexer.parseAndIndex(text);
 
       final variable = result.whereType<IndexedVariable>().first;
-      expect(
-        variable.visibility,
-        isA<VisibleBetweenDeclarationAndScopeEnd>(),
-      );
+      expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       final bodyEnd = text.indexOf('}') + 1;
       final visibility =
           variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
@@ -230,10 +227,7 @@ public Enum Foo { A, B, C };
       final result = indexer.parseAndIndex(text);
 
       final variable = result.whereType<IndexedVariable>().first;
-      expect(
-        variable.visibility,
-        isA<VisibleBetweenDeclarationAndScopeEnd>(),
-      );
+      expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       final bodyEnd = text.indexOf('}') + 1;
       final visibility =
           variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
@@ -260,10 +254,7 @@ public Enum Foo { A, B, C };
 
       final variable = result.whereType<IndexedVariable>().first;
       expect(variable.name.value, 'i');
-      expect(
-        variable.visibility,
-        isA<VisibleBetweenDeclarationAndScopeEnd>(),
-      );
+      expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       // The for statement ends after its body's closing brace (before the outer ' }')
       final visibility =
           variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
@@ -291,20 +282,16 @@ public Enum Foo { A, B, C };
       );
     });
 
-    test('enhanced for iteration variable is scoped to the for statement',
-        () {
+    test('enhanced for iteration variable is scoped to the for statement', () {
       final text =
           'void m() { List<String> items; for (String item : items) { } }';
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result
-          .whereType<IndexedVariable>()
-          .firstWhere((v) => v.name.value == 'item');
-      expect(
-        variable.visibility,
-        isA<VisibleBetweenDeclarationAndScopeEnd>(),
+      final variable = result.whereType<IndexedVariable>().firstWhere(
+        (v) => v.name.value == 'item',
       );
+      expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
     });
 
     test('while loop body variable is scoped to the body block', () {
@@ -312,13 +299,10 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result
-          .whereType<IndexedVariable>()
-          .firstWhere((v) => v.name.value == 'loopVar');
-      expect(
-        variable.visibility,
-        isA<VisibleBetweenDeclarationAndScopeEnd>(),
+      final variable = result.whereType<IndexedVariable>().firstWhere(
+        (v) => v.name.value == 'loopVar',
       );
+      expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       final whileBodyEnd = text.lastIndexOf('}', text.lastIndexOf('}') - 1) + 1;
       final visibility =
           variable.visibility as VisibleBetweenDeclarationAndScopeEnd;
@@ -326,7 +310,8 @@ public Enum Foo { A, B, C };
     });
 
     test('nested for loops have independent scopes', () {
-      final text = '''void m() { for (Integer i = 0; i < 10; i++) { for (Integer j = 0; j < 5; j++) { } } }''';
+      final text =
+          '''void m() { for (Integer i = 0; i < 10; i++) { for (Integer j = 0; j < 5; j++) { } } }''';
 
       final result = indexer.parseAndIndex(text);
 

@@ -5,7 +5,7 @@
 // members from a single class.
 
 import 'package:apex_lsp/completion/completion.dart';
-import 'package:apex_lsp/indexing/revamped.dart';
+import 'package:apex_lsp/indexing/declarations.dart';
 import 'package:apex_lsp/message.dart';
 import 'package:apex_lsp/type_name.dart';
 import 'package:test/test.dart';

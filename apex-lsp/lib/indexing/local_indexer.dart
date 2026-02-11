@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
-import 'package:apex_lsp/indexing/revamped.dart';
+import 'package:apex_lsp/indexing/declarations.dart';
 import 'package:apex_lsp/type_name.dart';
 import 'package:ffi/ffi.dart';
 
