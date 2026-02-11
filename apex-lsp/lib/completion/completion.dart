@@ -257,7 +257,19 @@ Future<CompletionList> onCompletion({
 
     return switch (indexedType) {
       null => <CompletionCandidate>[],
-      IndexedClass() => throw UnimplementedError(),
+      IndexedClass() =>
+        indexedType.members
+            .map(
+              (value) => MemberCandidate(
+                Member(
+                  name: value.name,
+                  parentType: Local(name: indexedType.name),
+                  // TODO: Do not hardcode
+                  type: MemberType.static,
+                ),
+              ),
+            )
+            .toList(),
       IndexedInterface() =>
         indexedType.methods
             .map(

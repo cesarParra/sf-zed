@@ -65,15 +65,9 @@ sealed class IndexedType extends Declaration {
 
 final class IndexedClass extends IndexedType {
   final List<Declaration> members;
-  final List<Constructor> constructors;
   final String? superClass;
 
-  IndexedClass(
-    super.name, {
-    this.members = const [],
-    this.constructors = const [],
-    this.superClass,
-  });
+  IndexedClass(super.name, {this.members = const [], this.superClass});
 }
 
 final class IndexedInterface extends IndexedType {
@@ -107,10 +101,6 @@ final class MethodDeclaration extends Declaration {
 
   MethodDeclaration(super.name, {required this.isStatic, super.location})
     : super(visibility: AlwaysVisible());
-}
-
-final class Constructor {
-  Constructor();
 }
 
 final class EnumValueMember extends Declaration {
@@ -600,9 +590,6 @@ final class IndexLoader {
             ),
           ),
         ],
-        constructors: mirror.constructors
-            .map((constructor) => Constructor())
-            .toList(),
         superClass: null, // TODO: Parse and populate superclass
       );
     }

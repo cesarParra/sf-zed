@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:apex_lsp/completion/tree_sitter_bindings.dart';
 import 'package:apex_lsp/indexing/local_indexer.dart';
 import 'package:apex_lsp/indexing/declarations.dart';
+import 'package:apex_lsp/type_name.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -337,6 +338,18 @@ public Enum Foo { A, B, C };
       expect(result.first, isA<IndexedClass>());
       final classDeclaration = result.first as IndexedClass;
       expect(classDeclaration.name.value, 'Foo');
+    });
+
+    test('indexes top level class declaration', () {
+      final text = 'public class Foo { static String bar; }';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<IndexedClass>());
+      final classDeclaration = result.first as IndexedClass;
+      expect(classDeclaration.members, hasLength(1));
+      expect(classDeclaration.members.first.name, TypeName('bar'));
     });
   });
 

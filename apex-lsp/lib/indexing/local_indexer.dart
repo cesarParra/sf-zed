@@ -222,7 +222,25 @@ class LocalIndexer {
     final nameNode = _getField(node, 'name');
     final className = _nodeText(nameNode, bytes);
 
-    return IndexedClass(TypeName(className));
+    final bodyNode = _getField(node, 'body');
+    final fields = <FieldMember>[];
+    if (!_isNullNode(bodyNode)) {
+      final fieldNodes = _collectDirectChildrenByType(
+        bodyNode,
+        'field_declaration',
+      );
+      for (final fieldNode in fieldNodes) {
+        final declaratorNode = _getField(fieldNode, 'declarator');
+        final fieldNameNode = _getField(declaratorNode, 'name');
+        final fieldName = _nodeText(fieldNameNode, bytes);
+        if (fieldName.isNotEmpty) {
+          // TODO: Do not hardcode static
+          fields.add(FieldMember(TypeName(fieldName), isStatic: true));
+        }
+      }
+    }
+
+    return IndexedClass(TypeName(className), members: fields);
   }
 
   /// Extracts a method declaration including parameters and local variables.

@@ -70,20 +70,40 @@ public enum Color { RED, GREEN, BLUE }
       expect(completions, containsCompletions(['Color']));
     });
 
-    test('completes locally declared classes', () async {
-      final textWithPosition = extractCursorPosition('''
-    public class Animal  {}
-    {cursor}''');
-      final document = Document.withText(textWithPosition.text);
-      await client.openDocument(document);
+    group('classes', () {
+      test('completes locally declared classes', () async {
+        final textWithPosition = extractCursorPosition('''
+      public class Animal  {}
+      {cursor}''');
+        final document = Document.withText(textWithPosition.text);
+        await client.openDocument(document);
 
-      final completions = await client.completion(
-        uri: document.uri,
-        line: textWithPosition.position.line,
-        character: textWithPosition.position.character,
-      );
+        final completions = await client.completion(
+          uri: document.uri,
+          line: textWithPosition.position.line,
+          character: textWithPosition.position.character,
+        );
 
-      expect(completions, containsCompletions(['Animal']));
+        expect(completions, containsCompletions(['Animal']));
+      });
+
+      test('completes static class fields', () async {
+        final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        static String type;
+      }
+      Animal.{cursor}''');
+        final document = Document.withText(textWithPosition.text);
+        await client.openDocument(document);
+
+        final completions = await client.completion(
+          uri: document.uri,
+          line: textWithPosition.position.line,
+          character: textWithPosition.position.character,
+        );
+
+        expect(completions, containsCompletions(['type']));
+      });
     });
 
     test('completes enum values via dot access', () async {
