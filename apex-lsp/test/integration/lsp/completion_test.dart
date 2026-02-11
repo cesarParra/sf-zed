@@ -13,11 +13,13 @@ void main() {
     setUp(() async {
       workspace = await createTestWorkspace(
         classFiles: {
-          'Foo.cls': 'public class Foo {\n'
+          'Foo.cls':
+              'public class Foo {\n'
               '  public static void hello() {}\n'
               '}',
           'Season.cls': 'public enum Season { SPRING, SUMMER, FALL, WINTER }',
-          'Greeter.cls': 'public interface Greeter {\n'
+          'Greeter.cls':
+              'public interface Greeter {\n'
               '  String greet();\n'
               '  void sayGoodbye();\n'
               '}',
@@ -36,12 +38,12 @@ void main() {
     });
 
     test('completes local variables', () async {
-      const documentUri = 'file:///test/anon.apex';
       const text = "String myVariable = 'hello';\nmy";
-      await client.openDocument(uri: documentUri, text: text);
+      final document = Document.withText(text);
+      await client.openDocument(document);
 
       final completions = await client.completion(
-        uri: documentUri,
+        uri: document.uri,
         line: 1,
         character: 2,
       );
@@ -49,16 +51,31 @@ void main() {
       expect(completions, containsCompletion('myVariable'));
     });
 
-    test('completes enum values via dot access', () async {
-      const documentUri = 'file:///test/anon.apex';
-      // The enum must be defined in the same document because the server's
-      // completion handler uses the local indexer on the open document text.
-      const text = 'public enum Season { SPRING, SUMMER, FALL, WINTER }\n'
-          'Season.';
-      await client.openDocument(uri: documentUri, text: text);
+    test('completes locally declared enums', () async {
+      const text =
+          'public enum Color { RED, GREEN, BLUE }\n'
+          'Color.';
+      final document = Document.withText(text);
+      await client.openDocument(document);
 
       final completions = await client.completion(
-        uri: documentUri,
+        uri: document.uri,
+        line: 1,
+        character: 7,
+      );
+
+      expect(completions, containsCompletions(['RED', 'GREEN', 'BLUE']));
+    });
+
+    test('completes enum values via dot access', () async {
+      const text =
+          'public enum Season { SPRING, SUMMER, FALL, WINTER }\n'
+          'Season.';
+      final document = Document.withText(text);
+      await client.openDocument(document);
+
+      final completions = await client.completion(
+        uri: document.uri,
         line: 1,
         character: 7,
       );
@@ -70,17 +87,18 @@ void main() {
     });
 
     test('completes interface methods via dot access', () async {
-      const documentUri = 'file:///test/anon.apex';
-      const text = 'public interface Greeter {\n'
+      const text =
+          'public interface Greeter {\n'
           '  String greet();\n'
           '  void sayGoodbye();\n'
           '}\n'
           'Greeter g;\n'
           'g.';
-      await client.openDocument(uri: documentUri, text: text);
+      final document = Document.withText(text);
+      await client.openDocument(document);
 
       final completions = await client.completion(
-        uri: documentUri,
+        uri: document.uri,
         line: 5,
         character: 2,
       );
@@ -89,12 +107,12 @@ void main() {
     });
 
     test('returns empty completions for empty context', () async {
-      const documentUri = 'file:///test/anon.apex';
       const text = '';
-      await client.openDocument(uri: documentUri, text: text);
+      final document = Document.withText(text);
+      await client.openDocument(document);
 
       final completions = await client.completion(
-        uri: documentUri,
+        uri: document.uri,
         line: 0,
         character: 0,
       );
@@ -105,7 +123,7 @@ void main() {
     test('completions update after document change', () async {
       const documentUri = 'file:///test/anon.apex';
       const initialText = 'String firstName = \'a\';\nfir';
-      await client.openDocument(uri: documentUri, text: initialText);
+      await client.openDocument(Document(uri: documentUri, text: initialText));
 
       final first = await client.completion(
         uri: documentUri,
@@ -115,7 +133,9 @@ void main() {
       expect(first, containsCompletion('firstName'));
 
       const updatedText = 'Integer count = 0;\ncou';
-      await client.changeDocument(uri: documentUri, text: updatedText);
+      await client.changeDocument(
+        Document(uri: documentUri, text: updatedText),
+      );
 
       final second = await client.completion(
         uri: documentUri,

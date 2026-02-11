@@ -13,6 +13,15 @@ final class InitializeResult {
   InitializeResult({required this.capabilities, this.serverInfo});
 }
 
+final class Document {
+  final String uri;
+  final String text;
+
+  const Document({required this.uri, required this.text});
+
+  Document.withText(this.text) : uri = 'file:///tmp/anydoc.cls';
+}
+
 /// High-level LSP client for integration tests.
 ///
 /// Wraps the low-level [InMemoryByteSink], [InMemoryLspInput], and [Server]
@@ -26,11 +35,7 @@ final class LspClient {
   int _nextId = 1;
   Future<void>? _serverTask;
 
-  LspClient({
-    required this.sink,
-    required this.input,
-    required this.server,
-  });
+  LspClient({required this.sink, required this.input, required this.server});
 
   /// Starts the server loop in the background.
   void start() {
@@ -76,15 +81,12 @@ final class LspClient {
   }
 
   /// Sends a `textDocument/didOpen` notification.
-  Future<void> openDocument({
-    required String uri,
-    required String text,
-  }) async {
+  Future<void> openDocument(Document document) async {
     input.addFrame(
       jsonRpcNotification(
         method: 'textDocument/didOpen',
         params: {
-          'textDocument': {'uri': uri, 'text': text},
+          'textDocument': {'uri': document.uri, 'text': document.text},
         },
       ),
     );
@@ -93,17 +95,14 @@ final class LspClient {
   }
 
   /// Sends a `textDocument/didChange` notification (full sync).
-  Future<void> changeDocument({
-    required String uri,
-    required String text,
-  }) async {
+  Future<void> changeDocument(Document document) async {
     input.addFrame(
       jsonRpcNotification(
         method: 'textDocument/didChange',
         params: {
-          'textDocument': {'uri': uri},
+          'textDocument': {'uri': document.uri},
           'contentChanges': [
-            {'text': text},
+            {'text': document.text},
           ],
         },
       ),
@@ -156,9 +155,7 @@ final class LspClient {
     Object? params,
   }) async {
     final id = _nextId++;
-    input.addFrame(
-      jsonRpcRequest(id: id, method: method, params: params),
-    );
+    input.addFrame(jsonRpcRequest(id: id, method: method, params: params));
     return _waitForResponse(id: id);
   }
 
@@ -217,9 +214,7 @@ final class LspClient {
       await Future<void>.delayed(const Duration(milliseconds: 25));
     }
 
-    throw StateError(
-      timeoutMessage ?? 'Timed out waiting for expected frame',
-    );
+    throw StateError(timeoutMessage ?? 'Timed out waiting for expected frame');
   }
 
   Future<Map<String, Object?>> _waitForResponse({
