@@ -13,16 +13,16 @@ void main() {
     setUp(() async {
       workspace = await createTestWorkspace(
         classFiles: {
-          'Foo.cls':
-              'public class Foo {\n'
-              '  public static void hello() {}\n'
-              '}',
+          'Foo.cls': '''
+public class Foo {
+  public static void hello() {}
+}''',
           'Season.cls': 'public enum Season { SPRING, SUMMER, FALL, WINTER }',
-          'Greeter.cls':
-              'public interface Greeter {\n'
-              '  String greet();\n'
-              '  void sayGoodbye();\n'
-              '}',
+          'Greeter.cls': '''
+public interface Greeter {
+  String greet();
+  void sayGoodbye();
+}''',
         },
       );
       client = createLspClient()..start();
@@ -52,9 +52,9 @@ void main() {
     });
 
     test('completes locally declared enums', () async {
-      const text =
-          'public enum Color { RED, GREEN, BLUE }\n'
-          'Color.';
+      const text = '''
+public enum Color { RED, GREEN, BLUE }
+Color.''';
       final document = Document.withText(text);
       await client.openDocument(document);
 
@@ -68,9 +68,9 @@ void main() {
     });
 
     test('completes enum values via dot access', () async {
-      const text =
-          'public enum Season { SPRING, SUMMER, FALL, WINTER }\n'
-          'Season.';
+      const text = '''
+public enum Season { SPRING, SUMMER, FALL, WINTER }
+Season.''';
       final document = Document.withText(text);
       await client.openDocument(document);
 
@@ -87,13 +87,13 @@ void main() {
     });
 
     test('completes interface methods via dot access', () async {
-      const text =
-          'public interface Greeter {\n'
-          '  String greet();\n'
-          '  void sayGoodbye();\n'
-          '}\n'
-          'Greeter g;\n'
-          'g.';
+      const text = '''
+public interface Greeter {
+  String greet();
+  void sayGoodbye();
+}
+Greeter g;
+g.''';
       final document = Document.withText(text);
       await client.openDocument(document);
 
@@ -122,7 +122,9 @@ void main() {
 
     test('completions update after document change', () async {
       const documentUri = 'file:///test/anon.apex';
-      const initialText = 'String firstName = \'a\';\nfir';
+      const initialText = '''
+String firstName = 'a';
+fir''';
       await client.openDocument(Document(uri: documentUri, text: initialText));
 
       final first = await client.completion(
@@ -132,7 +134,9 @@ void main() {
       );
       expect(first, containsCompletion('firstName'));
 
-      const updatedText = 'Integer count = 0;\ncou';
+      const updatedText = '''
+Integer count = 0;
+cou''';
       await client.changeDocument(
         Document(uri: documentUri, text: updatedText),
       );
