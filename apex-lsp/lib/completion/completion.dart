@@ -71,7 +71,7 @@ enum MemberType { static, instance }
 /// Used to track completions for fields, methods, and enum values along
 /// with their containing type and whether they are static or instance members.
 final class Member {
-  final TypeName name;
+  final DeclarationName name;
   final ApexType parentType;
   final MemberType type;
 
@@ -108,7 +108,7 @@ final class LocalVariableCandidate extends CompletionCandidate {
 ///  * [Local], for types in the current file.
 ///  * [Self], for the type currently being edited.
 sealed class ApexType {
-  final TypeName name;
+  final DeclarationName name;
 
   ApexType({required this.name});
 }
@@ -214,6 +214,7 @@ Future<CompletionList> onCompletion({
   final context = await contextDetector.detect(
     text: text,
     cursorOffset: cursorOffset,
+    index: index,
   );
 
   List<CompletionCandidate> topLevelCandidates() {
@@ -240,20 +241,30 @@ Future<CompletionList> onCompletion({
       return <CompletionCandidate>[];
     }
 
-    final typeName = TypeName(memberContext.typeName!);
+    final typeName = DeclarationName(memberContext.typeName!);
 
-    IndexedType? findType(TypeName name) => index
-        .whereType<IndexedType>()
-        .firstWhereOrNull((indexedType) => indexedType.name == name);
-
-    TypeName? resolveVariableType(TypeName name) => index
+    DeclarationName? resolveVariableType(DeclarationName name) => index
         .whereType<IndexedVariable>()
         .firstWhereOrNull((v) => v.name == name)
         ?.typeName;
 
     final indexedType =
-        findType(typeName) ??
-        findType(resolveVariableType(typeName) ?? const TypeName(''));
+        index.findType(typeName) ??
+        index.findType(
+          resolveVariableType(typeName) ?? const DeclarationName(''),
+        );
+
+    MemberType getMemberType(Declaration declaration) => switch (declaration) {
+      FieldMember(:final isStatic) ||
+      MethodDeclaration(:final isStatic) => isStatic ? .static : .instance,
+
+      EnumValueMember() ||
+      IndexedClass() ||
+      IndexedInterface() ||
+      IndexedEnum() => .static,
+
+      IndexedVariable() => .instance,
+    };
 
     return switch (indexedType) {
       null => <CompletionCandidate>[],
@@ -264,11 +275,18 @@ Future<CompletionList> onCompletion({
                 Member(
                   name: value.name,
                   parentType: Local(name: indexedType.name),
-                  // TODO: Do not hardcode
-                  type: MemberType.static,
+                  type: getMemberType(value),
                 ),
               ),
             )
+            .where((candidate) {
+              final targetMemberType =
+                  memberContext.objectName == memberContext.typeName
+                  ? MemberType.static
+                  : MemberType.instance;
+
+              return candidate.member.type == targetMemberType;
+            })
             .toList(),
       IndexedInterface() =>
         indexedType.methods

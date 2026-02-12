@@ -1,3 +1,7 @@
+import 'package:apex_lsp/completion/completion.dart';
+import 'package:apex_lsp/indexing/declarations.dart';
+import 'package:apex_lsp/type_name.dart';
+
 extension IntCompletionExtension on int {
   /// Whether the character is an Apex identifier or not.
   /// An identifier matches the following rules:
@@ -75,4 +79,12 @@ extension StringCompletionExtension on String {
   bool startsWithIgnoreCase(String prefix) {
     return toLowerCase().startsWith(prefix.toLowerCase());
   }
+}
+
+extension DeclarationsExtension on List<Declaration> {
+  IndexedType? findType(DeclarationName name) => whereType<IndexedType>()
+      .firstWhereOrNull((indexedType) => indexedType.name == name);
+
+  Declaration? findDeclaration(DeclarationName name) =>
+      firstWhereOrNull((declaration) => declaration.name == name);
 }

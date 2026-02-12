@@ -48,7 +48,7 @@ final class VisibleBetweenDeclarationAndScopeEnd extends Visibility {
 }
 
 sealed class Declaration {
-  final TypeName name;
+  final DeclarationName name;
   final Location? location;
   final Visibility visibility;
 
@@ -89,7 +89,7 @@ final class IndexedEnum extends IndexedType {
 }
 
 final class FieldMember extends Declaration {
-  final TypeName? typeName;
+  final DeclarationName? typeName;
   final bool isStatic;
 
   FieldMember(super.name, {required this.isStatic, this.typeName})
@@ -118,7 +118,7 @@ final class EnumValueMember extends Declaration {
 }
 
 final class IndexedVariable extends Declaration {
-  final TypeName typeName;
+  final DeclarationName typeName;
 
   IndexedVariable(
     super.name, {
@@ -143,7 +143,7 @@ final class IndexedVariable extends Declaration {
 }
 
 extension IndexedTypeStringExtensions on String {
-  EnumValueMember enumValueMember() => EnumValueMember(TypeName(this));
+  EnumValueMember enumValueMember() => EnumValueMember(DeclarationName(this));
 }
 
 final class Indexer {
@@ -547,9 +547,9 @@ final class IndexLoader {
 
     IndexedEnum fromEnumMirror(apex_reflection.EnumMirror mirror) {
       return IndexedEnum(
-        TypeName(mirror.name),
+        DeclarationName(mirror.name),
         values: mirror.values
-            .map((value) => EnumValueMember(TypeName(value.name)))
+            .map((value) => EnumValueMember(DeclarationName(value.name)))
             .toList(),
       );
     }
@@ -560,7 +560,7 @@ final class IndexLoader {
       // TODO: Parse and populate methods
       // TODO: Parse and populate super
       return IndexedInterface(
-        TypeName(mirror.name),
+        DeclarationName(mirror.name),
         methods: [],
         superInterface: null,
       );
@@ -568,24 +568,24 @@ final class IndexLoader {
 
     IndexedClass fromClassMirror(apex_reflection.ClassMirror mirror) {
       return IndexedClass(
-        TypeName(mirror.name),
+        DeclarationName(mirror.name),
         members: [
           ...mirror.classes.map(fromClassMirror),
           ...mirror.enums.map(fromEnumMirror),
           ...mirror.interfaces.map(fromInterfaceMirror),
           ...mirror.fields.map(
             (field) =>
-                FieldMember(TypeName(field.name), isStatic: field.isStatic),
+                FieldMember(DeclarationName(field.name), isStatic: field.isStatic),
           ),
           ...mirror.properties.map(
             (property) => FieldMember(
-              TypeName(property.name),
+              DeclarationName(property.name),
               isStatic: property.isStatic,
             ),
           ),
           ...mirror.methods.map(
             (method) => MethodDeclaration(
-              TypeName(method.name),
+              DeclarationName(method.name),
               isStatic: method.isStatic,
             ),
           ),

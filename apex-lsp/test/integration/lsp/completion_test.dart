@@ -90,7 +90,8 @@ public enum Color { RED, GREEN, BLUE }
       test('completes static class fields', () async {
         final textWithPosition = extractCursorPosition('''
       public class Animal  {
-        static String type;
+        String instanceVar;
+        static String staticVar;
       }
       Animal.{cursor}''');
         final document = Document.withText(textWithPosition.text);
@@ -102,7 +103,29 @@ public enum Color { RED, GREEN, BLUE }
           character: textWithPosition.position.character,
         );
 
-        expect(completions, containsCompletions(['type']));
+        expect(completions, containsCompletion('staticVar'));
+        expect(completions, doesNotContainCompletion('instanceVar'));
+      });
+
+      test('completes instance class fields', () async {
+        final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        String instanceVar;
+        static String staticVar;
+      }
+      Animal sampleAnimal;
+      sampleAnimal.{cursor}''');
+        final document = Document.withText(textWithPosition.text);
+        await client.openDocument(document);
+
+        final completions = await client.completion(
+          uri: document.uri,
+          line: textWithPosition.position.line,
+          character: textWithPosition.position.character,
+        );
+
+        expect(completions, containsCompletion('instanceVar'));
+        expect(completions, doesNotContainCompletion('staticVar'));
       });
     });
 

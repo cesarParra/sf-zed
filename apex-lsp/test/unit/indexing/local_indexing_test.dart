@@ -340,7 +340,7 @@ public Enum Foo { A, B, C };
       expect(classDeclaration.name.value, 'Foo');
     });
 
-    test('indexes top level class declaration', () {
+    test('indexes static class fields', () {
       final text = 'public class Foo { static String bar; }';
 
       final result = indexer.parseAndIndex(text);
@@ -349,7 +349,25 @@ public Enum Foo { A, B, C };
       expect(result.first, isA<IndexedClass>());
       final classDeclaration = result.first as IndexedClass;
       expect(classDeclaration.members, hasLength(1));
-      expect(classDeclaration.members.first.name, TypeName('bar'));
+      expect(classDeclaration.members.first.name, DeclarationName('bar'));
+      expect(classDeclaration.members.first, isA<FieldMember>());
+      final fieldDeclaration = classDeclaration.members.first as FieldMember;
+      expect(fieldDeclaration.isStatic, true);
+    });
+
+    test('indexes instance class fields', () {
+      final text = 'public class Foo { String bar; }';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<IndexedClass>());
+      final classDeclaration = result.first as IndexedClass;
+      expect(classDeclaration.members, hasLength(1));
+      expect(classDeclaration.members.first.name, DeclarationName('bar'));
+      expect(classDeclaration.members.first, isA<FieldMember>());
+      final fieldDeclaration = classDeclaration.members.first as FieldMember;
+      expect(fieldDeclaration.isStatic, false);
     });
   });
 

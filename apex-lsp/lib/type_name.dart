@@ -1,13 +1,13 @@
-final class TypeName {
+final class DeclarationName {
   final String value;
-  const TypeName(this.value);
+  const DeclarationName(this.value);
 
   bool startsWith(String prefix) =>
       value.toLowerCase().startsWith(prefix.toLowerCase());
 
   @override
   bool operator ==(Object other) =>
-      other is TypeName && value.toLowerCase() == other.value.toLowerCase();
+      other is DeclarationName && value.toLowerCase() == other.value.toLowerCase();
 
   @override
   int get hashCode => value.toLowerCase().hashCode;

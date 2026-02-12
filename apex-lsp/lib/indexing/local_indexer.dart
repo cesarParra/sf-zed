@@ -170,13 +170,13 @@ class LocalIndexer {
       for (final constant in constants) {
         final name = _nodeText(constant, bytes);
         if (name.isNotEmpty) {
-          members.add(EnumValueMember(TypeName(name)));
+          members.add(EnumValueMember(DeclarationName(name)));
         }
       }
     }
 
     return IndexedEnum(
-      TypeName(enumName),
+      DeclarationName(enumName),
       location: (
         _bindings.ts_node_start_byte(node),
         _bindings.ts_node_end_byte(node),
@@ -203,13 +203,15 @@ class LocalIndexer {
         final methodNameNode = _getField(methodNode, 'name');
         final name = _nodeText(methodNameNode, bytes);
         if (name.isNotEmpty) {
-          methods.add(MethodDeclaration(TypeName(name), isStatic: false));
+          methods.add(
+            MethodDeclaration(DeclarationName(name), isStatic: false),
+          );
         }
       }
     }
 
     return IndexedInterface(
-      TypeName(interfaceName),
+      DeclarationName(interfaceName),
       methods: methods,
       location: (
         _bindings.ts_node_start_byte(node),
@@ -233,14 +235,25 @@ class LocalIndexer {
         final declaratorNode = _getField(fieldNode, 'declarator');
         final fieldNameNode = _getField(declaratorNode, 'name');
         final fieldName = _nodeText(fieldNameNode, bytes);
+
+        final modifiersNodes = _collectDirectChildrenByType(
+          fieldNode,
+          'modifiers',
+        );
+
+        final isStatic = modifiersNodes.any(
+          (node) => _nodeText(node, bytes) == 'static',
+        );
+
         if (fieldName.isNotEmpty) {
-          // TODO: Do not hardcode static
-          fields.add(FieldMember(TypeName(fieldName), isStatic: true));
+          fields.add(
+            FieldMember(DeclarationName(fieldName), isStatic: isStatic),
+          );
         }
       }
     }
 
-    return IndexedClass(TypeName(className), members: fields);
+    return IndexedClass(DeclarationName(className), members: fields);
   }
 
   /// Extracts a method declaration including parameters and local variables.
@@ -253,7 +266,7 @@ class LocalIndexer {
 
     final results = <Declaration>[
       MethodDeclaration(
-        TypeName(name),
+        DeclarationName(name),
         isStatic: false,
         location: (
           _bindings.ts_node_start_byte(node),
@@ -285,8 +298,8 @@ class LocalIndexer {
         if (paramName.isNotEmpty) {
           results.add(
             IndexedVariable(
-              TypeName(paramName),
-              typeName: TypeName(paramType),
+              DeclarationName(paramName),
+              typeName: DeclarationName(paramType),
               location: (
                 _bindings.ts_node_start_byte(param),
                 _bindings.ts_node_end_byte(param),
@@ -322,8 +335,8 @@ class LocalIndexer {
     if (name.isNotEmpty) {
       results.add(
         IndexedVariable(
-          TypeName(name),
-          typeName: TypeName(typeName),
+          DeclarationName(name),
+          typeName: DeclarationName(typeName),
           location: (
             _bindings.ts_node_start_byte(nameNode),
             _bindings.ts_node_end_byte(nameNode),
@@ -371,8 +384,8 @@ class LocalIndexer {
         if (name.isNotEmpty) {
           results.add(
             IndexedVariable(
-              TypeName(name),
-              typeName: TypeName(typeName),
+              DeclarationName(name),
+              typeName: DeclarationName(typeName),
               location: (
                 _bindings.ts_node_start_byte(child),
                 _bindings.ts_node_end_byte(child),

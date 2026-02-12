@@ -138,7 +138,7 @@ class ClassMirrorWrapper implements IndexedType {
   @override
   bool hasMemberPrefix(String prefix) {
     return memberNames.any(
-      (current) => TypeName(current).startsWith(prefix),
+      (current) => DeclarationName(current).startsWith(prefix),
     );
   }
 
@@ -151,19 +151,19 @@ class ClassMirrorWrapper implements IndexedType {
 
   @override
   IndexedType? nestedTypeByName(String name) {
-    final target = TypeName(name);
+    final target = DeclarationName(name);
     for (final c in classMirror.classes) {
-      if (TypeName(c.name) == target) {
+      if (DeclarationName(c.name) == target) {
         return ClassMirrorWrapper(classMirror: c);
       }
     }
     for (final i in classMirror.interfaces) {
-      if (TypeName(i.name) == target) {
+      if (DeclarationName(i.name) == target) {
         return InterfaceMirrorWrapper(interfaceMirror: i);
       }
     }
     for (final e in classMirror.enums) {
-      if (TypeName(e.name) == target) {
+      if (DeclarationName(e.name) == target) {
         return EnumMirrorWrapper(enumMirror: e);
       }
     }
@@ -197,7 +197,7 @@ class EnumMirrorWrapper implements IndexedType {
   @override
   bool hasMemberPrefix(String prefix) {
     return memberNames.any(
-      (current) => TypeName(current).startsWith(prefix),
+      (current) => DeclarationName(current).startsWith(prefix),
     );
   }
 
@@ -233,7 +233,7 @@ class InterfaceMirrorWrapper implements IndexedType {
   @override
   bool hasMemberPrefix(String prefix) {
     return memberNames.any(
-      (current) => TypeName(current).startsWith(prefix),
+      (current) => DeclarationName(current).startsWith(prefix),
     );
   }
 

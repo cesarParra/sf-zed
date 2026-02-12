@@ -26,7 +26,7 @@ void main() {
 
   group('enums', () {
     test('autocomplete enum types on empty file', () async {
-      final enumType = IndexedEnum(TypeName('Foo'), values: []);
+      final enumType = IndexedEnum(DeclarationName('Foo'), values: []);
       final completionList = await complete(
         extractCursorPosition('{cursor}'),
         index: [enumType],
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('autocomplete enum types when typing a top level name', () async {
-      final enumType = IndexedEnum(TypeName('Foo'), values: []);
+      final enumType = IndexedEnum(DeclarationName('Foo'), values: []);
       final completionList = await complete(
         extractCursorPosition('F{cursor}'),
         index: [enumType],
@@ -49,7 +49,7 @@ void main() {
 
     test('autocompletes all enum values', () async {
       final enumType = IndexedEnum(
-        TypeName('Foo'),
+        DeclarationName('Foo'),
         values: ['Bar'.enumValueMember(), 'Baz'.enumValueMember()],
       );
       final completionList = await complete(
@@ -64,7 +64,7 @@ void main() {
 
     test('autocompletes all enum values by name', () async {
       final enumType = IndexedEnum(
-        TypeName('Foo'),
+        DeclarationName('Foo'),
         values: ['Bar'.enumValueMember(), 'Other'.enumValueMember()],
       );
       final completionList = await complete(
@@ -80,8 +80,8 @@ void main() {
   group('variables', () {
     test('autocomplete variable names at top level', () async {
       final variable = IndexedVariable(
-        TypeName('myVar'),
-        typeName: TypeName('String'),
+        DeclarationName('myVar'),
+        typeName: DeclarationName('String'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -95,8 +95,8 @@ void main() {
 
     test('autocomplete variable names with prefix', () async {
       final variable = IndexedVariable(
-        TypeName('myVar'),
-        typeName: TypeName('String'),
+        DeclarationName('myVar'),
+        typeName: DeclarationName('String'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -109,10 +109,10 @@ void main() {
     });
 
     test('mixed types and variables', () async {
-      final enumType = IndexedEnum(TypeName('Foo'), values: []);
+      final enumType = IndexedEnum(DeclarationName('Foo'), values: []);
       final variable = IndexedVariable(
-        TypeName('fooInstance'),
-        typeName: TypeName('Foo'),
+        DeclarationName('fooInstance'),
+        typeName: DeclarationName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -131,8 +131,8 @@ void main() {
     test('does not autocomplete variables declared after cursor', () async {
       // The variable is declared at bytes 20-40, but the cursor is at byte 5
       final variable = IndexedVariable(
-        TypeName('laterVar'),
-        typeName: TypeName('String'),
+        DeclarationName('laterVar'),
+        typeName: DeclarationName('String'),
         location: (20, 40),
       );
       final completionList = await complete(
@@ -147,7 +147,7 @@ void main() {
   group('methods', () {
     test('autocomplete method names at top level', () async {
       final method = MethodDeclaration(
-        TypeName('sampleMethod'),
+        DeclarationName('sampleMethod'),
         isStatic: false,
         location: (0, 10),
       );
@@ -162,7 +162,7 @@ void main() {
 
     test('autocomplete method names with a prefix', () async {
       final method = MethodDeclaration(
-        TypeName('sampleMethod'),
+        DeclarationName('sampleMethod'),
         isStatic: false,
         location: (0, 10),
       );
@@ -177,7 +177,7 @@ void main() {
 
     test('autocompletes methods declared after cursor', () async {
       final method = MethodDeclaration(
-        TypeName('laterMethod'),
+        DeclarationName('laterMethod'),
         isStatic: false,
         location: (20, 40),
       );
@@ -194,8 +194,8 @@ void main() {
   group('method parameters', () {
     test('autocomplete parameter names', () async {
       final parameter = IndexedVariable(
-        TypeName('paramVar'),
-        typeName: TypeName('String'),
+        DeclarationName('paramVar'),
+        typeName: DeclarationName('String'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -209,8 +209,8 @@ void main() {
 
     test('autocomplete parameter names with prefix', () async {
       final parameter = IndexedVariable(
-        TypeName('paramVar'),
-        typeName: TypeName('String'),
+        DeclarationName('paramVar'),
+        typeName: DeclarationName('String'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -224,15 +224,15 @@ void main() {
 
     test('autocomplete members of a parameter typed as an interface', () async {
       final interfaceType = IndexedInterface(
-        TypeName('Foo'),
+        DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(TypeName('doSomething'), isStatic: false),
-          MethodDeclaration(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
         ],
       );
       final parameter = IndexedVariable(
-        TypeName('paramVar'),
-        typeName: TypeName('Foo'),
+        DeclarationName('paramVar'),
+        typeName: DeclarationName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -253,15 +253,15 @@ void main() {
 
     test('autocomplete members of a parameter filtered by prefix', () async {
       final interfaceType = IndexedInterface(
-        TypeName('Foo'),
+        DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(TypeName('doSomething'), isStatic: false),
-          MethodDeclaration(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
         ],
       );
       final parameter = IndexedVariable(
-        TypeName('paramVar'),
-        typeName: TypeName('Foo'),
+        DeclarationName('paramVar'),
+        typeName: DeclarationName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -279,8 +279,8 @@ void main() {
     test('parameter is completed when cursor is inside method body', () async {
       // Parameter at bytes 18-32, method body spans bytes 35-60
       final parameter = IndexedVariable(
-        TypeName('paramVar'),
-        typeName: TypeName('String'),
+        DeclarationName('paramVar'),
+        typeName: DeclarationName('String'),
         location: (18, 32),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 60),
       );
@@ -301,8 +301,8 @@ void main() {
       () async {
         // Parameter at bytes 18-32, method body spans bytes 35-60
         final parameter = IndexedVariable(
-          TypeName('paramVar'),
-          typeName: TypeName('String'),
+          DeclarationName('paramVar'),
+          typeName: DeclarationName('String'),
           location: (18, 32),
           visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 60),
         );
@@ -322,8 +322,8 @@ void main() {
       () async {
         // Variable at bytes 40-46, method body ends at byte 50
         final variable = IndexedVariable(
-          TypeName('myTest'),
-          typeName: TypeName('String'),
+          DeclarationName('myTest'),
+          typeName: DeclarationName('String'),
           location: (40, 46),
           visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
         );
@@ -342,8 +342,8 @@ void main() {
 
     test('variable inside method body is not completed outside body', () async {
       final variable = IndexedVariable(
-        TypeName('myTest'),
-        typeName: TypeName('String'),
+        DeclarationName('myTest'),
+        typeName: DeclarationName('String'),
         location: (40, 46),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
       );
@@ -362,8 +362,8 @@ void main() {
   group('loop scoping', () {
     test('for loop init variable is not completed after the loop', () async {
       final variable = IndexedVariable(
-        TypeName('myIndex'),
-        typeName: TypeName('Integer'),
+        DeclarationName('myIndex'),
+        typeName: DeclarationName('Integer'),
         location: (5, 12),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 30),
       );
@@ -377,8 +377,8 @@ void main() {
 
     test('for loop init variable is completed inside the for body', () async {
       final variable = IndexedVariable(
-        TypeName('myIndex'),
-        typeName: TypeName('Integer'),
+        DeclarationName('myIndex'),
+        typeName: DeclarationName('Integer'),
         location: (5, 12),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 40),
       );
@@ -395,8 +395,8 @@ void main() {
 
     test('enhanced for variable is not completed after the loop', () async {
       final variable = IndexedVariable(
-        TypeName('item'),
-        typeName: TypeName('String'),
+        DeclarationName('item'),
+        typeName: DeclarationName('String'),
         location: (16, 20),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 40),
       );
@@ -413,8 +413,8 @@ void main() {
 
     test('while loop body variable is not completed after the loop', () async {
       final variable = IndexedVariable(
-        TypeName('loopVar'),
-        typeName: TypeName('String'),
+        DeclarationName('loopVar'),
+        typeName: DeclarationName('String'),
         location: (17, 24),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 40),
       );
@@ -431,14 +431,14 @@ void main() {
 
     test('nested block variable is not completed outside that block', () async {
       final innerVar = IndexedVariable(
-        TypeName('innerVar'),
-        typeName: TypeName('String'),
+        DeclarationName('innerVar'),
+        typeName: DeclarationName('String'),
         location: (12, 20),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 30),
       );
       final outerVar = IndexedVariable(
-        TypeName('outerVar'),
-        typeName: TypeName('String'),
+        DeclarationName('outerVar'),
+        typeName: DeclarationName('String'),
         location: (0, 8),
         visibility: VisibleBetweenDeclarationAndScopeEnd(scopeEnd: 50),
       );
@@ -458,8 +458,10 @@ void main() {
   group('interfaces', () {
     test('autocomplete interface types at top level', () async {
       final interfaceType = IndexedInterface(
-        TypeName('Foo'),
-        methods: [MethodDeclaration(TypeName('doSomething'), isStatic: false)],
+        DeclarationName('Foo'),
+        methods: [
+          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
+        ],
       );
       final completionList = await complete(
         extractCursorPosition('{cursor}'),
@@ -472,10 +474,10 @@ void main() {
 
     test('autocompletes all interface methods via type name', () async {
       final interfaceType = IndexedInterface(
-        TypeName('Foo'),
+        DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(TypeName('doSomething'), isStatic: false),
-          MethodDeclaration(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
         ],
       );
       final completionList = await complete(
@@ -496,15 +498,15 @@ void main() {
 
     test('autocompletes interface methods via variable', () async {
       final interfaceType = IndexedInterface(
-        TypeName('Foo'),
+        DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(TypeName('doSomething'), isStatic: false),
-          MethodDeclaration(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
         ],
       );
       final variable = IndexedVariable(
-        TypeName('myVar'),
-        typeName: TypeName('Foo'),
+        DeclarationName('myVar'),
+        typeName: DeclarationName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -525,15 +527,15 @@ void main() {
 
     test('autocompletes interface methods filtered by prefix', () async {
       final interfaceType = IndexedInterface(
-        TypeName('Foo'),
+        DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(TypeName('doSomething'), isStatic: false),
-          MethodDeclaration(TypeName('saySomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
+          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
         ],
       );
       final variable = IndexedVariable(
-        TypeName('myVar'),
-        typeName: TypeName('Foo'),
+        DeclarationName('myVar'),
+        typeName: DeclarationName('Foo'),
         location: (0, 10),
       );
       final completionList = await complete(
@@ -551,7 +553,7 @@ void main() {
 
   group('classes', () {
     test('autocomplete classes types at top level', () async {
-      final classType = IndexedClass(TypeName('Foo'));
+      final classType = IndexedClass(DeclarationName('Foo'));
       final completionList = await complete(
         extractCursorPosition('{cursor}'),
         index: [classType],
@@ -559,6 +561,50 @@ void main() {
 
       expect(completionList.items, hasLength(1));
       expect(completionList.items.first.label, 'Foo');
+    });
+
+    test('autocomplete static class members', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          FieldMember(DeclarationName('staticMember'), isStatic: true),
+          FieldMember(DeclarationName('instanceMember'), isStatic: false),
+        ],
+      );
+      final localVariable = IndexedVariable(
+        DeclarationName('myFoo'),
+        typeName: DeclarationName('Foo'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.{cursor}'),
+        index: [classType, localVariable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'staticMember');
+    });
+
+    test('autocomplete instance class members', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          FieldMember(DeclarationName('staticMember'), isStatic: true),
+          FieldMember(DeclarationName('instanceMember'), isStatic: false),
+        ],
+      );
+      final localVariable = IndexedVariable(
+        DeclarationName('myFoo'),
+        typeName: DeclarationName('Foo'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('myFoo.{cursor}'),
+        index: [classType, localVariable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'instanceMember');
     });
   });
 }

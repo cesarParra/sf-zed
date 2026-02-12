@@ -1,4 +1,6 @@
 import 'package:apex_lsp/completion/helpers.dart';
+import 'package:apex_lsp/indexing/declarations.dart';
+import 'package:apex_lsp/type_name.dart';
 
 /// Base class for completion context types.
 ///
@@ -100,48 +102,17 @@ final class CompletionContextMember extends CompletionContext {
 
   @override
   String toString() {
-    return 'CompletionContextMember(objectName: $objectName, prefix: $prefix)';
+    return 'CompletionContextMember(objectName: $objectName, typeName: $typeName, prefix: $prefix, text: $text, cursorOffset: $cursorOffset)';
   }
 }
 
-/// Detects the completion context at a cursor position in Apex code.
-///
-/// Analyzes the text surrounding the cursor to determine what kind of
-/// completion is appropriate (top-level types, member access, etc.).
-///
-/// Example:
-/// ```dart
-/// final detector = ContextDetector();
-/// final context = await detector.detect(
-///   text: 'Account acc = new Acc',
-///   cursorOffset: 21,  // After "Acc"
-/// );
-/// // Returns CompletionContextTopLevel with prefix "Acc"
-/// ```
 final class ContextDetector {
   const ContextDetector();
 
-  /// Detects the completion context at the specified cursor position.
-  ///
-  /// Examines the text before the cursor to identify:
-  /// - Whether this is member access (after a dot operator)
-  /// - The partial identifier prefix being typed
-  /// - The object/type name for member access
-  ///
-  /// - [text]: The complete document text.
-  /// - [cursorOffset]: The byte offset where completion was triggered.
-  ///
-  /// Returns the appropriate [CompletionContext] subtype for the cursor location.
-  ///
-  /// Example:
-  /// ```dart
-  /// // For "Account."
-  /// final context = await detector.detect(text: 'Account.', cursorOffset: 8);
-  /// // Returns CompletionContextMember with objectName: 'Account'
-  /// ```
   Future<CompletionContext> detect({
     required String text,
     required int cursorOffset,
+    required List<Declaration> index,
   }) async {
     final prefix = text.extractIndentifierPrefixAt(cursorOffset);
 
@@ -175,8 +146,29 @@ final class ContextDetector {
         return CompletionContextNone();
       }
 
+      // Try to find if the extracted object name is in the index.
+      // In case of `Foo.b`, it might find a top-level declaration.
+      // In case of `foo.b` it might find an indexed variable.
+      final declaration = index.findDeclaration(DeclarationName(objectName));
+
       return CompletionContextMember(
-        typeName: objectName,
+        typeName: switch (declaration) {
+          null => null,
+
+          FieldMember() ||
+          MethodDeclaration() ||
+          EnumValueMember() => throw UnimplementedError(),
+
+          // When autocompleting members of a declared variable,
+          // we return the name of its declared type. (e.g. String foo would return "String")
+          IndexedVariable(:final typeName) => typeName.value,
+
+          // When autocompleting a top level object (e.g. Foo.), we return
+          // the name of the type itself.
+          IndexedClass() ||
+          IndexedInterface() ||
+          IndexedEnum() => declaration.name.value,
+        },
         objectName: objectName,
         prefix: prefix,
         text: text,

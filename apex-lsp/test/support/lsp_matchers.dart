@@ -15,6 +15,14 @@ Matcher containsCompletion(String label) => _CompletionLabelsMatcher(
   predicate: (labels) => labels.contains(label),
 );
 
+/// Asserts a [CompletionList] does not contain an item with the given label.
+///
+///   expect(completions, doesNotContainCompletion('myVariable'));
+Matcher doesNotContainCompletion(String label) => _CompletionLabelsMatcher(
+  description: 'does not contain completion "$label"',
+  predicate: (labels) => !labels.contains(label),
+);
+
 /// Asserts a [CompletionList] contains items with all the given labels
 /// (in any order).
 ///
@@ -82,27 +90,21 @@ Matcher hasCapability(String name) => isA<InitializeResult>().having(
 /// Asserts a raw response map contains an LSP error with the given code.
 ///
 ///   expect(response, isLspError(-32002));
-Matcher isLspError(int code) => predicate<Map<String, Object?>>(
-  (response) {
-    final error = response['error'];
-    if (error is! Map) return false;
-    return error['code'] == code;
-  },
-  'is LSP error with code $code',
-);
+Matcher isLspError(int code) => predicate<Map<String, Object?>>((response) {
+  final error = response['error'];
+  if (error is! Map) return false;
+  return error['code'] == code;
+}, 'is LSP error with code $code');
 
 /// Asserts a raw response map contains an LSP error with a specific message.
 ///
 ///   expect(response, isLspErrorWithMessage('Server not initialized'));
 Matcher isLspErrorWithMessage(String message) =>
-    predicate<Map<String, Object?>>(
-      (response) {
-        final error = response['error'];
-        if (error is! Map) return false;
-        return error['message'] == message;
-      },
-      'is LSP error with message "$message"',
-    );
+    predicate<Map<String, Object?>>((response) {
+      final error = response['error'];
+      if (error is! Map) return false;
+      return error['message'] == message;
+    }, 'is LSP error with message "$message"');
 
 // ---------------------------------------------------------------------------
 // Internal helpers
