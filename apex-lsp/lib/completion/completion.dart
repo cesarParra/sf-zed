@@ -429,29 +429,6 @@ bool potentiallyMatches(
   };
 }
 
-/// Extension methods for [Iterable] types.
-extension IterableExtension<T> on Iterable<T> {
-  /// Returns the first element matching the predicate, or `null` if none match.
-  ///
-  /// Similar to [Iterable.firstWhere] but returns `null` instead of throwing
-  /// when no element is found.
-  ///
-  /// - [test]: The predicate to test elements against.
-  ///
-  /// Example:
-  /// ```dart
-  /// final numbers = [1, 2, 3, 4];
-  /// final even = numbers.firstWhereOrNull((n) => n % 2 == 0); // 2
-  /// final big = numbers.firstWhereOrNull((n) => n > 10); // null
-  /// ```
-  T? firstWhereOrNull(bool Function(T element) test) {
-    for (final element in this) {
-      if (test(element)) return element;
-    }
-    return null;
-  }
-}
-
 List<Declaration> _getBodyDeclarations(Declaration? declaration) {
   return switch (declaration) {
     null ||

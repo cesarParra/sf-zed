@@ -1,4 +1,3 @@
-import 'package:apex_lsp/completion/completion.dart';
 import 'package:apex_lsp/indexing/declarations.dart';
 import 'package:apex_lsp/type_name.dart';
 
@@ -78,6 +77,15 @@ extension StringCompletionExtension on String {
 
   bool startsWithIgnoreCase(String prefix) {
     return toLowerCase().startsWith(prefix.toLowerCase());
+  }
+}
+
+extension IterableExtension<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T element) test) {
+    for (final element in this) {
+      if (test(element)) return element;
+    }
+    return null;
   }
 }
 

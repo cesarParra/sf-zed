@@ -379,11 +379,10 @@ public enum Color { RED, GREEN, BLUE }
         test('completes `this` references', () async {
           final textWithPosition = extractCursorPosition('''
         public class Animal  {
-          public void foo(String myArg) {
-            this.{cursor}
-          }
-
           public void bar() {}
+          public void foo(String myArg) {
+            this.{cursor};
+          }
         }''');
           final document = Document.withText(textWithPosition.text);
           await client.openDocument(document);

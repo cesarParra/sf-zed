@@ -146,6 +146,24 @@ final class ContextDetector {
         return CompletionContextNone();
       }
 
+      if (DeclarationName(objectName) == const DeclarationName('this')) {
+        final enclosingClass = index
+            .whereType<IndexedClass>()
+            .firstWhereOrNull((c) {
+              final location = c.location;
+              if (location == null) return false;
+              return cursorOffset >= location.$1 && cursorOffset <= location.$2;
+            });
+
+        return CompletionContextMember(
+          typeName: enclosingClass?.name.value,
+          objectName: objectName,
+          prefix: prefix,
+          text: text,
+          cursorOffset: cursorOffset,
+        );
+      }
+
       // Try to find if the extracted object name is in the index.
       // In case of `Foo.b`, it might find a top-level declaration.
       // In case of `foo.b` it might find an indexed variable.
