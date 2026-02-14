@@ -161,7 +161,10 @@ final class ContextDetector {
       // Try to find if the extracted object name is in the index.
       // In case of `Foo.b`, it might find a top-level declaration.
       // In case of `foo.b` it might find an indexed variable.
-      final declaration = index.findDeclaration(DeclarationName(objectName));
+      // In case of `Foo.Bar.b`, resolve the qualified path through class members.
+      final declaration =
+          index.findDeclaration(DeclarationName(objectName)) ??
+          index.resolveQualifiedName(objectName);
 
       return CompletionContextMember(
         typeName: switch (declaration) {

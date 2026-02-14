@@ -187,6 +187,25 @@ public enum Color { RED, GREEN, BLUE }
 
           expect(completions, containsCompletion('Status'));
         });
+
+        test('completes inner enum values via qualified access', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        public Enum Status { ACTIVE, INACTIVE }
+      }
+      Animal.Status.{cursor}''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('ACTIVE'));
+          expect(completions, containsCompletion('INACTIVE'));
+        });
       });
 
       group('references from within a class', () {

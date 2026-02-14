@@ -90,8 +90,13 @@ extension IterableExtension<T> on Iterable<T> {
 }
 
 extension DeclarationsExtension on List<Declaration> {
-  IndexedType? findType(DeclarationName name) => whereType<IndexedType>()
-      .firstWhereOrNull((indexedType) => indexedType.name == name);
+  IndexedType? findType(DeclarationName name) =>
+      whereType<IndexedType>()
+          .firstWhereOrNull((indexedType) => indexedType.name == name) ??
+      whereType<IndexedClass>()
+          .expand((c) => c.members)
+          .whereType<IndexedType>()
+          .firstWhereOrNull((indexedType) => indexedType.name == name);
 
   Declaration? findDeclaration(DeclarationName name) =>
       firstWhereOrNull((declaration) => declaration.name == name);
@@ -102,4 +107,20 @@ extension DeclarationsExtension on List<Declaration> {
         if (location == null) return false;
         return cursorOffset >= location.$1 && cursorOffset <= location.$2;
       });
+
+  /// Resolves a dot-qualified name (e.g. "Foo.Bar") by walking through
+  /// class members. Returns null if any segment cannot be resolved.
+  Declaration? resolveQualifiedName(String qualifiedName) {
+    final segments = qualifiedName.split('.');
+    if (segments.length < 2) return findDeclaration(DeclarationName(qualifiedName));
+
+    Declaration? current = findDeclaration(DeclarationName(segments.first));
+    for (var i = 1; i < segments.length; i++) {
+      if (current is! IndexedClass) return null;
+      final memberName = DeclarationName(segments[i]);
+      current = current.members
+          .firstWhereOrNull((m) => m.name == memberName);
+    }
+    return current;
+  }
 }

@@ -707,6 +707,31 @@ void main() {
       expect(completionList.items.first.label, 'Bar');
     });
 
+    test('autocomplete inner enum values via qualified access', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          IndexedEnum(
+            DeclarationName('Bar'),
+            values: [
+              'A'.enumValueMember(),
+              'B'.enumValueMember(),
+              'C'.enumValueMember(),
+            ],
+          ),
+        ],
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.Bar.{cursor}'),
+        index: [classType],
+      );
+
+      expect(completionList.items, hasLength(3));
+      expect(completionList.items, contains(CompletionItem(label: 'A')));
+      expect(completionList.items, contains(CompletionItem(label: 'B')));
+      expect(completionList.items, contains(CompletionItem(label: 'C')));
+    });
+
     test('autocomplete instance class methods', () async {
       final classType = IndexedClass(
         DeclarationName('Foo'),
