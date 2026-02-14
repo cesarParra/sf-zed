@@ -732,6 +732,42 @@ void main() {
       expect(completionList.items.first.label, 'Bar');
     });
 
+    test('autocomplete inner interface methods via variable', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          IndexedInterface(
+            DeclarationName('Bar'),
+            methods: [
+              MethodDeclaration(
+                DeclarationName('m1'),
+                body: Block.empty(),
+                isStatic: false,
+              ),
+              MethodDeclaration(
+                DeclarationName('m2'),
+                body: Block.empty(),
+                isStatic: false,
+              ),
+            ],
+          ),
+        ],
+      );
+      final localVariable = IndexedVariable(
+        DeclarationName('sample'),
+        typeName: DeclarationName('Foo.Bar'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('sample.{cursor}'),
+        index: [classType, localVariable],
+      );
+
+      expect(completionList.items, hasLength(2));
+      expect(completionList.items, contains(CompletionItem(label: 'm1')));
+      expect(completionList.items, contains(CompletionItem(label: 'm2')));
+    });
+
     test('autocomplete inner enum values via qualified access', () async {
       final classType = IndexedClass(
         DeclarationName('Foo'),

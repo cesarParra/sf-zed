@@ -206,6 +206,29 @@ public enum Color { RED, GREEN, BLUE }
           expect(completions, containsCompletion('ACTIVE'));
           expect(completions, containsCompletion('INACTIVE'));
         });
+
+        test('completes inner interface methods via variable', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Foo {
+        public interface Bar {
+          String m1();
+          void m2();
+        }
+      }
+      Foo.Bar sample;
+      sample.{cursor}''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('m1'));
+          expect(completions, containsCompletion('m2'));
+        });
       });
 
       group('references from within a class', () {

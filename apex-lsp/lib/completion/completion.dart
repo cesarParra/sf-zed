@@ -253,11 +253,17 @@ Future<CompletionList> onCompletion({
         .firstWhereOrNull((v) => v.name == name)
         ?.typeName;
 
+    IndexedType? resolveQualified(DeclarationName name) {
+      final resolved = index.resolveQualifiedName(name.value);
+      return resolved is IndexedType ? resolved : null;
+    }
+
     final indexedType =
         index.findType(typeName) ??
         index.findType(
           resolveVariableType(typeName) ?? const DeclarationName(''),
-        );
+        ) ??
+        resolveQualified(typeName);
 
     MemberType getMemberType(Declaration declaration) => switch (declaration) {
       FieldMember(:final isStatic) ||
