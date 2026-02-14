@@ -240,6 +240,31 @@ public static String getName(Id recordId) {
 
 ---
 
+#### static_initializer
+
+**Grammar Rule:**
+```javascript
+static_initializer: ($) => seq(ci("static"), $.block)
+```
+
+A static initializer block inside a class body. Executes when the class is loaded. Contains a `block` node with the initializer statements.
+
+**Children:**
+- `block` (required): The block of statements to execute
+
+**Example:**
+```apex
+public class MyClass {
+    static {
+        // runs when class is loaded
+    }
+}
+```
+
+**Note:** This is listed under `_class_body_declaration`, making it a valid direct child of `class_body` alongside `field_declaration`, `method_declaration`, `constructor_declaration`, etc.
+
+---
+
 #### constructor_declaration
 
 **Grammar Rule:**

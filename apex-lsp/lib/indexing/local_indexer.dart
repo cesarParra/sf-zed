@@ -104,7 +104,7 @@ class LocalIndexer {
       case 'interface_declaration':
         results.add(_extractInterface(node, bytes));
       case 'class_declaration':
-        results.add(_extractClass(node, bytes));
+        results.addAll(_extractClass(node, bytes));
       case 'method_declaration':
         results.addAll(_extractMethod(node, bytes));
       case 'local_variable_declaration':
@@ -220,12 +220,13 @@ class LocalIndexer {
     );
   }
 
-  IndexedClass _extractClass(TSNode node, List<int> bytes) {
+  List<Declaration> _extractClass(TSNode node, List<int> bytes) {
     final nameNode = _getField(node, 'name');
     final className = _nodeText(nameNode, bytes);
 
     final bodyNode = _getField(node, 'body');
     final members = <Declaration>[];
+    final innerDeclarations = <Declaration>[];
     if (!_isNullNode(bodyNode)) {
       final fieldNodes = _collectDirectChildrenByType(
         bodyNode,
@@ -261,16 +262,27 @@ class LocalIndexer {
           );
         }
       }
+
+      final staticInitNodes = _collectDirectChildrenByType(
+        bodyNode,
+        'static_initializer',
+      );
+      for (final initNode in staticInitNodes) {
+        innerDeclarations.addAll(_visitChildren(initNode, bytes));
+      }
     }
 
-    return IndexedClass(
-      DeclarationName(className),
-      members: members,
-      location: (
-        _bindings.ts_node_start_byte(node),
-        _bindings.ts_node_end_byte(node),
+    return [
+      IndexedClass(
+        DeclarationName(className),
+        members: members,
+        location: (
+          _bindings.ts_node_start_byte(node),
+          _bindings.ts_node_end_byte(node),
+        ),
       ),
-    );
+      ...innerDeclarations,
+    ];
   }
 
   /// Extracts a method declaration including parameters and local variables.

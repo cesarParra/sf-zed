@@ -230,6 +230,27 @@ public enum Color { RED, GREEN, BLUE }
 
           expect(completions, containsCompletion('fooMethod'));
         });
+
+        test('completes from static initializer - for loops', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        static {
+          for (Integer myIndex; {cursor})
+        }
+
+        static String fooMethod() {}
+      }''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('myIndex'));
+        });
       });
     });
 
