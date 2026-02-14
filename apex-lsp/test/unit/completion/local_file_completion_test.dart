@@ -707,6 +707,31 @@ void main() {
       expect(completionList.items.first.label, 'Bar');
     });
 
+    test('autocomplete inner interfaces as static members', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          IndexedInterface(
+            DeclarationName('Bar'),
+            methods: [
+              MethodDeclaration(
+                DeclarationName('doSomething'),
+                body: Block.empty(),
+                isStatic: false,
+              ),
+            ],
+          ),
+        ],
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.{cursor}'),
+        index: [classType],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'Bar');
+    });
+
     test('autocomplete inner enum values via qualified access', () async {
       final classType = IndexedClass(
         DeclarationName('Foo'),

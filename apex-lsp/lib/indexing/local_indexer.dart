@@ -279,6 +279,14 @@ class LocalIndexer {
         members.add(_extractEnum(enumNode, bytes));
       }
 
+      final interfaceNodes = _collectDirectChildrenByType(
+        bodyNode,
+        'interface_declaration',
+      );
+      for (final interfaceNode in interfaceNodes) {
+        members.add(_extractInterface(interfaceNode, bytes));
+      }
+
       final constructorNodes = _collectDirectChildrenByType(
         bodyNode,
         'constructor_declaration',
