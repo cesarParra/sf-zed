@@ -127,6 +127,26 @@ public enum Color { RED, GREEN, BLUE }
         expect(completions, containsCompletion('instanceVar'));
         expect(completions, doesNotContainCompletion('staticVar'));
       });
+
+      test('completes static class methods', () async {
+        final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        String instanceMethod() {}
+        static String staticMethod() {};
+      }
+      Animal.{cursor}''');
+        final document = Document.withText(textWithPosition.text);
+        await client.openDocument(document);
+
+        final completions = await client.completion(
+          uri: document.uri,
+          line: textWithPosition.position.line,
+          character: textWithPosition.position.character,
+        );
+
+        expect(completions, containsCompletion('staticMethod'));
+        expect(completions, doesNotContainCompletion('instanceMethod'));
+      });
     });
 
     test('completes enum values via dot access', () async {

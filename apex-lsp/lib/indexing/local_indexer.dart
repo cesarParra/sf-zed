@@ -225,7 +225,7 @@ class LocalIndexer {
     final className = _nodeText(nameNode, bytes);
 
     final bodyNode = _getField(node, 'body');
-    final fields = <FieldMember>[];
+    final members = <Declaration>[];
     if (!_isNullNode(bodyNode)) {
       final fieldNodes = _collectDirectChildrenByType(
         bodyNode,
@@ -236,24 +236,34 @@ class LocalIndexer {
         final fieldNameNode = _getField(declaratorNode, 'name');
         final fieldName = _nodeText(fieldNameNode, bytes);
 
-        final modifiersNodes = _collectDirectChildrenByType(
-          fieldNode,
-          'modifiers',
-        );
-
-        final isStatic = modifiersNodes.any(
-          (node) => _nodeText(node, bytes) == 'static',
-        );
+        final isStatic = _hasStaticModifier(fieldNode, bytes);
 
         if (fieldName.isNotEmpty) {
-          fields.add(
+          members.add(
             FieldMember(DeclarationName(fieldName), isStatic: isStatic),
+          );
+        }
+      }
+
+      final methodNodes = _collectDirectChildrenByType(
+        bodyNode,
+        'method_declaration',
+      );
+      for (final methodNode in methodNodes) {
+        final methodNameNode = _getField(methodNode, 'name');
+        final methodName = _nodeText(methodNameNode, bytes);
+
+        final isStatic = _hasStaticModifier(methodNode, bytes);
+
+        if (methodName.isNotEmpty) {
+          members.add(
+            MethodDeclaration(DeclarationName(methodName), isStatic: isStatic),
           );
         }
       }
     }
 
-    return IndexedClass(DeclarationName(className), members: fields);
+    return IndexedClass(DeclarationName(className), members: members);
   }
 
   /// Extracts a method declaration including parameters and local variables.
@@ -397,6 +407,11 @@ class LocalIndexer {
       }
     }
     return results;
+  }
+
+  bool _hasStaticModifier(TSNode node, List<int> bytes) {
+    final modifiersNodes = _collectDirectChildrenByType(node, 'modifiers');
+    return modifiersNodes.any((node) => _nodeText(node, bytes) == 'static');
   }
 
   /// Retrieves a named field from a Tree-sitter node.

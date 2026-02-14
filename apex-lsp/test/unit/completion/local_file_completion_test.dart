@@ -563,7 +563,7 @@ void main() {
       expect(completionList.items.first.label, 'Foo');
     });
 
-    test('autocomplete static class members', () async {
+    test('autocomplete static class fields', () async {
       final classType = IndexedClass(
         DeclarationName('Foo'),
         members: [
@@ -585,7 +585,7 @@ void main() {
       expect(completionList.items.first.label, 'staticMember');
     });
 
-    test('autocomplete instance class members', () async {
+    test('autocomplete instance class fields', () async {
       final classType = IndexedClass(
         DeclarationName('Foo'),
         members: [
@@ -605,6 +605,28 @@ void main() {
 
       expect(completionList.items, hasLength(1));
       expect(completionList.items.first.label, 'instanceMember');
+    });
+
+    test('autocomplete static class methods', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          MethodDeclaration(DeclarationName('staticMethod'), isStatic: true),
+          MethodDeclaration(DeclarationName('instanceMethod'), isStatic: false),
+        ],
+      );
+      final localVariable = IndexedVariable(
+        DeclarationName('myFoo'),
+        typeName: DeclarationName('Foo'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.{cursor}'),
+        index: [classType, localVariable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'staticMethod');
     });
   });
 }
