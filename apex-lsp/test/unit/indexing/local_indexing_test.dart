@@ -159,7 +159,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variables = result.whereType<IndexedVariable>().toList();
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variables = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .toList();
       expect(variables, hasLength(1));
       expect(variables.first.name.value, 'name');
       expect(variables.first.typeName.value, 'String');
@@ -170,7 +174,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variables = result.whereType<IndexedVariable>().toList();
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variables = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .toList();
       expect(variables, hasLength(2));
       expect(variables[0].name.value, 'name');
       expect(variables[0].typeName.value, 'String');
@@ -183,7 +191,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result.whereType<IndexedVariable>().first;
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variable = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .first;
       expect(variable.location, isNotNull);
     });
 
@@ -192,7 +204,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variables = result.whereType<IndexedVariable>().toList();
+      final methodDeclaration = result.whereType<MethodDeclaration>().first;
+
+      final variables = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .toList();
       expect(variables, isEmpty);
     });
 
@@ -201,7 +217,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result.whereType<IndexedVariable>().first;
+      final methodDeclaration = result.whereType<MethodDeclaration>().first;
+
+      final variable = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .first;
       expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       final bodyEnd = text.indexOf('}') + 1;
       final visibility =
@@ -216,7 +236,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variables = result.whereType<IndexedVariable>().toList();
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variables = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .toList();
       expect(variables, hasLength(1));
       expect(variables.first.name.value, 'myTest');
       expect(variables.first.typeName.value, 'String');
@@ -227,7 +251,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result.whereType<IndexedVariable>().first;
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variable = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .first;
       expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       final bodyEnd = text.indexOf('}') + 1;
       final visibility =
@@ -240,7 +268,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variables = result.whereType<IndexedVariable>().toList();
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variables = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .toList();
       expect(variables, hasLength(2));
       expect(variables[0].name.value, 'param');
       expect(variables[1].name.value, 'local');
@@ -253,7 +285,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result.whereType<IndexedVariable>().first;
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variable = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .first;
       expect(variable.name.value, 'i');
       expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       // The for statement ends after its body's closing brace (before the outer ' }')
@@ -269,7 +305,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variables = result.whereType<IndexedVariable>().toList();
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variables = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .toList();
       final initVar = variables.firstWhere((v) => v.name.value == 'i');
       final bodyVar = variables.firstWhere((v) => v.name.value == 'inner');
 
@@ -289,7 +329,9 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result.whereType<IndexedVariable>().firstWhere(
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variable = methodDeclaration.body.declarations.firstWhere(
         (v) => v.name.value == 'item',
       );
       expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
@@ -300,9 +342,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variable = result.whereType<IndexedVariable>().firstWhere(
-        (v) => v.name.value == 'loopVar',
-      );
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variable = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .firstWhere((v) => v.name.value == 'loopVar');
       expect(variable.visibility, isA<VisibleBetweenDeclarationAndScopeEnd>());
       final whileBodyEnd = text.lastIndexOf('}', text.lastIndexOf('}') - 1) + 1;
       final visibility =
@@ -316,7 +360,11 @@ public Enum Foo { A, B, C };
 
       final result = indexer.parseAndIndex(text);
 
-      final variables = result.whereType<IndexedVariable>().toList();
+      final methodDeclaration = result.first as MethodDeclaration;
+
+      final variables = methodDeclaration.body.declarations
+          .whereType<IndexedVariable>()
+          .toList();
       final outerVar = variables.firstWhere((v) => v.name.value == 'i');
       final innerVar = variables.firstWhere((v) => v.name.value == 'j');
 

@@ -218,15 +218,13 @@ Future<CompletionList> onCompletion({
   );
 
   List<CompletionCandidate> topLevelCandidates() {
-    final enclosingClass = index.whereType<IndexedClass>().firstWhereOrNull((
-      c,
-    ) {
+    final enclosing = index.firstWhereOrNull((c) {
       final location = c.location;
       if (location == null) return false;
       return cursorOffset >= location.$1 && cursorOffset <= location.$2;
     });
 
-    return [...index, ...enclosingClass.declarations]
+    return [...index, ..._getBodyDeclarations(enclosing)]
         .where((declaration) => declaration.isVisibleAt(cursorOffset))
         .map(
           (declaration) => switch (declaration) {
@@ -454,16 +452,27 @@ extension IterableExtension<T> on Iterable<T> {
   }
 }
 
-extension on IndexedClass? {
-  List<Declaration> get declarations => switch (this) {
-    null => const [],
+List<Declaration> _getBodyDeclarations(Declaration? declaration) {
+  return switch (declaration) {
+    null ||
+    FieldMember() ||
+    EnumValueMember() ||
+    IndexedVariable() ||
+    IndexedInterface() ||
+    IndexedEnum() => const [],
+
+    // Declarations with body
+    ConstructorDeclaration(:final body) ||
+    MethodDeclaration(:final body) => body.declarations,
+
+    // TODO: This can now be recursive
     IndexedClass() => [
-      ...this!.members,
-      ...this!.staticInitializers.expand((s) => s.declarations),
-      ...this!.members.whereType<ConstructorDeclaration>().expand(
+      ...declaration.members,
+      ...declaration.staticInitializers.expand((s) => s.declarations),
+      ...declaration.members.whereType<ConstructorDeclaration>().expand(
         (c) => c.body.declarations,
       ),
-      ...this!.members.whereType<MethodDeclaration>().expand(
+      ...declaration.members.whereType<MethodDeclaration>().expand(
         (c) => c.body.declarations,
       ),
     ],

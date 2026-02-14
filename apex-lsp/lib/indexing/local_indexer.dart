@@ -6,6 +6,9 @@ import 'package:apex_lsp/indexing/declarations.dart';
 import 'package:apex_lsp/type_name.dart';
 import 'package:ffi/ffi.dart';
 
+typedef DeclarationBuilder<T extends Declaration> =
+    T Function(Block, (int, int)?);
+
 /// Parses and indexes Apex code in the currently open file using Tree-sitter.
 ///
 /// This indexer provides real-time analysis of the active document without
@@ -106,7 +109,12 @@ class LocalIndexer {
       case 'class_declaration':
         results.add(_extractClass(node, bytes));
       case 'method_declaration':
-        results.addAll(_extractMethod(node, bytes));
+        final extractedMethod = _extractConstructorOrMethod(
+          node,
+          bytes,
+          builder: _getMethodDeclarationBuilder(node, bytes),
+        );
+        results.add(extractedMethod);
       case 'local_variable_declaration':
         results.addAll(_extractVariables(node, bytes, scopeEnd: scopeEnd));
       case 'block':
@@ -254,32 +262,13 @@ class LocalIndexer {
         'method_declaration',
       );
       for (final methodNode in methodNodes) {
-        final methodNameNode = _getField(methodNode, 'name');
-        final methodName = _nodeText(methodNameNode, bytes);
-
-        final isStatic = _hasStaticModifier(methodNode, bytes);
-
-        if (methodName.isNotEmpty) {
-          MethodDeclaration methodDeclarationBuilder(
-            Block block,
-            (int, int)? location,
-          ) {
-            return MethodDeclaration(
-              DeclarationName(methodName),
-              isStatic: isStatic,
-              body: block,
-              location: location,
-            );
-          }
-
-          members.add(
-            _extractConstructorOrMethod(
-              methodNode,
-              bytes,
-              builder: methodDeclarationBuilder,
-            ),
-          );
-        }
+        members.add(
+          _extractConstructorOrMethod(
+            methodNode,
+            bytes,
+            builder: _getMethodDeclarationBuilder(methodNode, bytes),
+          ),
+        );
       }
 
       final constructorNodes = _collectDirectChildrenByType(
@@ -319,75 +308,75 @@ class LocalIndexer {
     );
   }
 
-  /// Extracts a method declaration including parameters and local variables.
-  ///
-  /// Returns the method itself plus any parameter declarations and variables
-  /// declared within the method body. Parameters are scoped to the method body.
-  // TODO: We don't want to do it like this anymore. Method should be a single thing that has a block
-  List<Declaration> _extractMethod(TSNode node, List<int> bytes) {
-    final nameNode = _getField(node, 'name');
-    final name = _nodeText(nameNode, bytes);
+  // /// Extracts a method declaration including parameters and local variables.
+  // ///
+  // /// Returns the method itself plus any parameter declarations and variables
+  // /// declared within the method body. Parameters are scoped to the method body.
+  // // TODO: We don't want to do it like this anymore. Method should be a single thing that has a block
+  // MethodDeclaration _extractMethod(TSNode node, List<int> bytes) {
+  //   final nameNode = _getField(node, 'name');
+  //   final name = _nodeText(nameNode, bytes);
 
-    final results = <Declaration>[
-      MethodDeclaration(
-        DeclarationName(name),
-        isStatic: false,
-        body: Block.empty(),
-        location: (
-          _bindings.ts_node_start_byte(node),
-          _bindings.ts_node_end_byte(node),
-        ),
-      ),
-    ];
+  //   final results = <Declaration>[
+  //     MethodDeclaration(
+  //       DeclarationName(name),
+  //       isStatic: false,
+  //       body: Block.empty(),
+  //       location: (
+  //         _bindings.ts_node_start_byte(node),
+  //         _bindings.ts_node_end_byte(node),
+  //       ),
+  //     ),
+  //   ];
 
-    final bodyNode = _getField(node, 'body');
-    final bodyScopeEnd = _isNullNode(bodyNode)
-        ? null
-        : _bindings.ts_node_end_byte(bodyNode);
+  //   final bodyNode = _getField(node, 'body');
+  //   final bodyScopeEnd = _isNullNode(bodyNode)
+  //       ? null
+  //       : _bindings.ts_node_end_byte(bodyNode);
 
-    // Extract method parameters - they're visible throughout the method body
-    final parametersNode = _getField(node, 'parameters');
-    if (!_isNullNode(parametersNode)) {
-      final scopeVisibility = bodyScopeEnd != null
-          ? VisibleBetweenDeclarationAndScopeEnd(scopeEnd: bodyScopeEnd)
-          : null;
-      final params = _collectDirectChildrenByType(
-        parametersNode,
-        'formal_parameter',
-      );
-      for (final param in params) {
-        final paramTypeNode = _getField(param, 'type');
-        final paramNameNode = _getField(param, 'name');
-        final paramType = _nodeText(paramTypeNode, bytes);
-        final paramName = _nodeText(paramNameNode, bytes);
-        if (paramName.isNotEmpty) {
-          results.add(
-            IndexedVariable(
-              DeclarationName(paramName),
-              typeName: DeclarationName(paramType),
-              location: (
-                _bindings.ts_node_start_byte(param),
-                _bindings.ts_node_end_byte(param),
-              ),
-              visibility: scopeVisibility,
-            ),
-          );
-        }
-      }
-    }
+  //   // Extract method parameters - they're visible throughout the method body
+  //   final parametersNode = _getField(node, 'parameters');
+  //   if (!_isNullNode(parametersNode)) {
+  //     final scopeVisibility = bodyScopeEnd != null
+  //         ? VisibleBetweenDeclarationAndScopeEnd(scopeEnd: bodyScopeEnd)
+  //         : null;
+  //     final params = _collectDirectChildrenByType(
+  //       parametersNode,
+  //       'formal_parameter',
+  //     );
+  //     for (final param in params) {
+  //       final paramTypeNode = _getField(param, 'type');
+  //       final paramNameNode = _getField(param, 'name');
+  //       final paramType = _nodeText(paramTypeNode, bytes);
+  //       final paramName = _nodeText(paramNameNode, bytes);
+  //       if (paramName.isNotEmpty) {
+  //         results.add(
+  //           IndexedVariable(
+  //             DeclarationName(paramName),
+  //             typeName: DeclarationName(paramType),
+  //             location: (
+  //               _bindings.ts_node_start_byte(param),
+  //               _bindings.ts_node_end_byte(param),
+  //             ),
+  //             visibility: scopeVisibility,
+  //           ),
+  //         );
+  //       }
+  //     }
+  //   }
 
-    // Recursively visit the method body to extract local variables
-    if (!_isNullNode(bodyNode)) {
-      results.addAll(_visitChildren(bodyNode, bytes, scopeEnd: bodyScopeEnd));
-    }
+  //   // Recursively visit the method body to extract local variables
+  //   if (!_isNullNode(bodyNode)) {
+  //     results.addAll(_visitChildren(bodyNode, bytes, scopeEnd: bodyScopeEnd));
+  //   }
 
-    return results;
-  }
+  //   return results;
+  // }
 
   T _extractConstructorOrMethod<T extends Declaration>(
     TSNode node,
     List<int> bytes, {
-    required T Function(Block, (int, int)?) builder,
+    required DeclarationBuilder<T> builder,
   }) {
     final bodyNode = _getField(node, 'body');
     final bodyScopeEnd = _isNullNode(bodyNode)
@@ -573,5 +562,28 @@ class LocalIndexer {
     }
 
     return matches;
+  }
+
+  DeclarationBuilder _getMethodDeclarationBuilder(
+    TSNode methodNode,
+    List<int> bytes,
+  ) {
+    MethodDeclaration methodDeclarationBuilder(
+      Block block,
+      (int, int)? location,
+    ) {
+      final methodNameNode = _getField(methodNode, 'name');
+      final methodName = _nodeText(methodNameNode, bytes);
+      final isStatic = _hasStaticModifier(methodNode, bytes);
+
+      return MethodDeclaration(
+        DeclarationName(methodName),
+        isStatic: isStatic,
+        body: block,
+        location: location,
+      );
+    }
+
+    return methodDeclarationBuilder;
   }
 }
