@@ -172,7 +172,7 @@ public enum Color { RED, GREEN, BLUE }
       });
 
       group('references from within a class', () {
-        test('completes fields', () async {
+        test('completes fields from the top level of the class', () async {
           final textWithPosition = extractCursorPosition('''
       public class Animal  {
         String instanceVar;
@@ -190,6 +190,24 @@ public enum Color { RED, GREEN, BLUE }
 
           expect(completions, containsCompletion('staticVar'));
           expect(completions, containsCompletion('instanceVar'));
+        });
+
+        test('completes methods from the top level of the class', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        String fooMethod() {};
+        {cursor}
+      }''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('fooMethod'));
         });
       });
     });
