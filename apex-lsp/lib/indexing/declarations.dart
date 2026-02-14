@@ -58,16 +58,29 @@ sealed class Declaration {
       visibility.isVisibleAt(cursorOffset, location);
 }
 
+class Block {
+  final List<Declaration> declarations;
+
+  Block({required this.declarations});
+}
+
 sealed class IndexedType extends Declaration {
   IndexedType(super.name, {super.location})
     : super(visibility: AlwaysVisible());
 }
 
 final class IndexedClass extends IndexedType {
+  final List<Block> staticInitializers;
   final List<Declaration> members;
   final String? superClass;
 
-  IndexedClass(super.name, {this.members = const [], this.superClass, super.location});
+  IndexedClass(
+    super.name, {
+    this.members = const [],
+    this.superClass,
+    super.location,
+    this.staticInitializers = const [],
+  });
 }
 
 final class IndexedInterface extends IndexedType {
@@ -574,8 +587,10 @@ final class IndexLoader {
           ...mirror.enums.map(fromEnumMirror),
           ...mirror.interfaces.map(fromInterfaceMirror),
           ...mirror.fields.map(
-            (field) =>
-                FieldMember(DeclarationName(field.name), isStatic: field.isStatic),
+            (field) => FieldMember(
+              DeclarationName(field.name),
+              isStatic: field.isStatic,
+            ),
           ),
           ...mirror.properties.map(
             (property) => FieldMember(

@@ -218,17 +218,15 @@ Future<CompletionList> onCompletion({
   );
 
   List<CompletionCandidate> topLevelCandidates() {
-    final enclosingClass = index.whereType<IndexedClass>().firstWhereOrNull(
-      (c) {
-        final location = c.location;
-        if (location == null) return false;
-        return cursorOffset >= location.$1 && cursorOffset <= location.$2;
-      },
-    );
+    final enclosingClass = index.whereType<IndexedClass>().firstWhereOrNull((
+      c,
+    ) {
+      final location = c.location;
+      if (location == null) return false;
+      return cursorOffset >= location.$1 && cursorOffset <= location.$2;
+    });
 
-    final classMembers = enclosingClass?.members ?? const [];
-
-    return [...index, ...classMembers]
+    return [...index, ...enclosingClass.declarations]
         .where((declaration) => declaration.isVisibleAt(cursorOffset))
         .map(
           (declaration) => switch (declaration) {
@@ -451,4 +449,14 @@ extension IterableExtension<T> on Iterable<T> {
     }
     return null;
   }
+}
+
+extension on IndexedClass? {
+  List<Declaration> get declarations => switch (this) {
+    null => const [],
+    IndexedClass() => [
+      ...this!.members,
+      ...this!.staticInitializers.expand((s) => s.declarations),
+    ],
+  };
 }
