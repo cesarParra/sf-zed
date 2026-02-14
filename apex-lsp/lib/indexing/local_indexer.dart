@@ -204,9 +204,8 @@ class LocalIndexer {
         final name = _nodeText(methodNameNode, bytes);
         if (name.isNotEmpty) {
           methods.add(
-            MethodDeclaration(
+            MethodDeclaration.withoutBody(
               DeclarationName(name),
-              body: Block.empty(),
               isStatic: false,
             ),
           );

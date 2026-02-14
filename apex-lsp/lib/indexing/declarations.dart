@@ -131,6 +131,13 @@ final class MethodDeclaration extends Declaration {
     required this.isStatic,
     super.location,
   }) : super(visibility: AlwaysVisible());
+
+  factory MethodDeclaration.withoutBody(
+    DeclarationName name, {
+    required bool isStatic,
+  }) {
+    return MethodDeclaration(name, body: Block.empty(), isStatic: isStatic);
+  }
 }
 
 final class EnumValueMember extends Declaration {
