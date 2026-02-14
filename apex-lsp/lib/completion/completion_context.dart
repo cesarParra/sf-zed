@@ -154,6 +154,9 @@ final class ContextDetector {
       return CompletionContextMember(
         typeName: switch (declaration) {
           null => null,
+          ConstructorDeclaration() => throw UnsupportedError(
+            'Autocompleting constructors is not supported at the moment',
+          ),
 
           FieldMember() ||
           MethodDeclaration() ||

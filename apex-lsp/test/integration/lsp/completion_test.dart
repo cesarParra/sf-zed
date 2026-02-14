@@ -251,6 +251,48 @@ public enum Color { RED, GREEN, BLUE }
 
           expect(completions, containsCompletion('myIndex'));
         });
+
+        test('completes members from constructors', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        public Animal() {
+          {cursor}
+        }
+
+        static String fooMethod() {}
+      }''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('fooMethod'));
+        });
+
+        test('completes received arguments from constructors', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        public Animal(String myArg) {
+          {cursor}
+        }
+
+        static String fooMethod() {}
+      }''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('myArg'));
+        });
       });
     });
 

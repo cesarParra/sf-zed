@@ -20,6 +20,11 @@ sealed class Visibility {
   bool isVisibleAt(int cursorOffset, Location? location);
 }
 
+final class NeverVisible extends Visibility {
+  @override
+  bool isVisibleAt(int cursorOffset, Location? location) => false;
+}
+
 final class AlwaysVisible extends Visibility {
   @override
   bool isVisibleAt(int cursorOffset, Location? location) => true;
@@ -105,6 +110,11 @@ final class FieldMember extends Declaration {
 
   FieldMember(super.name, {required this.isStatic, this.typeName})
     : super(visibility: AlwaysVisible());
+}
+
+final class ConstructorDeclaration extends Declaration {
+  ConstructorDeclaration({super.location})
+    : super(DeclarationName('__constructor__'), visibility: NeverVisible());
 }
 
 final class MethodDeclaration extends Declaration {
@@ -645,8 +655,7 @@ Future<List<String>> getMemberNamesByType(
   bool isStaticDeclaration(Declaration declaration) => switch (declaration) {
     FieldMember(:final isStatic) => isStatic,
     MethodDeclaration(:final isStatic) => isStatic,
-    EnumValueMember() => true,
-    IndexedType() => true,
+    EnumValueMember() || IndexedType() || ConstructorDeclaration() => true,
     IndexedVariable() => false,
   };
 

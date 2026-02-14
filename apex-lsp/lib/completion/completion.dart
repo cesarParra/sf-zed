@@ -237,6 +237,9 @@ Future<CompletionList> onCompletion({
               declaration.name.value,
             ),
             EnumValueMember() => LocalVariableCandidate(declaration.name.value),
+            ConstructorDeclaration() => throw UnsupportedError(
+              'Autocompleting constructors is not supported at the moment',
+            ),
           },
         )
         .toList();
@@ -271,7 +274,7 @@ Future<CompletionList> onCompletion({
       IndexedInterface() ||
       IndexedEnum() => .static,
 
-      IndexedVariable() => .instance,
+      IndexedVariable() || ConstructorDeclaration() => .instance,
     };
 
     return switch (indexedType) {
