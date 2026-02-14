@@ -113,7 +113,9 @@ final class FieldMember extends Declaration {
 }
 
 final class ConstructorDeclaration extends Declaration {
-  ConstructorDeclaration({super.location})
+  final Block body;
+
+  ConstructorDeclaration({required this.body, super.location})
     : super(DeclarationName('__constructor__'), visibility: NeverVisible());
 }
 

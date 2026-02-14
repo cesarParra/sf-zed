@@ -460,6 +460,9 @@ extension on IndexedClass? {
     IndexedClass() => [
       ...this!.members,
       ...this!.staticInitializers.expand((s) => s.declarations),
+      ...this!.members
+          .whereType<ConstructorDeclaration>()
+          .expand((c) => c.body.declarations),
     ],
   };
 }

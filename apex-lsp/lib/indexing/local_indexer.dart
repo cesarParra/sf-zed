@@ -263,6 +263,14 @@ class LocalIndexer {
         }
       }
 
+      final constructorNodes = _collectDirectChildrenByType(
+        bodyNode,
+        'constructor_declaration',
+      );
+      for (final constructorNode in constructorNodes) {
+        members.add(_extractConstructor(constructorNode, bytes));
+      }
+
       final staticInitNodes = _collectDirectChildrenByType(
         bodyNode,
         'static_initializer',
@@ -346,6 +354,59 @@ class LocalIndexer {
     }
 
     return results;
+  }
+
+  ConstructorDeclaration _extractConstructor(TSNode node, List<int> bytes) {
+    final bodyNode = _getField(node, 'body');
+    final bodyScopeEnd = _isNullNode(bodyNode)
+        ? null
+        : _bindings.ts_node_end_byte(bodyNode);
+
+    final declarations = <Declaration>[];
+
+    final parametersNode = _getField(node, 'parameters');
+    if (!_isNullNode(parametersNode)) {
+      final scopeVisibility = bodyScopeEnd != null
+          ? VisibleBetweenDeclarationAndScopeEnd(scopeEnd: bodyScopeEnd)
+          : null;
+      final params = _collectDirectChildrenByType(
+        parametersNode,
+        'formal_parameter',
+      );
+      for (final param in params) {
+        final paramTypeNode = _getField(param, 'type');
+        final paramNameNode = _getField(param, 'name');
+        final paramType = _nodeText(paramTypeNode, bytes);
+        final paramName = _nodeText(paramNameNode, bytes);
+        if (paramName.isNotEmpty) {
+          declarations.add(
+            IndexedVariable(
+              DeclarationName(paramName),
+              typeName: DeclarationName(paramType),
+              location: (
+                _bindings.ts_node_start_byte(param),
+                _bindings.ts_node_end_byte(param),
+              ),
+              visibility: scopeVisibility,
+            ),
+          );
+        }
+      }
+    }
+
+    if (!_isNullNode(bodyNode)) {
+      declarations.addAll(
+        _visitChildren(bodyNode, bytes, scopeEnd: bodyScopeEnd),
+      );
+    }
+
+    return ConstructorDeclaration(
+      body: Block(declarations: declarations),
+      location: (
+        _bindings.ts_node_start_byte(node),
+        _bindings.ts_node_end_byte(node),
+      ),
+    );
   }
 
   /// Extracts an enhanced for loop (for-each) with its iteration variable.
