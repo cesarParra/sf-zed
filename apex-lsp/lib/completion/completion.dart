@@ -218,11 +218,7 @@ Future<CompletionList> onCompletion({
   );
 
   List<CompletionCandidate> topLevelCandidates() {
-    final enclosing = index.firstWhereOrNull((c) {
-      final location = c.location;
-      if (location == null) return false;
-      return cursorOffset >= location.$1 && cursorOffset <= location.$2;
-    });
+    final enclosing = index.enclosingAt<Declaration>(cursorOffset);
 
     return [...index, ..._getBodyDeclarations(enclosing)]
         .where((declaration) => declaration.isVisibleAt(cursorOffset))

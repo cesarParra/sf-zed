@@ -147,13 +147,7 @@ final class ContextDetector {
       }
 
       if (DeclarationName(objectName) == const DeclarationName('this')) {
-        final enclosingClass = index
-            .whereType<IndexedClass>()
-            .firstWhereOrNull((c) {
-              final location = c.location;
-              if (location == null) return false;
-              return cursorOffset >= location.$1 && cursorOffset <= location.$2;
-            });
+        final enclosingClass = index.enclosingAt<IndexedClass>(cursorOffset);
 
         return CompletionContextMember(
           typeName: enclosingClass?.name.value,

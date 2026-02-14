@@ -95,4 +95,11 @@ extension DeclarationsExtension on List<Declaration> {
 
   Declaration? findDeclaration(DeclarationName name) =>
       firstWhereOrNull((declaration) => declaration.name == name);
+
+  T? enclosingAt<T extends Declaration>(int cursorOffset) =>
+      whereType<T>().firstWhereOrNull((declaration) {
+        final location = declaration.location;
+        if (location == null) return false;
+        return cursorOffset >= location.$1 && cursorOffset <= location.$2;
+      });
 }
