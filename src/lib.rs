@@ -35,18 +35,19 @@ impl ApexExtension {
         )?;
 
         let (platform, arch) = zed::current_platform();
+        let os_str = match platform {
+            zed::Os::Mac => "darwin",
+            zed::Os::Linux => "linux",
+            zed::Os::Windows => "windows",
+        };
+        let arch_str = match arch {
+            zed::Architecture::Aarch64 => "arm64",
+            zed::Architecture::X8664 => "x64",
+            zed::Architecture::X86 => "x86",
+        };
+        let binary_name = format!("apex-lsp-{os_str}-{arch_str}");
         let asset_name = format!(
-            "apex-lsp-{os}-{arch}.{ext}",
-            os = match platform {
-                zed::Os::Mac => "darwin",
-                zed::Os::Linux => "linux",
-                zed::Os::Windows => "windows",
-            },
-            arch = match arch {
-                zed::Architecture::Aarch64 => "arm64",
-                zed::Architecture::X8664 => "x64",
-                zed::Architecture::X86 => "x86",
-            },
+            "{binary_name}.{ext}",
             ext = match platform {
                 zed::Os::Mac | zed::Os::Linux => "tar.gz",
                 zed::Os::Windows => "zip",
@@ -60,7 +61,7 @@ impl ApexExtension {
             .ok_or_else(|| format!("no asset found matching {:?}", asset_name))?;
 
         let version_dir = format!("apex-lsp-{}", release.version);
-        let binary_path = format!("{version_dir}/apex-lsp");
+        let binary_path = format!("{version_dir}/{binary_name}");
 
         if !fs::metadata(&binary_path).map_or(false, |stat| stat.is_file()) {
             zed::set_language_server_installation_status(
