@@ -293,6 +293,28 @@ public enum Color { RED, GREEN, BLUE }
 
           expect(completions, containsCompletion('myArg'));
         });
+
+        test('completes local declarations in constructors', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        public Animal(String myArg) {
+          String somethingDeclaredInBlock;
+          {cursor}
+        }
+
+        static String fooMethod() {}
+      }''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('somethingDeclaredInBlock'));
+        });
       });
     });
 
