@@ -465,16 +465,10 @@ List<Declaration> _getBodyDeclarations(Declaration? declaration) {
     ConstructorDeclaration(:final body) ||
     MethodDeclaration(:final body) => body.declarations,
 
-    // TODO: This can now be recursive
     IndexedClass() => [
       ...declaration.members,
+      ...declaration.members.expand(_getBodyDeclarations),
       ...declaration.staticInitializers.expand((s) => s.declarations),
-      ...declaration.members.whereType<ConstructorDeclaration>().expand(
-        (c) => c.body.declarations,
-      ),
-      ...declaration.members.whereType<MethodDeclaration>().expand(
-        (c) => c.body.declarations,
-      ),
     ],
   };
 }
