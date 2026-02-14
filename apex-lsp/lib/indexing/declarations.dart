@@ -1,5 +1,3 @@
-// TODO: Rename this file name
-
 // This file represents a generic "Type", wherever that type might
 // exist in the code base (indexed file, open file).
 // This allows us to treat the "index" the same way, regardless

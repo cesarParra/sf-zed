@@ -401,6 +401,18 @@ public Enum Foo { A, B, C };
           classDeclaration.members.first as MethodDeclaration;
       expect(methodDeclaration.isStatic, false);
     });
+
+    test('indexes static initializers', () {
+      final text =
+          "public class Foo { static { System.debug('initialized') } }";
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<IndexedClass>());
+      final classDeclaration = result.first as IndexedClass;
+      expect(classDeclaration.staticInitializers, hasLength(1));
+    });
   });
 
   group('indexes interfaces', () {
