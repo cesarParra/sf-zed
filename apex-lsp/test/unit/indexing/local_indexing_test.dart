@@ -463,6 +463,28 @@ public Enum Foo { A, B, C };
     });
   });
 
+  group('indexes inner classes', () {
+    test('indexes a class declared inside a class as a member', () {
+      final text = '''
+public class Foo {
+  public class Bar {
+    String name;
+    void doSomething() {}
+  }
+}''';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      final classDeclaration = result.first as IndexedClass;
+      final innerClasses =
+          classDeclaration.members.whereType<IndexedClass>().toList();
+      expect(innerClasses, hasLength(1));
+      expect(innerClasses.first.name.value, 'Bar');
+      expect(innerClasses.first.members, hasLength(2));
+    });
+  });
+
   group('indexes inner interfaces', () {
     test('indexes an interface declared inside a class as a member', () {
       final text = '''

@@ -271,21 +271,18 @@ class LocalIndexer {
         );
       }
 
-      final enumNodes = _collectDirectChildrenByType(
-        bodyNode,
-        'enum_declaration',
-      );
-      for (final enumNode in enumNodes) {
-        members.add(_extractEnum(enumNode, bytes));
+      void collectMembers(
+        String nodeType,
+        Declaration Function(TSNode, List<int>) extractor,
+      ) {
+        for (final node in _collectDirectChildrenByType(bodyNode, nodeType)) {
+          members.add(extractor(node, bytes));
+        }
       }
 
-      final interfaceNodes = _collectDirectChildrenByType(
-        bodyNode,
-        'interface_declaration',
-      );
-      for (final interfaceNode in interfaceNodes) {
-        members.add(_extractInterface(interfaceNode, bytes));
-      }
+      collectMembers('enum_declaration', _extractEnum);
+      collectMembers('interface_declaration', _extractInterface);
+      collectMembers('class_declaration', _extractClass);
 
       final constructorNodes = _collectDirectChildrenByType(
         bodyNode,

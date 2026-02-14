@@ -768,6 +768,62 @@ void main() {
       expect(completionList.items, contains(CompletionItem(label: 'm2')));
     });
 
+    test('autocomplete inner classes as static members', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          IndexedClass(
+            DeclarationName('Bar'),
+            members: [
+              FieldMember(DeclarationName('name'), isStatic: false),
+            ],
+          ),
+        ],
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.{cursor}'),
+        index: [classType],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'Bar');
+    });
+
+    test('autocomplete inner class members via variable', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          IndexedClass(
+            DeclarationName('Bar'),
+            members: [
+              FieldMember(DeclarationName('name'), isStatic: false),
+              MethodDeclaration(
+                DeclarationName('doSomething'),
+                body: Block.empty(),
+                isStatic: false,
+              ),
+            ],
+          ),
+        ],
+      );
+      final localVariable = IndexedVariable(
+        DeclarationName('sample'),
+        typeName: DeclarationName('Foo.Bar'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('sample.{cursor}'),
+        index: [classType, localVariable],
+      );
+
+      expect(completionList.items, hasLength(2));
+      expect(completionList.items, contains(CompletionItem(label: 'name')));
+      expect(
+        completionList.items,
+        contains(CompletionItem(label: 'doSomething')),
+      );
+    });
+
     test('autocomplete inner enum values via qualified access', () async {
       final classType = IndexedClass(
         DeclarationName('Foo'),

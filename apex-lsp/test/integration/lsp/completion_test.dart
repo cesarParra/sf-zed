@@ -229,6 +229,49 @@ public enum Color { RED, GREEN, BLUE }
           expect(completions, containsCompletion('m1'));
           expect(completions, containsCompletion('m2'));
         });
+
+        test('completes inner classes as static members', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        public class Leg {
+          String name;
+        }
+      }
+      Animal.{cursor}''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('Leg'));
+        });
+
+        test('completes inner class members via variable', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        public class Leg {
+          String name;
+          void move() {}
+        }
+      }
+      Animal.Leg sample;
+      sample.{cursor}''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('name'));
+          expect(completions, containsCompletion('move'));
+        });
       });
 
       group('references from within a class', () {
