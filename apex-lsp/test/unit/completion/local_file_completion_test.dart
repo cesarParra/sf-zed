@@ -684,6 +684,29 @@ void main() {
       expect(completionList.items.first.label, 'staticMethod');
     });
 
+    test('autocomplete inner enums as static members', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          IndexedEnum(
+            DeclarationName('Bar'),
+            values: [
+              'A'.enumValueMember(),
+              'B'.enumValueMember(),
+              'C'.enumValueMember(),
+            ],
+          ),
+        ],
+      );
+      final completionList = await complete(
+        extractCursorPosition('Foo.{cursor}'),
+        index: [classType],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'Bar');
+    });
+
     test('autocomplete instance class methods', () async {
       final classType = IndexedClass(
         DeclarationName('Foo'),

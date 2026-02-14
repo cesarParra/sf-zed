@@ -271,6 +271,14 @@ class LocalIndexer {
         );
       }
 
+      final enumNodes = _collectDirectChildrenByType(
+        bodyNode,
+        'enum_declaration',
+      );
+      for (final enumNode in enumNodes) {
+        members.add(_extractEnum(enumNode, bytes));
+      }
+
       final constructorNodes = _collectDirectChildrenByType(
         bodyNode,
         'constructor_declaration',

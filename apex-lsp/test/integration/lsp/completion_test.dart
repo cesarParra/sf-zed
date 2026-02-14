@@ -169,6 +169,24 @@ public enum Color { RED, GREEN, BLUE }
           expect(completions, containsCompletion('instanceMethod'));
           expect(completions, doesNotContainCompletion('staticMethod'));
         });
+
+        test('completes inner enums as static members', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        public Enum Status { ACTIVE, INACTIVE }
+      }
+      Animal.{cursor}''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('Status'));
+        });
       });
 
       group('references from within a class', () {
