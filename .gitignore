@@ -1,19 +1,13 @@
-# Files and directories created by pub
-.dart_tool/
-.packages
-build/
-# If you're building an application, you may want to check-in your pubspec.lock
-pubspec.lock
+# Build artifacts
+target/
+extension.wasm
 
-# Generated files from json_serializable / source_gen
-*.g.dart
+# Compiled grammars and cloned grammar sources
+grammars/*.wasm
+grammars/apex/
+grammars/soql/
+grammars/sosl/
 
-# Files and directories related to the Zed extension
-zed-extension/target
-zed-extension/extension.wasm
-zed-extension/grammars
-
+# OS / IDE
 .DS_Store
 .idea/
-
-libtree_sitter_sfapex.*

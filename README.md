@@ -1,33 +1,16 @@
-# sf-zed
+# Zed Apex
 
-Zed language support for **Salesforce Apex**.
+An Apex extension for Zed.
 
-This repository’s main focus is a **Zed plugin/extension for the Apex programming language**. It currently provides syntax highlighting (via Tree-sitter grammars) and includes an in-progress Apex Language Server implementation.
+Provides syntax highlighting and use of the Apex Language Server.
 
-⚠️ Experimental work in progress and not production-ready.
+## Development
 
-## Directory structure
+To develop this extension, see the [Developing Extensions](https://zed.dev/docs/extensions/developing-extensions) section of the Zed docs.
 
-- `zed-extension/`: Rust (WASM) Zed extension that registers the language + launches the LSP.
-- `apex-lsp/`: Apex Language Server (LSP) written in Dart.
+## Publishing a new version
 
-## Building locally
+To publish a new version of this extension:
 
-You can build and load the extension locally by following Zed’s extension docs:
-https://zed.dev/docs/extensions/languages
-
-Use the `zed-extension` directory as the root of the extension.
-
-### Requirements
-
-- **Dart** is required at the moment (the extension launches the LSP via `dart run`).
-
-## Features
-
-- Apex code syntax highlighting
-
-## Credits
-
-This project makes use of the following open-source components:
-
-- **Syntax Highlighting**: Powered by the [tree-sitter-sfapex](https://github.com/aheber/tree-sitter-sfapex) grammar (MIT License), created by [aheber](https://github.com/aheber).
+1. Bump the version number in `extension.toml` and `Cargo.toml`
+2. Open a PR to the [zed-industries/extensions](https://github.com/zed-industries/extensions) repository following [these steps](https://zed.dev/docs/extensions/developing-extensions#updating-an-extension)
