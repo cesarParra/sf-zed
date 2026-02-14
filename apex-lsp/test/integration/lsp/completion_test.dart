@@ -71,102 +71,126 @@ public enum Color { RED, GREEN, BLUE }
     });
 
     group('classes', () {
-      test('completes locally declared classes', () async {
-        final textWithPosition = extractCursorPosition('''
+      group('referencing a class from outside', () {
+        test('completes locally declared classes', () async {
+          final textWithPosition = extractCursorPosition('''
       public class Animal  {}
       {cursor}''');
-        final document = Document.withText(textWithPosition.text);
-        await client.openDocument(document);
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
 
-        final completions = await client.completion(
-          uri: document.uri,
-          line: textWithPosition.position.line,
-          character: textWithPosition.position.character,
-        );
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
 
-        expect(completions, containsCompletions(['Animal']));
-      });
+          expect(completions, containsCompletions(['Animal']));
+        });
 
-      test('completes static class fields', () async {
-        final textWithPosition = extractCursorPosition('''
+        test('completes static class fields', () async {
+          final textWithPosition = extractCursorPosition('''
       public class Animal  {
         String instanceVar;
         static String staticVar;
       }
       Animal.{cursor}''');
-        final document = Document.withText(textWithPosition.text);
-        await client.openDocument(document);
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
 
-        final completions = await client.completion(
-          uri: document.uri,
-          line: textWithPosition.position.line,
-          character: textWithPosition.position.character,
-        );
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
 
-        expect(completions, containsCompletion('staticVar'));
-        expect(completions, doesNotContainCompletion('instanceVar'));
-      });
+          expect(completions, containsCompletion('staticVar'));
+          expect(completions, doesNotContainCompletion('instanceVar'));
+        });
 
-      test('completes instance class fields', () async {
-        final textWithPosition = extractCursorPosition('''
+        test('completes instance class fields', () async {
+          final textWithPosition = extractCursorPosition('''
       public class Animal  {
         String instanceVar;
         static String staticVar;
       }
       Animal sampleAnimal;
       sampleAnimal.{cursor}''');
-        final document = Document.withText(textWithPosition.text);
-        await client.openDocument(document);
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
 
-        final completions = await client.completion(
-          uri: document.uri,
-          line: textWithPosition.position.line,
-          character: textWithPosition.position.character,
-        );
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
 
-        expect(completions, containsCompletion('instanceVar'));
-        expect(completions, doesNotContainCompletion('staticVar'));
-      });
+          expect(completions, containsCompletion('instanceVar'));
+          expect(completions, doesNotContainCompletion('staticVar'));
+        });
 
-      test('completes static class methods', () async {
-        final textWithPosition = extractCursorPosition('''
+        test('completes static class methods', () async {
+          final textWithPosition = extractCursorPosition('''
       public class Animal  {
         String instanceMethod() {}
         static String staticMethod() {};
       }
       Animal.{cursor}''');
-        final document = Document.withText(textWithPosition.text);
-        await client.openDocument(document);
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
 
-        final completions = await client.completion(
-          uri: document.uri,
-          line: textWithPosition.position.line,
-          character: textWithPosition.position.character,
-        );
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
 
-        expect(completions, containsCompletion('staticMethod'));
-        expect(completions, doesNotContainCompletion('instanceMethod'));
-      });
+          expect(completions, containsCompletion('staticMethod'));
+          expect(completions, doesNotContainCompletion('instanceMethod'));
+        });
 
-      test('completes instance class methods', () async {
-        final textWithPosition = extractCursorPosition('''
+        test('completes instance class methods', () async {
+          final textWithPosition = extractCursorPosition('''
       public class Animal  {
         String instanceMethod() {}
         static String staticMethod() {};
       }
       Animal sampleAnimal;
       sampleAnimal.{cursor}''');
-        final document = Document.withText(textWithPosition.text);
-        await client.openDocument(document);
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
 
-        final completions = await client.completion(
-          uri: document.uri,
-          line: textWithPosition.position.line,
-          character: textWithPosition.position.character,
-        );
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
 
-        expect(completions, containsCompletion('instanceMethod'));
-        expect(completions, doesNotContainCompletion('staticMethod'));
+          expect(completions, containsCompletion('instanceMethod'));
+          expect(completions, doesNotContainCompletion('staticMethod'));
+        });
+      });
+
+      group('references from within a class', () {
+        test('completes fields', () async {
+          final textWithPosition = extractCursorPosition('''
+      public class Animal  {
+        String instanceVar;
+        static String staticVar;
+        {cursor}
+      }''');
+          final document = Document.withText(textWithPosition.text);
+          await client.openDocument(document);
+
+          final completions = await client.completion(
+            uri: document.uri,
+            line: textWithPosition.position.line,
+            character: textWithPosition.position.character,
+          );
+
+          expect(completions, containsCompletion('staticVar'));
+          expect(completions, containsCompletion('instanceVar'));
+        });
       });
     });
 

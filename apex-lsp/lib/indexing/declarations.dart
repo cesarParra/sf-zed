@@ -67,7 +67,7 @@ final class IndexedClass extends IndexedType {
   final List<Declaration> members;
   final String? superClass;
 
-  IndexedClass(super.name, {this.members = const [], this.superClass});
+  IndexedClass(super.name, {this.members = const [], this.superClass, super.location});
 }
 
 final class IndexedInterface extends IndexedType {

@@ -218,7 +218,17 @@ Future<CompletionList> onCompletion({
   );
 
   List<CompletionCandidate> topLevelCandidates() {
-    return index
+    final enclosingClass = index.whereType<IndexedClass>().firstWhereOrNull(
+      (c) {
+        final location = c.location;
+        if (location == null) return false;
+        return cursorOffset >= location.$1 && cursorOffset <= location.$2;
+      },
+    );
+
+    final classMembers = enclosingClass?.members ?? const [];
+
+    return [...index, ...classMembers]
         .where((declaration) => declaration.isVisibleAt(cursorOffset))
         .map(
           (declaration) => switch (declaration) {
