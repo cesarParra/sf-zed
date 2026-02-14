@@ -204,7 +204,11 @@ class LocalIndexer {
         final name = _nodeText(methodNameNode, bytes);
         if (name.isNotEmpty) {
           methods.add(
-            MethodDeclaration(DeclarationName(name), isStatic: false),
+            MethodDeclaration(
+              DeclarationName(name),
+              body: Block.empty(),
+              isStatic: false,
+            ),
           );
         }
       }
@@ -257,8 +261,24 @@ class LocalIndexer {
         final isStatic = _hasStaticModifier(methodNode, bytes);
 
         if (methodName.isNotEmpty) {
+          MethodDeclaration methodDeclarationBuilder(
+            Block block,
+            (int, int)? location,
+          ) {
+            return MethodDeclaration(
+              DeclarationName(methodName),
+              isStatic: isStatic,
+              body: block,
+              location: location,
+            );
+          }
+
           members.add(
-            MethodDeclaration(DeclarationName(methodName), isStatic: isStatic),
+            _extractConstructorOrMethod(
+              methodNode,
+              bytes,
+              builder: methodDeclarationBuilder,
+            ),
           );
         }
       }
@@ -268,7 +288,14 @@ class LocalIndexer {
         'constructor_declaration',
       );
       for (final constructorNode in constructorNodes) {
-        members.add(_extractConstructor(constructorNode, bytes));
+        members.add(
+          _extractConstructorOrMethod(
+            constructorNode,
+            bytes,
+            builder: (Block block, (int, int)? location) =>
+                ConstructorDeclaration(body: block, location: location),
+          ),
+        );
       }
 
       final staticInitNodes = _collectDirectChildrenByType(
@@ -297,6 +324,7 @@ class LocalIndexer {
   ///
   /// Returns the method itself plus any parameter declarations and variables
   /// declared within the method body. Parameters are scoped to the method body.
+  // TODO: We don't want to do it like this anymore. Method should be a single thing that has a block
   List<Declaration> _extractMethod(TSNode node, List<int> bytes) {
     final nameNode = _getField(node, 'name');
     final name = _nodeText(nameNode, bytes);
@@ -305,6 +333,7 @@ class LocalIndexer {
       MethodDeclaration(
         DeclarationName(name),
         isStatic: false,
+        body: Block.empty(),
         location: (
           _bindings.ts_node_start_byte(node),
           _bindings.ts_node_end_byte(node),
@@ -356,7 +385,11 @@ class LocalIndexer {
     return results;
   }
 
-  ConstructorDeclaration _extractConstructor(TSNode node, List<int> bytes) {
+  T _extractConstructorOrMethod<T extends Declaration>(
+    TSNode node,
+    List<int> bytes, {
+    required T Function(Block, (int, int)?) builder,
+  }) {
     final bodyNode = _getField(node, 'body');
     final bodyScopeEnd = _isNullNode(bodyNode)
         ? null
@@ -400,13 +433,10 @@ class LocalIndexer {
       );
     }
 
-    return ConstructorDeclaration(
-      body: Block(declarations: declarations),
-      location: (
-        _bindings.ts_node_start_byte(node),
-        _bindings.ts_node_end_byte(node),
-      ),
-    );
+    return builder(Block(declarations: declarations), (
+      _bindings.ts_node_start_byte(node),
+      _bindings.ts_node_end_byte(node),
+    ));
   }
 
   /// Extracts an enhanced for loop (for-each) with its iteration variable.

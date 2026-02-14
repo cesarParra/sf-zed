@@ -148,6 +148,7 @@ void main() {
     test('autocomplete method names at top level', () async {
       final method = MethodDeclaration(
         DeclarationName('sampleMethod'),
+        body: Block.empty(),
         isStatic: false,
         location: (0, 10),
       );
@@ -163,6 +164,7 @@ void main() {
     test('autocomplete method names with a prefix', () async {
       final method = MethodDeclaration(
         DeclarationName('sampleMethod'),
+        body: Block.empty(),
         isStatic: false,
         location: (0, 10),
       );
@@ -178,6 +180,7 @@ void main() {
     test('autocompletes methods declared after cursor', () async {
       final method = MethodDeclaration(
         DeclarationName('laterMethod'),
+        body: Block.empty(),
         isStatic: false,
         location: (20, 40),
       );
@@ -226,8 +229,16 @@ void main() {
       final interfaceType = IndexedInterface(
         DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
-          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('doSomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
+          MethodDeclaration(
+            DeclarationName('saySomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final parameter = IndexedVariable(
@@ -255,8 +266,16 @@ void main() {
       final interfaceType = IndexedInterface(
         DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
-          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('doSomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
+          MethodDeclaration(
+            DeclarationName('saySomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final parameter = IndexedVariable(
@@ -460,7 +479,11 @@ void main() {
       final interfaceType = IndexedInterface(
         DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('doSomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final completionList = await complete(
@@ -476,8 +499,16 @@ void main() {
       final interfaceType = IndexedInterface(
         DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
-          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('doSomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
+          MethodDeclaration(
+            DeclarationName('saySomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final completionList = await complete(
@@ -500,8 +531,16 @@ void main() {
       final interfaceType = IndexedInterface(
         DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
-          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('doSomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
+          MethodDeclaration(
+            DeclarationName('saySomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final variable = IndexedVariable(
@@ -529,8 +568,16 @@ void main() {
       final interfaceType = IndexedInterface(
         DeclarationName('Foo'),
         methods: [
-          MethodDeclaration(DeclarationName('doSomething'), isStatic: false),
-          MethodDeclaration(DeclarationName('saySomething'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('doSomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
+          MethodDeclaration(
+            DeclarationName('saySomething'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final variable = IndexedVariable(
@@ -611,8 +658,16 @@ void main() {
       final classType = IndexedClass(
         DeclarationName('Foo'),
         members: [
-          MethodDeclaration(DeclarationName('staticMethod'), isStatic: true),
-          MethodDeclaration(DeclarationName('instanceMethod'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('staticMethod'),
+            body: Block.empty(),
+            isStatic: true,
+          ),
+          MethodDeclaration(
+            DeclarationName('instanceMethod'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final localVariable = IndexedVariable(
@@ -633,8 +688,16 @@ void main() {
       final classType = IndexedClass(
         DeclarationName('Foo'),
         members: [
-          MethodDeclaration(DeclarationName('staticMethod'), isStatic: true),
-          MethodDeclaration(DeclarationName('instanceMethod'), isStatic: false),
+          MethodDeclaration(
+            DeclarationName('staticMethod'),
+            body: Block.empty(),
+            isStatic: true,
+          ),
+          MethodDeclaration(
+            DeclarationName('instanceMethod'),
+            body: Block.empty(),
+            isStatic: false,
+          ),
         ],
       );
       final localVariable = IndexedVariable(

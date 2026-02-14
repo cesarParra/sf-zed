@@ -65,6 +65,8 @@ class Block {
   final List<Declaration> declarations;
 
   Block({required this.declarations});
+
+  factory Block.empty() => Block(declarations: []);
 }
 
 sealed class IndexedType extends Declaration {
@@ -120,10 +122,15 @@ final class ConstructorDeclaration extends Declaration {
 }
 
 final class MethodDeclaration extends Declaration {
+  final Block body;
   final bool isStatic;
 
-  MethodDeclaration(super.name, {required this.isStatic, super.location})
-    : super(visibility: AlwaysVisible());
+  MethodDeclaration(
+    super.name, {
+    required this.body,
+    required this.isStatic,
+    super.location,
+  }) : super(visibility: AlwaysVisible());
 }
 
 final class EnumValueMember extends Declaration {
@@ -611,6 +618,7 @@ final class IndexLoader {
           ...mirror.methods.map(
             (method) => MethodDeclaration(
               DeclarationName(method.name),
+              body: Block.empty(),
               isStatic: method.isStatic,
             ),
           ),
