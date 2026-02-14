@@ -628,5 +628,27 @@ void main() {
       expect(completionList.items, hasLength(1));
       expect(completionList.items.first.label, 'staticMethod');
     });
+
+    test('autocomplete instance class methods', () async {
+      final classType = IndexedClass(
+        DeclarationName('Foo'),
+        members: [
+          MethodDeclaration(DeclarationName('staticMethod'), isStatic: true),
+          MethodDeclaration(DeclarationName('instanceMethod'), isStatic: false),
+        ],
+      );
+      final localVariable = IndexedVariable(
+        DeclarationName('myFoo'),
+        typeName: DeclarationName('Foo'),
+        location: (0, 10),
+      );
+      final completionList = await complete(
+        extractCursorPosition('myFoo.{cursor}'),
+        index: [classType, localVariable],
+      );
+
+      expect(completionList.items, hasLength(1));
+      expect(completionList.items.first.label, 'instanceMethod');
+    });
   });
 }

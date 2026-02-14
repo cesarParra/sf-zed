@@ -385,6 +385,22 @@ public Enum Foo { A, B, C };
           classDeclaration.members.first as MethodDeclaration;
       expect(methodDeclaration.isStatic, true);
     });
+
+    test('indexes instance class methods', () {
+      final text = 'public class Foo { String bar() {} }';
+
+      final result = indexer.parseAndIndex(text);
+
+      expect(result, hasLength(1));
+      expect(result.first, isA<IndexedClass>());
+      final classDeclaration = result.first as IndexedClass;
+      expect(classDeclaration.members, hasLength(1));
+      expect(classDeclaration.members.first.name, DeclarationName('bar'));
+      expect(classDeclaration.members.first, isA<MethodDeclaration>());
+      final methodDeclaration =
+          classDeclaration.members.first as MethodDeclaration;
+      expect(methodDeclaration.isStatic, false);
+    });
   });
 
   group('indexes interfaces', () {
