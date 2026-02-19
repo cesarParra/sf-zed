@@ -89,6 +89,9 @@
 (date) @constant
 (date_time) @constant
 
+; Relative date literals (e.g., LAST_N_DAYS:7, THIS_MONTH, NEXT_FISCAL_YEAR)
+(date_literal) @constant.builtin
+
 ; TRUE/FALSE/NULL are keyword constants in SOQL.
 [
   "TRUE"
@@ -154,7 +157,7 @@
   "my_territory"
   "my_team_territory"
   "team"
-] @type
+] @constant
 
 ; WITH clause options / parameters
 [
@@ -166,4 +169,4 @@
   "System_Mode"
   "User_Mode"
   "UserId"
-] @type
+] @constant
