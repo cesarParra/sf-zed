@@ -183,12 +183,36 @@
 (array_creation_expression
   type: (type_identifier) @type)
 
+[
+  (boolean_type)
+  (void_type)
+] @type.builtin
+
 ;------------------------------------------------------------------------------
 ; Enums
 ;------------------------------------------------------------------------------
 
 (enum_constant
   name: (identifier) @constant)
+
+;------------------------------------------------------------------------------
+; Constants
+;------------------------------------------------------------------------------
+
+; Screaming snake case convention (e.g., MY_CONSTANT, MAX_SIZE)
+((identifier) @constant
+  (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
+
+; Static final fields are constants
+(field_declaration
+  (modifiers (modifier [(final) (static)])(modifier [(final) (static)]))
+  (variable_declarator
+    name: (identifier) @constant))
+
+; Switch when labels
+(switch_rule
+  (switch_label
+    (identifier) @constant))
 
 ;------------------------------------------------------------------------------
 ; Functions / methods
@@ -200,8 +224,23 @@
 (method_invocation
   name: (identifier) @function)
 
+; Constructor declarations
+(constructor_declaration
+  name: (identifier) @constructor)
+
 ; Common builtins
-(super) @function
+(this) @variable.builtin
+(super) @function.builtin
+
+; DML operations (insert, update, delete, upsert, undelete, merge)
+(dml_type) @function.builtin
+
+; System.runAs
+(method_invocation
+  object: (identifier) @_obj
+  name: (identifier) @function.builtin
+  (#eq? @_obj "System")
+  (#eq? @function.builtin "runAs"))
 
 ;------------------------------------------------------------------------------
 ; Variables
@@ -214,7 +253,7 @@
 (method_declaration
   (formal_parameters
     (formal_parameter
-      name: (identifier) @variable)))
+      name: (identifier) @variable.parameter)))
 
 ; Local variable declarations
 (local_variable_declaration
@@ -237,7 +276,25 @@
 (assignment_expression
   left: (identifier) @variable)
 
+; For-loop condition and update variables
+(for_statement
+  condition: (binary_expression
+    (identifier) @variable))
+
+(for_statement
+  update: (update_expression
+    (identifier) @variable))
+
 ; Identifier occurrences in common expression contexts
+(argument_list
+  (identifier) @variable)
+
+(explicit_constructor_invocation
+  arguments: (argument_list
+    (identifier) @variable))
+
+(expression_statement (_ (identifier)) @variable)
+
 (return_statement
   (identifier) @variable)
 
@@ -280,16 +337,15 @@
 ;------------------------------------------------------------------------------
 
 (annotation
+  "@" @punctuation.special
   name: (identifier) @attribute)
 
 (annotation_key_value
   (identifier) @property)
 
 ;------------------------------------------------------------------------------
-; SOQL-ish query constructs
+; DML / Triggers
 ;------------------------------------------------------------------------------
-
-(dml_type) @function
 
 (trigger_declaration
   name: (identifier) @type
@@ -300,3 +356,15 @@
 (when_sobject_type
   (type_identifier) @type
   (identifier) @variable)
+
+;------------------------------------------------------------------------------
+; Modifier safety net (belt-and-suspenders)
+; Ensures keyword highlighting works even when modifiers follow annotations
+;------------------------------------------------------------------------------
+
+(method_declaration (modifiers (modifier) @keyword))
+(field_declaration (modifiers (modifier) @keyword))
+(constructor_declaration (modifiers (modifier) @keyword))
+(class_declaration (modifiers (modifier) @keyword))
+(interface_declaration (modifiers (modifier) @keyword))
+(enum_declaration (modifiers (modifier) @keyword))
