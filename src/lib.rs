@@ -1,5 +1,5 @@
 use std::fs;
-use zed_extension_api::{self as zed, LanguageServerId, Result};
+use zed_extension_api::{self as zed, settings::LspSettings, LanguageServerId, Result};
 
 struct ApexExtension {
     cached_binary_path: Option<String>,
@@ -106,6 +106,29 @@ impl zed::Extension for ApexExtension {
         language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
+        // Developer mode: if `lsp.apex-lsp.settings.dev_path` is set in Zed settings,
+        // run the LSP directly via `dart` without downloading or compiling a binary.
+        //
+        // To enable, add to your Zed settings.json:
+        //   "lsp": {
+        //     "apex-lsp": {
+        //       "settings": {
+        //         "dev_path": "/path/to/apex-lsp/bin/apex-lsp.dart"
+        //       }
+        //     }
+        //   }
+        if let Ok(lsp_settings) = LspSettings::for_worktree("apex-lsp", worktree) {
+            if let Some(settings) = lsp_settings.settings {
+                if let Some(dev_path) = settings.get("dev_path").and_then(|v| v.as_str()) {
+                    return Ok(zed::Command {
+                        command: "/usr/bin/env".into(),
+                        args: vec!["dart".into(), dev_path.to_string()],
+                        env: worktree.shell_env(),
+                    });
+                }
+            }
+        }
+
         Ok(zed::Command {
             command: self.language_server_binary_path(language_server_id, worktree)?,
             args: vec![],
